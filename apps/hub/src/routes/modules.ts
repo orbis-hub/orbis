@@ -109,7 +109,8 @@ export const moduleApiProxy = new Hono().all("/:id/*", async (c) => {
   const prefix = `/api/m/${s.id}`;
   url.pathname = url.pathname.slice(prefix.length) || "/";
   // manifest.publicPaths (oauth callbacks etc.) skip the session check; everything else needs one
-  const isPublic = s.manifest.publicPaths.some((p) => url.pathname === p || url.pathname.startsWith(p.endsWith("/") ? p : `${p}/`));
+  // "/x" also covers "/x/…"; a trailing "*" is a plain prefix ("/ingest/*", "/hook*")
+  const isPublic = s.manifest.publicPaths.some((p) => (p.endsWith("*") ? url.pathname.startsWith(p.slice(0, -1)) : url.pathname === p || url.pathname.startsWith(p.endsWith("/") ? p : `${p}/`)));
   if (!isPublic) {
     const token = tokenFromRequest(c);
     const user = token ? resolveToken(token) : null;
