@@ -242,6 +242,20 @@
       "author": "orbis",
       "icon": "bus",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/transport.tgz"
+    },
+    {
+      "id": "mealplan",
+      "name": "Meal plan",
+      "description": "Week grid for lunch and dinner, recipe box with url import, ingredients straight onto the shopping list.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.6",
+      "tags": [
+        "food",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "coffee",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/mealplan.tgz"
     }
   ]
 }

@@ -4,7 +4,7 @@
   "version": "0.1.6",
   "description": "Shared shopping list: quick add, quantities, aisles, tap to check off in the store, bought items come back next time.",
   "author": "orbis",
-  "icon": "cart",
+  "icon": "shopping-bag",
   "minHub": "0.1.0",
   "entry": {
     "server": "dist/server.js",
@@ -48,7 +48,7 @@
     {
       "id": "shopping",
       "name": "Shopping",
-      "icon": "cart"
+      "icon": "shopping-bag"
     }
   ],
   "permissions": [

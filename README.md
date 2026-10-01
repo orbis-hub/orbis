@@ -45,6 +45,7 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **shopping list** | list | quick add with quantities and aisles, suggestions from past buys, store mode |
 | **shelly** | switch, power overview | gen1 + gen2 shellys on the lan, mdns discovery, watts |
 | **transport** | departures | next departures from a stop with delays, stop search, germany-wide (db) + vbb/bvg/öbb |
+| **mealplan** | today's meals | week grid, recipe import from any food blog url, "add this week's ingredients" → shopping |
 
 plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 
