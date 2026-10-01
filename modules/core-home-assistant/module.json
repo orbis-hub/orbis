@@ -2,7 +2,7 @@
   "id": "home-assistant",
   "name": "Home Assistant",
   "version": "0.1.6",
-  "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket.",
+  "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket. Also publishes orbis itself to HA over MQTT (next event, open tasks, focus switch).",
   "author": "orbis",
   "icon": "home",
   "minHub": "0.1.0",
@@ -179,6 +179,36 @@
         "title": "Long-lived access token",
         "format": "password",
         "description": "HA → your profile → security → long-lived access tokens"
+      },
+      "mqttEnabled": {
+        "type": "boolean",
+        "title": "Publish orbis to Home Assistant via MQTT (discovery)",
+        "default": false
+      },
+      "mqttUrl": {
+        "type": "string",
+        "title": "MQTT broker url",
+        "placeholder": "mqtt://homeassistant.local:1883",
+        "description": "the mosquitto add-on works out of the box; create a HA user for orbis"
+      },
+      "mqttUser": {
+        "type": "string",
+        "title": "MQTT user"
+      },
+      "mqttPass": {
+        "type": "string",
+        "title": "MQTT password",
+        "format": "password"
+      },
+      "mqttPrefix": {
+        "type": "string",
+        "title": "Topic prefix",
+        "default": "orbis"
+      },
+      "mqttDiscoveryPrefix": {
+        "type": "string",
+        "title": "HA discovery prefix",
+        "default": "homeassistant"
       }
     }
   },
