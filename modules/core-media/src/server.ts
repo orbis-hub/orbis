@@ -8,12 +8,15 @@ import type { Context } from "hono";
  * Future providers: Home Assistant media_player entities, Sonos, Chromecast, MPD.
  */
 
-type Settings = { spotifyClientId?: string; pollSeconds?: number };
+type Settings = { spotifyClientId?: string; pollSeconds?: number; provider?: "spotify" | "ha" };
 
-export type Device = { id: string; name: string; type: string; active: boolean; volume: number | null; provider: "spotify" };
+export type ProviderId = "spotify" | "ha";
+export type ProviderInfo = { id: ProviderId; name: string; available: boolean; reason?: string };
+
+export type Device = { id: string; name: string; type: string; active: boolean; volume: number | null; provider: ProviderId };
 export type Track = { id: string; title: string; artists: string[]; album: string; cover: string | null; durationMs: number; uri: string; url?: string };
 export type PlayerState = {
-  provider: "spotify";
+  provider: ProviderId;
   connected: boolean;
   account?: { name: string; image: string | null; product: string };
   playing: boolean;
@@ -31,7 +34,7 @@ export type PlayerState = {
 
 type Tokens = { access: string; refresh: string; expiresAt: number; scope: string };
 
-const SCOPES = ["user-read-playback-state", "user-modify-playback-state", "user-read-currently-playing", "user-read-private", "playlist-read-private", "playlist-read-collaborative", "user-library-read", "user-read-recently-played"].join(" ");
+const SCOPES = ["user-read-playback-state", "user-modify-playback-state", "user-read-currently-playing", "user-read-private", "user-read-email", "streaming", "playlist-read-private", "playlist-read-collaborative", "user-library-read", "user-read-recently-played"].join(" ");
 
 const b64url = (b: Buffer) => b.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
@@ -134,6 +137,51 @@ export default defineModule<Settings>({
       return c.json({ ok: true });
     });
 
+    /* ---------- providers ----------
+     * spotify is the default. "ha" mirrors home assistant media_player entities (sonos, chromecast, kodi, …)
+     * through the home-assistant module (soft dep); every entity is a "device", the selected one is the player. */
+    type HaEntity = { id: string; state: string; attributes: Record<string, unknown>; name: string };
+    const haAvailable = () => ctx.modules.has("home-assistant");
+    const providerId = (): ProviderId => (settings.get().provider === "ha" && haAvailable() ? "ha" : "spotify");
+    const providers = (): ProviderInfo[] => [
+      { id: "spotify", name: "spotify", available: !!clientId(), reason: clientId() ? undefined : "client id missing" },
+      { id: "ha", name: "home assistant", available: haAvailable(), reason: haAvailable() ? undefined : "home assistant module not installed" },
+    ];
+    const haSelected = () => storage.get<string>("ha:selected") ?? null;
+    let haBase = "";
+    const haCall = (service: string, data: Record<string, unknown> = {}, entity: string | null | undefined = state.device?.id ?? haSelected()) => {
+      if (!entity) throw Object.assign(new Error("pick a media player first"), { status: 404 });
+      return ctx.modules.call("home-assistant", "/call", { method: "POST", json: { domain: "media_player", service, entity, data } });
+    };
+    const haPicture = (p: string) => (p.startsWith("http") ? p : `${haBase}${p}`);
+    async function haState(): Promise<PlayerState> {
+      if (!haBase) haBase = ((await ctx.modules.call<{ url?: string }>("home-assistant", "/status").catch(() => null))?.url ?? "").replace(/\/+$/, "");
+      const list = (await ctx.modules.call<HaEntity[]>("home-assistant", "/entities?domain=media_player")) ?? [];
+      const sel = list.find((e) => e.id === haSelected()) ?? list.find((e) => e.state === "playing") ?? list[0] ?? null;
+      const devices: Device[] = list.map((e) => ({ id: e.id, name: e.name, type: String(e.attributes.device_class ?? (e.id.includes("tv") ? "tv" : "speaker")), active: sel?.id === e.id, volume: e.attributes.volume_level != null ? Math.round(Number(e.attributes.volume_level) * 100) : null, provider: "ha" }));
+      const a = sel?.attributes ?? {};
+      const playing = sel?.state === "playing";
+      const pos = a.media_position != null ? Number(a.media_position) * 1000 : 0;
+      const posAt = a.media_position_updated_at ? new Date(String(a.media_position_updated_at)).getTime() : Date.now();
+      const track: Track | null = sel && a.media_title ? { id: String(a.media_content_id ?? a.media_title), title: String(a.media_title), artists: a.media_artist ? [String(a.media_artist)] : a.media_series_title ? [String(a.media_series_title)] : [], album: String(a.media_album_name ?? a.app_name ?? ""), cover: a.entity_picture ? haPicture(String(a.entity_picture)) : null, durationMs: a.media_duration != null ? Number(a.media_duration) * 1000 : 0, uri: String(a.media_content_id ?? "") } : null;
+      return {
+        provider: "ha",
+        connected: list.length > 0,
+        account: { name: "home assistant", image: null, product: "premium" },
+        playing,
+        track,
+        progressMs: playing ? pos + (Date.now() - posAt) : pos,
+        shuffle: !!a.shuffle,
+        repeat: (["off", "one", "all"].includes(String(a.repeat)) ? (a.repeat === "one" ? "track" : a.repeat === "all" ? "context" : "off") : "off") as PlayerState["repeat"],
+        volume: sel && a.volume_level != null ? Math.round(Number(a.volume_level) * 100) : null,
+        device: devices.find((d) => d.active) ?? null,
+        devices,
+        context: null,
+        updatedAt: new Date().toISOString(),
+        error: list.length ? undefined : "no media_player entities in home assistant",
+      };
+    }
+
     /* ---------- state polling ---------- */
 
     function mapDevice(d: { id: string; name: string; type: string; is_active: boolean; volume_percent: number | null }): Device {
@@ -156,6 +204,19 @@ export default defineModule<Settings>({
     }
 
     async function poll(force = false) {
+      if (providerId() === "ha") {
+        try {
+          state = await haState();
+        } catch (err) {
+          state = { ...empty(), provider: "ha", error: (err as Error).message };
+        }
+        const sigHa = JSON.stringify({ ...state, progressMs: 0, updatedAt: "" });
+        if (sigHa !== lastSig || force) {
+          lastSig = sigHa;
+          events.publish("state", state);
+        }
+        return;
+      }
       if (Date.now() < pausedUntil && !force) return;
       if (!tokens()) {
         if (state.connected || force) {
@@ -204,12 +265,18 @@ export default defineModule<Settings>({
 
     const schedule = () => ctx.scheduler.every("poll", (settings.get().pollSeconds ?? 10) * 1000, () => poll(), { immediate: true });
     const reportStatus = () => {
-      if (!clientId()) ctx.status.set({ state: "needs-setup", message: "add your spotify client id", action: { label: "settings", settings: true } });
+      if (providerId() === "ha") ctx.status.set({ state: "ok" });
+      else if (!clientId()) ctx.status.set({ state: "needs-setup", message: "add your spotify client id", action: { label: "settings", settings: true } });
       else if (!tokens()) ctx.status.set({ state: "needs-setup", message: "spotify is not connected yet", action: { label: "connect", page: "media" } });
       else ctx.status.set({ state: "ok" });
     };
     reportStatus();
     schedule();
+    ctx.modules.onChange(() => {
+      haBase = "";
+      reportStatus();
+      void poll(true);
+    });
     settings.onChange(() => {
       reportStatus();
       schedule();
@@ -229,23 +296,45 @@ export default defineModule<Settings>({
       }
     };
 
-    http.get("/state", (c) => c.json({ ...state, configured: !!clientId(), premium: state.account?.product === "premium" }));
+    http.get("/state", (c) => c.json({ ...state, configured: !!clientId(), premium: providerId() === "ha" || state.account?.product === "premium", providers: providers() }));
+    http.get("/providers", (c) => c.json({ current: providerId(), providers: providers() }));
+    http.post("/provider", async (c) => {
+      const b = (await c.req.json().catch(() => ({}))) as { id?: ProviderId };
+      if (b.id !== "spotify" && b.id !== "ha") return c.json({ error: "spotify or ha" }, 400);
+      if (b.id === "ha" && !haAvailable()) return c.json({ error: "home assistant module is not installed" }, 409);
+      settings.set({ provider: b.id });
+      lastSig = "";
+      await poll(true);
+      return c.json({ current: providerId(), providers: providers() });
+    });
+    /** access token for the spotify web playback sdk running in a browser tab (session-protected like every other route) */
+    http.get("/spotify/token", async (c) => {
+      const access = await refreshIfNeeded();
+      if (!access) return c.json({ error: "spotify not connected" }, 401);
+      return c.json({ token: access, expiresAt: tokens()?.expiresAt ?? null });
+    });
     http.post("/refresh", wrap(async (c) => { await poll(true); return c.json(state); }));
     http.post("/play", wrap(async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { uri?: string; contextUri?: string; deviceId?: string; uris?: string[] };
       const q = b.deviceId ? `?device_id=${encodeURIComponent(b.deviceId)}` : "";
       const body = b.contextUri ? { context_uri: b.contextUri } : b.uris?.length ? { uris: b.uris } : b.uri ? (b.uri.includes(":track:") || b.uri.includes(":episode:") ? { uris: [b.uri] } : { context_uri: b.uri }) : undefined;
+      if (providerId() === "ha") {
+        const target = b.deviceId ?? haSelected() ?? undefined;
+        if (b.uri || b.contextUri) await haCall("play_media", { media_content_id: b.contextUri ?? b.uri, media_content_type: "music" }, target);
+        else await haCall("media_play", {}, target);
+        return ok(c);
+      }
       await api(`/me/player/play${q}`, { method: "PUT", body: body ? JSON.stringify(body) : undefined });
       return ok(c);
     }));
-    http.post("/pause", wrap(async (c) => { await api("/me/player/pause", { method: "PUT" }); return ok(c); }));
-    http.post("/next", wrap(async (c) => { await api("/me/player/next", { method: "POST" }); return ok(c); }));
-    http.post("/previous", wrap(async (c) => { await api("/me/player/previous", { method: "POST" }); return ok(c); }));
-    http.post("/seek", wrap(async (c) => { const b = (await c.req.json()) as { positionMs: number }; await api(`/me/player/seek?position_ms=${Math.max(0, Math.round(b.positionMs))}`, { method: "PUT" }); return ok(c); }));
-    http.post("/volume", wrap(async (c) => { const b = (await c.req.json()) as { percent: number; deviceId?: string }; await api(`/me/player/volume?volume_percent=${Math.min(100, Math.max(0, Math.round(b.percent)))}${b.deviceId ? `&device_id=${b.deviceId}` : ""}`, { method: "PUT" }); return ok(c); }));
-    http.post("/shuffle", wrap(async (c) => { const b = (await c.req.json()) as { on: boolean }; await api(`/me/player/shuffle?state=${b.on}`, { method: "PUT" }); return ok(c); }));
+    http.post("/pause", wrap(async (c) => { if (providerId() === "ha") { await haCall("media_pause"); return ok(c); } await api("/me/player/pause", { method: "PUT" }); return ok(c); }));
+    http.post("/next", wrap(async (c) => { if (providerId() === "ha") { await haCall("media_next_track"); return ok(c); } await api("/me/player/next", { method: "POST" }); return ok(c); }));
+    http.post("/previous", wrap(async (c) => { if (providerId() === "ha") { await haCall("media_previous_track"); return ok(c); } await api("/me/player/previous", { method: "POST" }); return ok(c); }));
+    http.post("/seek", wrap(async (c) => { const b = (await c.req.json()) as { positionMs: number }; if (providerId() === "ha") { await haCall("media_seek", { seek_position: Math.max(0, b.positionMs / 1000) }); return ok(c); } await api(`/me/player/seek?position_ms=${Math.max(0, Math.round(b.positionMs))}`, { method: "PUT" }); return ok(c); }));
+    http.post("/volume", wrap(async (c) => { const b = (await c.req.json()) as { percent: number; deviceId?: string }; if (providerId() === "ha") { await haCall("volume_set", { volume_level: Math.min(1, Math.max(0, b.percent / 100)) }, b.deviceId ?? haSelected()); return ok(c); } await api(`/me/player/volume?volume_percent=${Math.min(100, Math.max(0, Math.round(b.percent)))}${b.deviceId ? `&device_id=${b.deviceId}` : ""}`, { method: "PUT" }); return ok(c); }));
+    http.post("/shuffle", wrap(async (c) => { const b = (await c.req.json()) as { on: boolean }; if (providerId() === "ha") { await haCall("shuffle_set", { shuffle: b.on }); return ok(c); } await api(`/me/player/shuffle?state=${b.on}`, { method: "PUT" }); return ok(c); }));
     http.post("/repeat", wrap(async (c) => { const b = (await c.req.json()) as { mode: "off" | "track" | "context" }; await api(`/me/player/repeat?state=${b.mode}`, { method: "PUT" }); return ok(c); }));
-    http.post("/transfer", wrap(async (c) => { const b = (await c.req.json()) as { deviceId: string; play?: boolean }; await api("/me/player", { method: "PUT", body: JSON.stringify({ device_ids: [b.deviceId], play: b.play ?? true }) }); return ok(c); }));
+    http.post("/transfer", wrap(async (c) => { const b = (await c.req.json()) as { deviceId: string; play?: boolean }; if (providerId() === "ha") { storage.set("ha:selected", b.deviceId); lastSig = ""; return ok(c); } await api("/me/player", { method: "PUT", body: JSON.stringify({ device_ids: [b.deviceId], play: b.play ?? true }) }); return ok(c); }));
     http.post("/queue", wrap(async (c) => { const b = (await c.req.json()) as { uri: string }; await api(`/me/player/queue?uri=${encodeURIComponent(b.uri)}`, { method: "POST" }); return ok(c); }));
 
     http.get("/queue", wrap(async (c) => {

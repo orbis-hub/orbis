@@ -1,9 +1,99 @@
 import { useEffect, useRef, useState } from "react";
 import { defineClient, useModule, useModuleApi, useModuleEvents, useModuleQuery, type PageProps, type SettingsProps, type WidgetProps } from "@orbis/sdk/client";
-import { Button, Chip, Empty, Field, Icon, Input, Window, cx } from "@orbis/ui";
-import type { Device, PlayerState, Track } from "./server";
+import { Button, Chip, Empty, Field, Icon, Input, Window, cx, useToast } from "@orbis/ui";
+import type { Device, PlayerState, ProviderInfo, Track } from "./server";
 
-type State = PlayerState & { configured: boolean; premium: boolean };
+type State = PlayerState & { configured: boolean; premium: boolean; providers?: ProviderInfo[] };
+
+/* ---------- providers + "play in this browser" ---------- */
+
+function ProviderSwitch({ state }: { state: State | undefined }) {
+  const api = useModuleApi();
+  const list = state?.providers ?? [];
+  if (list.filter((p) => p.available).length < 2 && state?.provider !== "ha") return null;
+  return (
+    <span style={{ display: "inline-flex", gap: 2 }} title="where orbis looks for the player">
+      {list.map((p) => (
+        <button key={p.id} type="button" className="chip" disabled={!p.available} title={p.reason} onClick={() => void api("/provider", { method: "POST", json: { id: p.id } })} style={{ cursor: p.available ? "pointer" : "not-allowed", opacity: p.available ? 1 : 0.5, borderColor: state?.provider === p.id ? "var(--accent)" : undefined, color: state?.provider === p.id ? "var(--accent)" : undefined, fontSize: 10 }}>
+          {p.name}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+declare global {
+  interface Window {
+    onSpotifyWebPlaybackSDKReady?: () => void;
+    Spotify?: { Player: new (opts: { name: string; getOAuthToken: (cb: (t: string) => void) => void; volume?: number }) => SpotifyPlayer };
+  }
+}
+type SpotifyPlayer = { connect(): Promise<boolean>; disconnect(): void; addListener(ev: string, cb: (e: { device_id?: string; message?: string }) => void): void; activateElement?: () => Promise<void> };
+let sdkPromise: Promise<void> | null = null;
+const loadSdk = () => {
+  if (window.Spotify) return Promise.resolve();
+  if (!sdkPromise) {
+    sdkPromise = new Promise<void>((resolve, reject) => {
+      window.onSpotifyWebPlaybackSDKReady = () => resolve();
+      const el = document.createElement("script");
+      el.src = "https://sdk.scdn.co/spotify-player.js";
+      el.async = true;
+      el.onerror = () => reject(new Error("could not load the spotify sdk (ad blocker?)"));
+      document.head.appendChild(el);
+    });
+  }
+  return sdkPromise;
+};
+
+/** turns this tab into a spotify connect device via the web playback sdk (premium only) */
+function BrowserPlayer({ state }: { state: State }) {
+  const api = useModuleApi();
+  const toast = useToast();
+  const [status, setStatus] = useState<"off" | "loading" | "ready" | "error">("off");
+  const [err, setErr] = useState<string | null>(null);
+  const playerRef = useRef<SpotifyPlayer | null>(null);
+  useEffect(() => () => playerRef.current?.disconnect(), []);
+  if (state.provider !== "spotify" || !state.premium) return null;
+  const start = async () => {
+    setStatus("loading");
+    setErr(null);
+    try {
+      await loadSdk();
+      const name = `orbis (${/mobile|android|iphone|ipad/i.test(navigator.userAgent) ? "this phone" : "this browser"})`;
+      const player = new window.Spotify!.Player({ name, getOAuthToken: (cb) => void api<{ token: string }>("/spotify/token").then((r) => cb(r.token)).catch(() => undefined), volume: 0.6 });
+      player.addListener("ready", () => {
+        setStatus("ready");
+        toast(`${name} is now a spotify device`);
+        setTimeout(() => void api("/refresh", { method: "POST" }), 800);
+      });
+      player.addListener("not_ready", () => setStatus("off"));
+      for (const ev of ["initialization_error", "authentication_error", "account_error", "playback_error"]) player.addListener(ev, (e) => { setErr(e.message ?? ev); if (ev !== "playback_error") setStatus("error"); });
+      await player.activateElement?.();
+      const ok = await player.connect();
+      if (!ok) throw new Error("spotify refused the connection");
+      playerRef.current = player;
+    } catch (e) {
+      setStatus("error");
+      setErr((e as Error).message);
+    }
+  };
+  const stop = () => {
+    playerRef.current?.disconnect();
+    playerRef.current = null;
+    setStatus("off");
+    setTimeout(() => void api("/refresh", { method: "POST" }), 800);
+  };
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      {status === "ready" ? (
+        <Button size="sm" variant="ghost" onClick={stop} title="stop being a spotify device"><Icon name="monitor" size={12} /> this browser is a speaker · stop</Button>
+      ) : (
+        <Button size="sm" variant="ghost" loading={status === "loading"} onClick={() => void start()} title="make this tab a spotify connect device (web playback sdk, premium)"><Icon name="monitor" size={12} /> play in this browser</Button>
+      )}
+      {err ? <span style={{ color: "var(--dnd)", fontSize: 10 }}>{err}{/scope/i.test(err) ? " – disconnect and connect spotify again once (the streaming scope is new)" : ""}</span> : null}
+    </span>
+  );
+}
 
 /* ---------- shared state hook: server pushes "state", progress is interpolated locally ---------- */
 
@@ -377,9 +467,9 @@ function MediaPage(_p: PageProps) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<{ tracks: Track[]; albums: Simple[]; artists: Simple[]; playlists: Simple[] } | null>(null);
   const [searching, setSearching] = useState(false);
-  const playlists = useModuleQuery<Simple[]>("/playlists", { enabled: !!state?.connected });
-  const recent = useModuleQuery<Array<Track & { context: { uri: string } | null }>>("/recent", { enabled: !!state?.connected, refetchOn: ["state"] });
-  const queue = useModuleQuery<{ current: Track | null; queue: Track[] }>("/queue", { enabled: !!state?.connected, refetchOn: ["state"] });
+  const playlists = useModuleQuery<Simple[]>("/playlists", { enabled: !!state?.connected && state.provider === "spotify" });
+  const recent = useModuleQuery<Array<Track & { context: { uri: string } | null }>>("/recent", { enabled: !!state?.connected && state.provider === "spotify", refetchOn: ["state"] });
+  const queue = useModuleQuery<{ current: Track | null; queue: Track[] }>("/queue", { enabled: !!state?.connected && state.provider === "spotify", refetchOn: ["state"] });
   const play = (body: Record<string, unknown>) => api("/play", { method: "POST", json: body }).catch(() => undefined);
 
   useEffect(() => {
@@ -387,9 +477,16 @@ function MediaPage(_p: PageProps) {
     if (p) alert(`spotify: ${p}`);
   }, []);
 
+  if (state && !state.connected && state.provider === "ha") {
+    return (
+      <Window title="media" right={<ProviderSwitch state={state} />}>
+        <Empty icon="radio" title="no media players in home assistant">{state.error ?? "the home assistant module has no media_player entities yet."}</Empty>
+      </Window>
+    );
+  }
   if (!state?.connected) {
     return (
-      <Window title="media">
+      <Window title="media" right={<ProviderSwitch state={state} />}>
         <ConnectHint state={state} />
         {state?.configured ? (
           <p className="soft" style={{ fontSize: 11, marginTop: 10 }}>
@@ -410,8 +507,9 @@ function MediaPage(_p: PageProps) {
           title="now playing"
           right={
             <>
-              {state.account ? <Chip style={{ fontSize: 10 }}>{state.account.name}{state.premium ? "" : " · free"}</Chip> : null}
-              <Button size="sm" variant="ghost" onClick={() => api("/spotify/logout", { method: "POST" })} aria-label="disconnect"><Icon name="unlink" size={12} /></Button>
+              <ProviderSwitch state={state} />
+              {state.account && state.provider === "spotify" ? <Chip style={{ fontSize: 10 }}>{state.account.name}{state.premium ? "" : " · free"}</Chip> : null}
+              {state.provider === "spotify" ? <Button size="sm" variant="ghost" onClick={() => api("/spotify/logout", { method: "POST" })} aria-label="disconnect"><Icon name="unlink" size={12} /></Button> : null}
             </>
           }
         >
@@ -433,8 +531,9 @@ function MediaPage(_p: PageProps) {
                 <Controls state={state} />
                 <Volume state={state} />
                 <DevicePicker state={state} />
+                <BrowserPlayer state={state} />
               </div>
-              {!state.premium ? <div className="soft" style={{ fontSize: 10 }}>playback control needs spotify premium; the free plan can only show what plays.</div> : null}
+              {!state.premium && state.provider === "spotify" ? <div className="soft" style={{ fontSize: 10 }}>playback control needs spotify premium; the free plan can only show what plays.</div> : null}
               {state.error ? <div style={{ color: "var(--dnd)", fontSize: 11 }}>{state.error}</div> : null}
             </div>
           </div>
