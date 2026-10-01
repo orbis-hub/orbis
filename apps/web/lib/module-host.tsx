@@ -8,7 +8,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as jsxRuntime from "react/jsx-runtime";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { hubAbs, hubFetch, subscribeHub } from "./hub";
+import { getHubUrl, getToken, hubAbs, hubFetch, subscribeHub } from "./hub";
 import { useDevices, useModuleDetail, useModuleMutations } from "./queries";
 
 /* ---------- the SDK implementation the host provides to module bundles ---------- */
@@ -152,7 +152,8 @@ export function ModuleProvider({ mod, children }: { mod: InstalledModule; childr
     () => ({
       moduleId: mod.id,
       manifest: mod.manifest,
-      hubUrl: hubAbs(""),
+      hubUrl: (getHubUrl() ?? "").replace(/\/+$/, ""),
+      token: getToken(),
       api: (path, init) => hubFetch(`/api/m/${mod.id}${path.startsWith("/") ? path : `/${path}`}`, init),
       subscribe: (cb) => subscribeHub((ev: HubEvent) => (ev.type !== "module:event" || ev.module === mod.id) && cb(ev)),
       settings,

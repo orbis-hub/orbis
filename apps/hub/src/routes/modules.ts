@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { extname, join, resolve } from "node:path";
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireAuth, requireRole } from "../auth";
+import { requireAuth, requireRole, resolveToken, tokenFromRequest } from "../auth";
 import { config } from "../config";
 import * as registry from "../modules/registry";
 import * as runtime from "../modules/runtime";
@@ -85,13 +85,20 @@ export const moduleRoutes = new Hono()
   });
 
 /** `/api/m/<id>/*` → the module's own Hono router (authenticated). */
-export const moduleApiProxy = new Hono().use(requireAuth).all("/:id/*", async (c) => {
+export const moduleApiProxy = new Hono().all("/:id/*", async (c) => {
   const s = runtime.get(c.req.param("id"));
   if (!s || !s.enabled) return c.json({ error: "module not found" }, 404);
   if (!s.loaded || !s.built) return c.json({ error: s.error ?? "module not loaded" }, 503);
   const url = new URL(c.req.url);
   const prefix = `/api/m/${s.id}`;
   url.pathname = url.pathname.slice(prefix.length) || "/";
+  // manifest.publicPaths (oauth callbacks etc.) skip the session check; everything else needs one
+  const isPublic = s.manifest.publicPaths.some((p) => url.pathname === p || url.pathname.startsWith(p.endsWith("/") ? p : `${p}/`));
+  if (!isPublic) {
+    const token = tokenFromRequest(c);
+    const user = token ? resolveToken(token) : null;
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+  }
   const req = new Request(url, c.req.raw);
   return s.built.ctx.http.fetch(req);
 });

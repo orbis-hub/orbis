@@ -45,7 +45,10 @@ export function defineClient(mod: ModuleClient): ModuleClient {
 export type ModuleClientContext = {
   moduleId: string;
   manifest: ModuleManifest;
+  /** Hub origin without trailing slash, e.g. http://192.168.1.20:3001 */
   hubUrl: string;
+  /** Bearer token of the current session (null when the cookie is used). Append as ?token= for top-level navigations to the hub. */
+  token: string | null;
   /** fetch against `/api/m/<moduleId>` with auth; path like "/items". */
   api<T = unknown>(path: string, init?: RequestInit & { json?: unknown }): Promise<T>;
   subscribe(cb: (ev: HubEvent) => void): () => void;

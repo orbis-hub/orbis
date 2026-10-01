@@ -65,6 +65,8 @@ export const manifestSchema = z.object({
   settingsSchema: z.record(z.string(), z.unknown()).optional(),
   permissions: z.array(permissionSchema).default([]),
   discovery: discoveryMatcherSchema.optional(),
+  /** Module http paths (prefix match, relative to /api/m/<id>) that need no session, e.g. oauth callbacks. */
+  publicPaths: z.array(z.string().regex(/^\//)).default([]),
   eink: z.boolean().default(false),
 });
 

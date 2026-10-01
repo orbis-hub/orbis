@@ -31,8 +31,20 @@ const fmt = (ms: number) => {
 };
 const deviceIcon = (t: string) => ({ computer: "monitor", smartphone: "phone", speaker: "radio", tv: "tv", tablet: "tablet", avr: "radio", castaudio: "radio", castvideo: "tv", automobile: "car", gameconsole: "gamepad" }[t.toLowerCase()] ?? "music");
 
+/** spotify refuses "localhost" as a redirect host but accepts the loopback ip, so we talk to the hub as 127.0.0.1 for the oauth dance */
+function loopback(url: string) {
+  return url.replace(/\/\/localhost(:|\/|$)/, "//127.0.0.1$1").replace(/\/+$/, "");
+}
+function useSpotifyUrls() {
+  const { hubUrl, token } = useModule();
+  const base = loopback(hubUrl);
+  const redirectUri = `${base}/api/m/media/spotify/callback`;
+  const loginHref = (back: string) => `${base}/api/m/media/spotify/login?return=${encodeURIComponent(back)}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
+  return { base, redirectUri, loginHref, isLoopback: /127\.0\.0\.1|localhost/.test(hubUrl) };
+}
+
 function ConnectHint({ state }: { state: State | undefined }) {
-  const { hubUrl } = useModule();
+  const { loginHref } = useSpotifyUrls();
   if (!state) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
   if (!state.configured) {
     return (
@@ -43,7 +55,7 @@ function ConnectHint({ state }: { state: State | undefined }) {
   }
   return (
     <Empty icon="music" title="connect spotify">
-      <a className="btn btn-primary" href={`${hubUrl}/api/m/media/spotify/login?return=${encodeURIComponent(window.location.href)}`}>
+      <a className="btn btn-primary" href={loginHref(window.location.href)}>
         <Icon name="link" size={12} /> connect
       </a>
     </Empty>
@@ -222,7 +234,7 @@ function DevicesWidget() {
 function MediaPage(_p: PageProps) {
   const { state, progress } = usePlayer();
   const api = useModuleApi();
-  const { hubUrl } = useModule();
+  const { redirectUri, isLoopback } = useSpotifyUrls();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<{ tracks: Track[]; albums: Simple[]; artists: Simple[]; playlists: Simple[] } | null>(null);
   const [searching, setSearching] = useState(false);
@@ -242,7 +254,8 @@ function MediaPage(_p: PageProps) {
         <ConnectHint state={state} />
         {state?.configured ? (
           <p className="soft" style={{ fontSize: 11, marginTop: 10 }}>
-            spotify only accepts https redirect uris or <code>http://127.0.0.1</code>. if your hub runs on plain http in the lan, open the app once via <code>http://127.0.0.1:3001</code> on the hub machine to connect; the token is stored on the hub and works everywhere afterwards. redirect uri to register: <code>{hubUrl}/api/m/media/spotify/callback</code>
+            spotify only accepts https redirect uris or <code>http://127.0.0.1</code>. redirect uri to register in your spotify app: <code>{redirectUri}</code>
+            {isLoopback ? " (connect from the hub machine; the token is stored on the hub and works from every device afterwards)" : ". if your hub runs on plain http in the lan, open the app on the hub machine via http://127.0.0.1:<port> once to connect."}
           </p>
         ) : null}
       </Window>
@@ -373,7 +386,7 @@ function List({ title, items }: { title: string; items: Array<{ key: string; cov
 }
 
 function MediaSettings({ value, onChange }: SettingsProps) {
-  const { hubUrl } = useModule();
+  const { redirectUri } = useSpotifyUrls();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Field label="spotify client id" hint="developer.spotify.com → dashboard → create app. no client secret needed (pkce).">
@@ -381,8 +394,8 @@ function MediaSettings({ value, onChange }: SettingsProps) {
       </Field>
       <div className="win win-dashed win-flat" style={{ padding: "8px 10px", fontSize: 11 }}>
         <div className="pixel" style={{ marginBottom: 4 }}>redirect uri to register in the spotify app</div>
-        <code style={{ overflowWrap: "anywhere" }}>{hubUrl}/api/m/media/spotify/callback</code>
-        <div className="soft" style={{ marginTop: 6 }}>spotify requires https, or http://127.0.0.1 for local testing. with a plain-http lan hub, connect once via 127.0.0.1 on the hub machine; the token then works from every device.</div>
+        <code style={{ overflowWrap: "anywhere" }}>{redirectUri}</code>
+        <div className="soft" style={{ marginTop: 6 }}>spotify accepts https or http://127.0.0.1 only (never "localhost"). with a plain-http lan hub, connect once from the hub machine; the token then works from every device.</div>
       </div>
       <Field label="poll playback every (seconds)">
         <Input type="number" min={2} max={60} value={Number(value.pollSeconds ?? 5)} onChange={(e) => onChange({ ...value, pollSeconds: Number(e.target.value) })} />
