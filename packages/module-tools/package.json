@@ -1,0 +1,15 @@
+{
+  "name": "@orbis/module-tools",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Build, watch and pack Orbis modules (esbuild based).",
+  "bin": { "orbis-module": "./bin/orbis-module.mjs" },
+  "exports": { ".": "./src/index.mjs" },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "tar": "^7.4.0"
+  },
+  "peerDependencies": {
+    "@orbis/sdk": "workspace:*"
+  }
+}

@@ -1,0 +1,90 @@
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("owner"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(), // sha256 of the token
+  userId: text("user_id").notNull(),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  userAgent: text("user_agent"),
+  label: text("label"),
+});
+
+export const settings = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(), // json
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const dashboards = sqliteTable("dashboards", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  icon: text("icon"),
+  sort: integer("sort").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+});
+
+export const dashboardWidgets = sqliteTable("dashboard_widgets", {
+  id: text("id").primaryKey(),
+  dashboardId: text("dashboard_id").notNull(),
+  module: text("module").notNull(),
+  widget: text("widget").notNull(),
+  x: integer("x").notNull().default(0),
+  y: integer("y").notNull().default(0),
+  w: integer("w").notNull().default(3),
+  h: integer("h").notNull().default(2),
+  config: text("config").notNull().default("{}"),
+});
+
+export const installedModules = sqliteTable("installed_modules", {
+  id: text("id").primaryKey(),
+  version: text("version").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  source: text("source").notNull(), // builtin | registry | dev | url
+  sourceRef: text("source_ref"), // registry url / tarball url / path
+  manifest: text("manifest").notNull(), // json
+  settings: text("settings").notNull().default("{}"),
+  installedAt: text("installed_at").notNull(),
+});
+
+export const moduleKv = sqliteTable("module_kv", {
+  module: text("module").notNull(),
+  key: text("key").notNull(),
+  value: text("value").notNull(),
+});
+
+export const devices = sqliteTable("devices", {
+  id: text("id").primaryKey(),
+  ip: text("ip").notNull(),
+  mac: text("mac"),
+  hostname: text("hostname"),
+  vendor: text("vendor"),
+  services: text("services").notNull().default("[]"),
+  firstSeen: text("first_seen").notNull(),
+  lastSeen: text("last_seen").notNull(),
+  online: integer("online", { mode: "boolean" }).notNull().default(true),
+  claimedBy: text("claimed_by"),
+  label: text("label"),
+});
+
+/** Hand-written DDL, applied at startup in order. Append new statements, never edit old ones. */
+export const migrations: string[] = [
+  `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'owner', created_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, user_agent TEXT, label TEXT)`,
+  `CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id)`,
+  `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS dashboards (id TEXT PRIMARY KEY, name TEXT NOT NULL, icon TEXT, sort INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS dashboard_widgets (id TEXT PRIMARY KEY, dashboard_id TEXT NOT NULL, module TEXT NOT NULL, widget TEXT NOT NULL, x INTEGER NOT NULL DEFAULT 0, y INTEGER NOT NULL DEFAULT 0, w INTEGER NOT NULL DEFAULT 3, h INTEGER NOT NULL DEFAULT 2, config TEXT NOT NULL DEFAULT '{}')`,
+  `CREATE INDEX IF NOT EXISTS dashboard_widgets_dash ON dashboard_widgets(dashboard_id)`,
+  `CREATE TABLE IF NOT EXISTS installed_modules (id TEXT PRIMARY KEY, version TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, source TEXT NOT NULL, source_ref TEXT, manifest TEXT NOT NULL, settings TEXT NOT NULL DEFAULT '{}', installed_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS module_kv (module TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (module, key))`,
+  `CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, ip TEXT NOT NULL, mac TEXT, hostname TEXT, vendor TEXT, services TEXT NOT NULL DEFAULT '[]', first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, online INTEGER NOT NULL DEFAULT 1, claimed_by TEXT, label TEXT)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS devices_mac ON devices(mac) WHERE mac IS NOT NULL`,
+];

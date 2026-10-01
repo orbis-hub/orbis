@@ -1,0 +1,25 @@
+{
+  "name": "orbis",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.8.1",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "hub": "pnpm --filter @orbis/hub dev",
+    "web": "pnpm --filter @orbis/web dev",
+    "modules:build": "turbo run build --filter=./modules/*",
+    "mobile:sync": "pnpm --filter @orbis/web build && pnpm --filter @orbis/mobile sync",
+    "mobile:android": "pnpm --filter @orbis/mobile android"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "^3.6.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.0"
+  }
+}
