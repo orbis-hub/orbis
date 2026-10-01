@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ModuleManifest, ModuleStatus } from "@orbis/sdk";
-import type { Logger, ModuleDevices, ModuleEvents, ModuleScheduler, ModuleServerContext, ModuleSettings, ModuleStorage } from "@orbis/sdk/server";
+import type { Logger, ModuleDevices, ModuleEvents, ModuleModules, ModuleScheduler, ModuleServerContext, ModuleSettings, ModuleStorage } from "@orbis/sdk/server";
 import { and, eq, like } from "drizzle-orm";
 import { Hono } from "hono";
 import { config } from "../config";
@@ -23,6 +23,7 @@ export function buildContext(
   getSettings: () => Record<string, unknown>,
   setSettings: (patch: Record<string, unknown>) => void,
   onStatus: (status: ModuleStatus | null) => void = () => {},
+  modulesApi?: ModuleModules,
 ): BuiltContext {
   const id = manifest.id;
   const log = childLog(`mod:${id}`);
@@ -181,6 +182,7 @@ export function buildContext(
     devices: deviceApi,
     settings: settingsApi,
     status: statusApi,
+    modules: modulesApi ?? { list: () => [], has: () => false, call: async () => { throw new Error("modules api unavailable"); }, onChange: () => () => {} },
     http,
     fetch: globalThis.fetch.bind(globalThis),
   };

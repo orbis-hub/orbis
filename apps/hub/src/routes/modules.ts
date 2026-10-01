@@ -26,15 +26,31 @@ export const moduleRoutes = new Hono()
     if (!body.success) return c.json({ error: "invalid input" }, 400);
     try {
       let url = body.data.url;
+      const { modules } = await registry.fetchAllRegistries();
       if (!url) {
         if (!body.data.id) return c.json({ error: "id or url required" }, 400);
-        const { modules } = await registry.fetchAllRegistries();
         const entry = modules.find((m) => m.id === body.data.id);
         if (!entry) return c.json({ error: `module ${body.data.id} not in any registry` }, 404);
         url = registry.tarballUrlFor(entry, body.data.version ?? entry.latest);
       }
       const s = await runtime.install(url, body.data.id);
-      return c.json(runtime.toPublic(s), 201);
+      // hard dependencies: pull them from the registry too (one level at a time, recursion through the same path)
+      const installedDeps: string[] = [];
+      const queue = [...s.manifest.deps];
+      const seen = new Set<string>([s.id]);
+      while (queue.length) {
+        const depId = queue.shift()!;
+        if (seen.has(depId)) continue;
+        seen.add(depId);
+        if (runtime.get(depId)) continue;
+        const entry = modules.find((m) => m.id === depId);
+        if (!entry) continue; // left for the user: module card shows "needs x"
+        const dep = await runtime.install(registry.tarballUrlFor(entry, entry.latest), depId);
+        installedDeps.push(dep.id);
+        queue.push(...dep.manifest.deps);
+      }
+      if (installedDeps.length) await runtime.reload(s.id);
+      return c.json({ ...runtime.toPublic(runtime.get(s.id) ?? s), installedDeps }, 201);
     } catch (err) {
       return c.json({ error: (err as Error).message }, 400);
     }

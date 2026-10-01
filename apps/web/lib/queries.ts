@@ -15,7 +15,7 @@ export type HubSettings = {
   location: { lat: number; lon: number; name: string } | null;
   units: "metric" | "imperial";
 };
-export type RegistryModule = RegistryEntry & { registry: string; installedVersion: string | null };
+export type RegistryModule = RegistryEntry & { registry: string; installedVersion: string | null; deps?: string[]; softDeps?: string[] };
 export type RegistryResponse = { registries: string[]; errors: Array<{ url: string; error: string }>; modules: RegistryModule[] };
 
 export const qk = {
@@ -143,7 +143,7 @@ export function useModuleMutations() {
     void qc.invalidateQueries({ queryKey: qk.registry });
   };
   return {
-    install: useMutation({ mutationFn: (input: { id?: string; url?: string; version?: string }) => hubFetch<InstalledModule>("/api/modules/install", { method: "POST", json: input }), onSuccess: inv }),
+    install: useMutation({ mutationFn: (input: { id?: string; url?: string; version?: string }) => hubFetch<InstalledModule & { installedDeps?: string[] }>("/api/modules/install", { method: "POST", json: input }), onSuccess: inv }),
     setEnabled: useMutation({ mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => hubFetch<InstalledModule>(`/api/modules/${id}`, { method: "PATCH", json: { enabled } }), onSuccess: inv }),
     reload: useMutation({ mutationFn: (id: string) => hubFetch<InstalledModule>(`/api/modules/${id}/reload`, { method: "POST" }), onSuccess: inv }),
     uninstall: useMutation({ mutationFn: (id: string) => hubFetch(`/api/modules/${id}`, { method: "DELETE" }), onSuccess: inv }),

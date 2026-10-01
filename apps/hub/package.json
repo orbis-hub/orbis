@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "dev": "tsx watch --clear-screen=false --ignore \"./data/**\" src/index.ts",
     "build": "tsup src/index.ts --format esm --target node22 --out-dir dist --clean --external better-sqlite3",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",

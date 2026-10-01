@@ -102,6 +102,7 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
                 permissions: {mod.manifest.permissions.join(", ")}
               </div>
             ) : null}
+            <DepsLine mod={mod} all={list} />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
               <Button size="sm" onClick={() => onSettings(mod)} disabled={!mod.enabled}>
                 <Icon name="sliders" size={12} /> settings
@@ -136,6 +137,55 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
   );
 }
 
+/** "needs: x ✓ · y (missing)" and "works with: z" on a module card. */
+function DepsLine({ mod, all }: { mod: InstalledModule; all: InstalledModule[] }) {
+  const m = useModuleMutations();
+  const toast = useToast();
+  const deps = mod.manifest.deps ?? [];
+  const soft = mod.manifest.softDeps ?? [];
+  if (!deps.length && !soft.length) return null;
+  const state = (id: string) => {
+    const t = all.find((x) => x.id === id);
+    if (!t) return "missing" as const;
+    if (!t.enabled) return "disabled" as const;
+    if (t.error) return "error" as const;
+    return "ok" as const;
+  };
+  const chip = (id: string, hard: boolean) => {
+    const st = state(id);
+    const tone = st === "ok" ? "ok" : hard ? "bad" : undefined;
+    return (
+      <span key={id} style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+        <Chip tone={tone} style={{ fontSize: 10 }} title={st === "ok" ? "installed and running" : st}>
+          {id}
+          {st === "ok" ? " ✓" : st === "missing" ? "" : ` (${st})`}
+        </Chip>
+        {st === "missing" ? (
+          <Button size="sm" variant="ghost" style={{ padding: "0 6px", fontSize: 10 }} loading={m.install.isPending && m.install.variables?.id === id} onClick={() => m.install.mutate({ id }, { onSuccess: () => toast(`${id} installed`, "ok"), onError: (e) => toast(`${id}: ${e.message}`, "bad") })}>
+            install
+          </Button>
+        ) : null}
+      </span>
+    );
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11 }}>
+      {deps.length ? (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+          <span className="soft">needs:</span>
+          {deps.map((d) => chip(d, true))}
+        </div>
+      ) : null}
+      {soft.length ? (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+          <span className="soft">works with:</span>
+          {soft.map((d) => chip(d, false))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Store() {
   const [refresh, setRefresh] = useState(false);
   const reg = useRegistry(refresh);
@@ -146,7 +196,10 @@ function Store() {
   const items = (reg.data?.modules ?? []).filter((x) => !q || `${x.name} ${x.description} ${(x.tags ?? []).join(" ")}`.toLowerCase().includes(q.toLowerCase()));
 
   const install = (input: { id?: string; url?: string }, name: string) =>
-    m.install.mutate(input, { onSuccess: () => toast(`${name} installed`, "ok"), onError: (err) => toast(`install failed: ${err.message}`, "bad") });
+    m.install.mutate(input, {
+      onSuccess: (r) => toast(r.installedDeps?.length ? `${name} installed, along with ${r.installedDeps.join(", ")}` : `${name} installed`, "ok"),
+      onError: (err) => toast(`install failed: ${err.message}`, "bad"),
+    });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -220,6 +273,12 @@ function StoreCard({ entry, busy, onInstall }: { entry: RegistryModule; busy: bo
             <Chip key={t}>{t}</Chip>
           ))}
         </div>
+        {entry.deps?.length || entry.softDeps?.length ? (
+          <div className="soft" style={{ fontSize: 11 }}>
+            {entry.deps?.length ? <span>needs {entry.deps.join(", ")} (installed along). </span> : null}
+            {entry.softDeps?.length ? <span>works with {entry.softDeps.join(", ")}.</span> : null}
+          </div>
+        ) : null}
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
           {installed && !upgrade ? (
             <Chip tone="ok">installed</Chip>
