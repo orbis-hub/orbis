@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { hubFetch, onWsStatus, setToken, wsStatus } from "@/lib/hub";
-import { isAdminRole, useAuthStatus, useDashboards, useModules, useSettings } from "@/lib/queries";
+import { useAuthStatus, useDashboards, useModules, useSettings } from "@/lib/queries";
 import { useShell } from "@/lib/store";
 
 export function Shell({ children, title, actions }: { children: ReactNode; title?: ReactNode; actions?: ReactNode }) {
@@ -90,10 +90,12 @@ function Sidebar() {
       </nav>
       <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: sidebarCollapsed ? "center" : "space-between" }}>
         {!sidebarCollapsed ? (
-          <span className="chip" title={`${me?.name ?? ""} · ${me?.role ?? ""} · hub connection: ${ws}`} style={{ fontSize: 10, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-            <i className="status-dot" style={{ background: ws === "open" ? "var(--ok)" : ws === "connecting" ? "var(--idle)" : "var(--dnd)", width: 8, height: 8, borderWidth: 0 }} />
-            {me?.name ?? (ws === "open" ? "live" : ws)}
-            {me && isAdminRole(me.role) ? <Icon name="shield" size={10} style={{ color: "var(--accent)" }} /> : null}
+          <span className="pixel soft" title={`${me?.name ?? ""} · ${me?.role ?? ""} · hub connection: ${ws}`} style={{ fontSize: 10, display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+            <i className="status-dot" style={{ background: ws === "open" ? "var(--ok)" : ws === "connecting" ? "var(--idle)" : "var(--dnd)", width: 7, height: 7, borderWidth: 0 }} />
+            orbis · by{" "}
+            <a href="https://vensin.dev" target="_blank" rel="noreferrer" style={{ color: "var(--accent-2)" }}>
+              vensin
+            </a>
           </span>
         ) : null}
         <div style={{ display: "flex", gap: 4 }}>

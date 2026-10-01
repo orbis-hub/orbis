@@ -8,7 +8,7 @@ type State = PlayerState & { configured: boolean; premium: boolean };
 /* ---------- shared state hook: server pushes "state", progress is interpolated locally ---------- */
 
 function usePlayer() {
-  const q = useModuleQuery<State>("/state", { intervalMs: 15_000 });
+  const q = useModuleQuery<State>("/state", { intervalMs: 30_000 });
   const [live, setLive] = useState<State | undefined>();
   useModuleEvents("state", (p) => setLive((prev) => ({ ...(prev ?? q.data ?? ({} as State)), ...(p as PlayerState) })));
   const s = live ?? q.data;
@@ -183,14 +183,15 @@ function NowPlayingWidget({ config, size }: WidgetProps<{ showDevice?: boolean; 
   const api = useModuleApi();
   if (!state?.connected) return <ConnectHint state={state} />;
   const t = state.track;
-  const compact = size.height < 150;
-  const cover = Math.max(44, Math.min(size.height - 24, size.width * 0.3, 160));
+  const vertical = size.height > size.width * 0.95;
+  const compact = !vertical && size.height < 150;
+  const cover = vertical ? Math.max(60, Math.min(size.width - 8, size.height - 130)) : Math.max(44, Math.min(size.height - 24, size.width * 0.3, 160));
   return (
-    <div style={{ height: "100%", display: "flex", gap: 12, alignItems: "stretch" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: vertical ? "column" : "row", gap: 12, alignItems: vertical ? "center" : "stretch", textAlign: vertical ? "center" : undefined }}>
       <div style={{ width: cover, height: cover, flex: "none", border: "1.5px solid var(--line)", boxShadow: "3px 3px 0 var(--line)", background: "var(--paper-2)", alignSelf: "center", overflow: "hidden" }}>
         {t?.cover ? <img src={t.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", imageRendering: "auto", display: "block" }} /> : <Icon name="music" size={cover * 0.5} className="soft" style={{ margin: cover * 0.25 }} />}
       </div>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6 }}>
+      <div style={{ flex: 1, minWidth: 0, width: vertical ? "100%" : undefined, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6 }}>
         {t ? (
           <div style={{ minWidth: 0 }}>
             <div className="pixel" style={{ fontSize: compact ? 13 : 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
@@ -200,7 +201,7 @@ function NowPlayingWidget({ config, size }: WidgetProps<{ showDevice?: boolean; 
           <div className="soft" style={{ fontSize: 12 }}>nothing playing{state.device ? ` on ${state.device.name}` : ""}</div>
         )}
         {t ? <Progress state={state} progress={progress} onSeek={(ms) => void api("/seek", { method: "POST", json: { positionMs: ms } })} /> : null}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: vertical ? "center" : undefined }}>
           {config.showControls !== false ? <Controls state={state} size={compact ? "sm" : "md"} /> : null}
           {config.showDevice !== false && !compact ? <DevicePicker state={state} compact /> : null}
         </div>

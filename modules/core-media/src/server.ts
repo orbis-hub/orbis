@@ -43,6 +43,7 @@ export default defineModule<Settings>({
     let lastSig = "";
 
     const tokens = () => storage.get<Tokens>("spotify:tokens") ?? null;
+    let pausedUntil = 0; // set after a 429, polling waits until then
     const clientId = () => settings.get().spotifyClientId?.trim() ?? "";
 
     /* ---------- auth (authorization code + pkce) ---------- */
@@ -72,6 +73,11 @@ export default defineModule<Settings>({
       if (!access) throw Object.assign(new Error("spotify not connected"), { status: 401 });
       const res = await ctx.fetch(`https://api.spotify.com/v1${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), authorization: `Bearer ${access}`, ...(init.body ? { "content-type": "application/json" } : {}) }, signal: AbortSignal.timeout(10_000) });
       if (res.status === 204 || res.status === 202) return null;
+      if (res.status === 429) {
+        const retry = Number(res.headers.get("retry-after") ?? "30");
+        pausedUntil = Date.now() + Math.min(300, Math.max(5, retry)) * 1000;
+        throw Object.assign(new Error(`spotify rate limit, pausing ${Math.round((pausedUntil - Date.now()) / 1000)}s`), { status: 429 });
+      }
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         let msg = `HTTP ${res.status}`;
@@ -148,6 +154,7 @@ export default defineModule<Settings>({
     }
 
     async function poll(force = false) {
+      if (Date.now() < pausedUntil && !force) return;
       if (!tokens()) {
         if (state.connected || force) {
           state = empty();
@@ -193,7 +200,7 @@ export default defineModule<Settings>({
       }
     }
 
-    const schedule = () => ctx.scheduler.every("poll", (settings.get().pollSeconds ?? 5) * 1000, () => poll(), { immediate: true });
+    const schedule = () => ctx.scheduler.every("poll", (settings.get().pollSeconds ?? 10) * 1000, () => poll(), { immediate: true });
     schedule();
     settings.onChange(schedule);
 
