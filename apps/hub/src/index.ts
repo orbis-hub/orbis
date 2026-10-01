@@ -20,6 +20,33 @@ import { addClient, clientCount, removeClient } from "./ws";
 
 ensureDirs();
 openDb();
+
+if (process.argv[2] === "reset-password") {
+  const [, , , name, given] = process.argv;
+  if (!name) {
+    console.error("usage: reset-password <name> [new password]");
+    process.exit(1);
+  }
+  const { findUserByName } = await import("./auth");
+  const { setPassword } = await import("./services/users");
+  const { randomBytes } = await import("node:crypto");
+  const u = findUserByName(name);
+  if (!u) {
+    console.error(`no user "${name}"`);
+    process.exit(1);
+  }
+  const pw = given ?? randomBytes(6).toString("base64url");
+  setPassword(u.id, pw, { requireCurrent: false });
+  console.log(`password for ${name} is now: ${pw}\nall sessions of this user were ended.`);
+  closeDb();
+  process.exit(0);
+}
+if (process.argv[2] === "users") {
+  const { listUsers } = await import("./services/users");
+  for (const u of listUsers()) console.log(`${u.name}\t${u.role}${u.disabled ? "\t(disabled)" : ""}`);
+  closeDb();
+  process.exit(0);
+}
 ensureDefaultDashboard();
 purgeExpiredSessions();
 

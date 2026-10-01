@@ -4,7 +4,7 @@ import { ToastProvider } from "@orbis/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { connectWs, disconnectWs, getHubUrl, HubError } from "@/lib/hub";
+import { connectWs, disconnectWs, getHubUrl, HubError, setHubUrl } from "@/lib/hub";
 import { installHostBridge } from "@/lib/module-host";
 import { useAuthStatus, useHubEventsSync } from "@/lib/queries";
 import { applyTheme, useShell } from "@/lib/store";
@@ -65,6 +65,9 @@ function AuthGate({ children }: { children: ReactNode }) {
   }, [hubUrl, status.data, status.error, status.isFetching, authed, onLogin, router]);
 
   if (onLogin) return <>{children}</>;
+  if (hubUrl && status.error && !status.isFetching && status.error instanceof HubError && status.error.status === 0) {
+    return <Unreachable hubUrl={hubUrl} error={status.error.message} onRetry={() => status.refetch()} />;
+  }
   if (hubUrl === undefined || status.isPending) {
     return (
       <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
@@ -76,4 +79,48 @@ function AuthGate({ children }: { children: ReactNode }) {
   }
   if (!authed) return null;
   return <>{children}</>;
+}
+
+function Unreachable({ hubUrl, error, onRetry }: { hubUrl: string; error: string; onRetry: () => void }) {
+  return (
+    <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 16 }}>
+      <section className="win fade-in" style={{ maxWidth: 440, width: "100%" }}>
+        <div className="win-title">
+          <span className="dots" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="title">hub unreachable</span>
+        </div>
+        <div className="win-body" style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
+          <div className="pixel" style={{ fontSize: 15 }}>cannot talk to your hub</div>
+          <div>
+            tried <code style={{ overflowWrap: "anywhere" }}>{hubUrl}</code>
+          </div>
+          <div className="soft">{error}</div>
+          <ul className="soft" style={{ margin: 0, paddingLeft: 16 }}>
+            <li>is the hub running? open <code>{hubUrl}/api/health</code> in a tab.</li>
+            <li>same network / vpn as the hub?</li>
+            <li>https page but http hub? browsers block that.</li>
+          </ul>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className="btn btn-primary" onClick={onRetry}>
+              retry
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setHubUrl(null);
+                window.location.href = "/login/";
+              }}
+            >
+              change hub url
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }
