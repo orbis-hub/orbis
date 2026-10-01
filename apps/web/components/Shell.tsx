@@ -7,6 +7,7 @@ import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { hubFetch, onWsStatus, setToken, wsStatus } from "@/lib/hub";
 import { useAuthStatus, useDashboards, useModules, useSettings } from "@/lib/queries";
 import { useShell } from "@/lib/store";
+import { Bell } from "./Bell";
 
 export function Shell({ children, title, actions }: { children: ReactNode; title?: ReactNode; actions?: ReactNode }) {
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed } = useShell();
@@ -26,6 +27,7 @@ export function Shell({ children, title, actions }: { children: ReactNode; title
           </h1>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {actions}
+            <Bell />
             <ThemeToggle />
           </div>
         </header>

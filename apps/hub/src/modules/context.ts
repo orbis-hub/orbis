@@ -9,6 +9,7 @@ import { getDb, getSqlite, schema } from "../db";
 import { childLog } from "../log";
 import * as devices from "../services/devices";
 import { broadcast } from "../ws";
+import * as notifications from "../services/notifications";
 
 export type BuiltContext = {
   ctx: ModuleServerContext;
@@ -182,6 +183,8 @@ export function buildContext(
     devices: deviceApi,
     settings: settingsApi,
     status: statusApi,
+    notify: (input) => notifications.notify(id, input),
+    dismissNotification: (key) => notifications.dismiss(id, key),
     modules: modulesApi ?? { list: () => [], has: () => false, call: async () => { throw new Error("modules api unavailable"); }, onChange: () => () => {} },
     http,
     fetch: globalThis.fetch.bind(globalThis),

@@ -19,7 +19,8 @@ export default defineModule({
       db.run(`INSERT INTO {{t:lists}} (id, name, color, sort) VALUES ('inbox', 'Inbox', NULL, 0)`);
     }
 
-    const changed = () => events.publish("changed");
+    const changedRef = { fn: () => events.publish("changed") };
+    const changed = () => changedRef.fn();
     const lists = () => db.sql<List>(`SELECT * FROM {{t:lists}} ORDER BY sort, name`);
     const tasks = (where = "", params: unknown[] = []) =>
       db.sql<Task>(`SELECT * FROM {{t:tasks}} ${where} ORDER BY done, CASE WHEN due IS NULL THEN 1 ELSE 0 END, due, sort, created_at`, params);
@@ -106,6 +107,27 @@ export default defineModule({
       return c.json({ ok: true });
     });
 
+    // reminders: tasks due today (at 08:00 hub time) and overdue ones, replaced per task so they never pile up
+    const remind = () => {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      const due = tasks(`WHERE done = 0 AND due IS NOT NULL AND due <= ?`, [today.toISOString()]);
+      for (const t of due) {
+        const overdue = new Date(t.due!).getTime() < Date.now() - 86400_000;
+        ctx.notify({ key: `due:${t.id}`, title: overdue ? `overdue: ${t.title}` : `due today: ${t.title}`, level: overdue ? "warning" : "info", icon: "checkbox", url: "/m/?id=todo&page=tasks" });
+      }
+    };
+    ctx.scheduler.every("remind", 60 * 60_000, () => {
+      const h = new Date().getHours();
+      if (h >= 8 && h <= 9) remind();
+    });
+    const origChanged = changed;
+    const changedAndDismiss = () => {
+      origChanged();
+      for (const t of tasks(`WHERE done = 1`)) ctx.dismissNotification(`due:${t.id}`);
+    };
+    // swap the broadcaster used by the routes above
+    (changedRef as { fn: () => void }).fn = changedAndDismiss;
     ctx.logger.info("todo ready");
 
     einkRender = (req) => {

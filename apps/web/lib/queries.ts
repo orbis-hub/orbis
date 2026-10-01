@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dashboard, Device, EinkDisplay, HubEvent, InstalledModule, RegistryEntry, WidgetInstance } from "@orbis/sdk";
+import type { Dashboard, Device, EinkDisplay, HubEvent, InstalledModule, Notification, RegistryEntry, WidgetInstance } from "@orbis/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { hubFetch, subscribeHub } from "./hub";
@@ -14,6 +14,11 @@ export type HubSettings = {
   registries: string[];
   location: { lat: number; lon: number; name: string } | null;
   units: "metric" | "imperial";
+  mutedModules: string[];
+  notifyChannels: {
+    ntfy?: { server?: string; topic: string; token?: string; minLevel?: "info" | "warning" | "urgent" };
+    telegram?: { botToken: string; chatId: string; minLevel?: "info" | "warning" | "urgent" };
+  };
 };
 export type RegistryModule = RegistryEntry & { registry: string; installedVersion: string | null; deps?: string[]; softDeps?: string[] };
 export type RegistryResponse = { registries: string[]; errors: Array<{ url: string; error: string }>; modules: RegistryModule[] };
@@ -28,6 +33,7 @@ export const qk = {
   devices: ["devices"] as const,
   users: ["users"] as const,
   eink: ["eink"] as const,
+  notifications: ["notifications"] as const,
 };
 
 export function useAuthStatus(enabled = true) {
@@ -84,6 +90,10 @@ export function useHubEventsSync() {
         case "users:changed":
           void qc.invalidateQueries({ queryKey: qk.users });
           void qc.invalidateQueries({ queryKey: qk.dashboards });
+          break;
+        case "notification":
+        case "notifications:changed":
+          void qc.invalidateQueries({ queryKey: qk.notifications });
           break;
         case "module:event":
           if (ev.name === "$settings") void qc.invalidateQueries({ queryKey: qk.module(ev.module) });
@@ -204,5 +214,22 @@ export function useEinkMutations() {
     update: useMutation({ mutationFn: ({ id, ...patch }: { id: string } & Partial<EinkDisplay>) => hubFetch<EinkDisplay>(`/api/eink/displays/${id}`, { method: "PATCH", json: patch }), onSuccess: inv }),
     rotateToken: useMutation({ mutationFn: (id: string) => hubFetch<EinkDisplay>(`/api/eink/displays/${id}/token`, { method: "POST" }), onSuccess: inv }),
     remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/eink/displays/${id}`, { method: "DELETE" }), onSuccess: inv }),
+  };
+}
+
+/* ---------- notifications ---------- */
+
+export function useNotifications() {
+  return useQuery({ queryKey: qk.notifications, queryFn: () => hubFetch<{ items: Notification[]; unread: number }>("/api/notifications?limit=50"), staleTime: 30_000 });
+}
+
+export function useNotificationMutations() {
+  const qc = useQueryClient();
+  const inv = () => qc.invalidateQueries({ queryKey: qk.notifications });
+  return {
+    read: useMutation({ mutationFn: (ids: string[] | "all") => hubFetch("/api/notifications/read", { method: "POST", json: { ids } }), onSuccess: inv }),
+    remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/notifications/${id}`, { method: "DELETE" }), onSuccess: inv }),
+    clearRead: useMutation({ mutationFn: () => hubFetch("/api/notifications/clear-read", { method: "POST" }), onSuccess: inv }),
+    test: useMutation({ mutationFn: () => hubFetch("/api/notifications/test", { method: "POST" }), onSuccess: inv }),
   };
 }

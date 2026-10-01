@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import type { Device, ModuleManifest, ModuleStatus } from "./index";
+import type { Device, ModuleManifest, ModuleStatus, Notification, NotificationInput } from "./index";
 
 export type Logger = {
   debug: (msg: string, ...args: unknown[]) => void;
@@ -82,6 +82,12 @@ export type ModuleServerContext<TSettings = Record<string, unknown>> = {
   /** Report setup state: `ctx.status.set({ state: "needs-setup", message: "add an account", action: { label: "open calendar", page: "calendar" } })`. */
   status: { set(status: ModuleStatus | null): void; get(): ModuleStatus | null };
   modules: ModuleModules;
+  /**
+   * Tell the user something: bell in the app, toast for urgent ones, and whatever channels they configured (ntfy, telegram).
+   * Users can mute a module. Use `key` for things that update (replace) and `dismiss(key)` when they resolve.
+   */
+  notify(input: NotificationInput): Notification | null;
+  dismissNotification(key: string): void;
   /**
    * Hono router mounted at `/api/m/<moduleId>`. Requests are already authenticated.
    * Example: ctx.http.get("/items", (c) => c.json(items))

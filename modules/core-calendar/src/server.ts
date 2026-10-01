@@ -332,6 +332,18 @@ export default defineModule<{ refreshMinutes?: number }>({
       return c.json({ events: list, fetchedAt: state.fetchedAt, errors: state.errors });
     });
 
+    // "starts in a few minutes" for timed events; keyed per event so a refresh does not duplicate
+    ctx.scheduler.every("upcoming", 60_000, () => {
+      const now = Date.now();
+      for (const e of state.events) {
+        if (e.allDay) continue;
+        const start = new Date(e.start).getTime();
+        const mins = Math.round((start - now) / 60_000);
+        if (mins === 15 || mins === 14) {
+          ctx.notify({ key: `soon:${e.id}`, title: `in 15 min: ${e.title}`, body: e.location ?? undefined, level: "info", icon: "calendar", url: "/m/?id=calendar&page=calendar" });
+        }
+      }
+    });
     logger.info(`calendar ready (${accounts().length} accounts)`);
 
     einkRender = (req) => {
