@@ -78,7 +78,7 @@ a registry is just a json file:
 
 ```json
 { "name": "orbis official", "modules": [
-  { "id": "weather", "name": "Weather", "description": "…", "repo": "github:orbis-os/module-weather", "latest": "0.1.0", "tags": ["weather"] }
+  { "id": "weather", "name": "Weather", "description": "…", "repo": "github:orbis-hub/module-weather", "latest": "0.1.0", "tags": ["weather"] }
 ] }
 ```
 

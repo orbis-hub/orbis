@@ -5,34 +5,34 @@
       "id": "clock",
       "name": "Clock",
       "description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
-      "repo": "github:orbis-os/orbis",
+      "repo": "github:orbis-hub/orbis",
       "latest": "0.1.0",
       "tags": ["time", "builtin"],
       "author": "orbis",
       "icon": "clock",
-      "tarball": "https://github.com/orbis-os/orbis/releases/download/modules-v{version}/clock.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/clock.tgz"
     },
     {
       "id": "todo",
       "name": "Todo",
       "description": "Lists and tasks with due dates. A widget per list plus a full page.",
-      "repo": "github:orbis-os/orbis",
+      "repo": "github:orbis-hub/orbis",
       "latest": "0.1.0",
       "tags": ["productivity", "builtin"],
       "author": "orbis",
       "icon": "checkbox-on",
-      "tarball": "https://github.com/orbis-os/orbis/releases/download/modules-v{version}/todo.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/todo.tgz"
     },
     {
       "id": "weather",
       "name": "Weather",
       "description": "Current conditions and forecast from Open-Meteo. No API key needed.",
-      "repo": "github:orbis-os/orbis",
+      "repo": "github:orbis-hub/orbis",
       "latest": "0.1.0",
       "tags": ["weather", "builtin"],
       "author": "orbis",
       "icon": "cloud-sun",
-      "tarball": "https://github.com/orbis-os/orbis/releases/download/modules-v{version}/weather.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/weather.tgz"
     }
   ]
 }

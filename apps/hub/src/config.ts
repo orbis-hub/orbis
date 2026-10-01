@@ -21,7 +21,7 @@ export const config = {
   /** First-party modules shipped with the repo (modules/<id>/). */
   builtinModulesDir: resolve(env("ORBIS_BUILTIN_MODULES_DIR", resolve(repoRoot, "modules"))!),
   /** Default registries, comma separated. */
-  registries: (env("ORBIS_REGISTRIES", "https://raw.githubusercontent.com/orbis-os/registry/main/index.json") ?? "")
+  registries: (env("ORBIS_REGISTRIES", "https://raw.githubusercontent.com/orbis-hub/registry/main/index.json") ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
