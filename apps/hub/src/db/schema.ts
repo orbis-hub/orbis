@@ -4,8 +4,9 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role").notNull().default("owner"),
+  role: text("role").notNull().default("member"),
   createdAt: text("created_at").notNull(),
+  disabled: integer("disabled", { mode: "boolean" }).notNull().default(false),
 });
 
 export const sessions = sqliteTable("sessions", {
@@ -29,6 +30,8 @@ export const dashboards = sqliteTable("dashboards", {
   icon: text("icon"),
   sort: integer("sort").notNull().default(0),
   createdAt: text("created_at").notNull(),
+  ownerId: text("owner_id"),
+  shared: integer("shared", { mode: "boolean" }).notNull().default(true),
 });
 
 export const dashboardWidgets = sqliteTable("dashboard_widgets", {
@@ -88,3 +91,16 @@ export const migrations: string[] = [
   `CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, ip TEXT NOT NULL, mac TEXT, hostname TEXT, vendor TEXT, services TEXT NOT NULL DEFAULT '[]', first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, online INTEGER NOT NULL DEFAULT 1, claimed_by TEXT, label TEXT)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS devices_mac ON devices(mac) WHERE mac IS NOT NULL`,
 ];
+
+export const dashboardAccess = sqliteTable("dashboard_access", {
+  dashboardId: text("dashboard_id").notNull(),
+  userId: text("user_id").notNull(),
+});
+
+// v2: multi-user. dashboards get an owner and a shared flag; explicit grants live in dashboard_access.
+migrations.push(
+  `ALTER TABLE dashboards ADD COLUMN owner_id TEXT`,
+  `ALTER TABLE dashboards ADD COLUMN shared INTEGER NOT NULL DEFAULT 1`,
+  `CREATE TABLE IF NOT EXISTS dashboard_access (dashboard_id TEXT NOT NULL, user_id TEXT NOT NULL, PRIMARY KEY (dashboard_id, user_id))`,
+  `ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0`,
+);

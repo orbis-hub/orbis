@@ -26,6 +26,7 @@ export const qk = {
   module: (id: string) => ["modules", id] as const,
   registry: ["registry"] as const,
   devices: ["devices"] as const,
+  users: ["users"] as const,
 };
 
 export function useAuthStatus(enabled = true) {
@@ -79,6 +80,10 @@ export function useHubEventsSync() {
         case "settings:changed":
           void qc.invalidateQueries({ queryKey: qk.settings });
           break;
+        case "users:changed":
+          void qc.invalidateQueries({ queryKey: qk.users });
+          void qc.invalidateQueries({ queryKey: qk.dashboards });
+          break;
         case "module:event":
           if (ev.name === "$settings") void qc.invalidateQueries({ queryKey: qk.module(ev.module) });
           break;
@@ -106,8 +111,11 @@ export function useDashboardMutations() {
   const qc = useQueryClient();
   const inv = () => qc.invalidateQueries({ queryKey: qk.dashboards });
   return {
-    create: useMutation({ mutationFn: (input: { name: string; icon?: string }) => hubFetch<Dashboard>("/api/dashboards", { method: "POST", json: input }), onSuccess: inv }),
-    update: useMutation({ mutationFn: ({ id, ...patch }: { id: string; name?: string; icon?: string | null }) => hubFetch<Dashboard>(`/api/dashboards/${id}`, { method: "PATCH", json: patch }), onSuccess: inv }),
+    create: useMutation({ mutationFn: (input: { name: string; icon?: string; shared?: boolean }) => hubFetch<Dashboard>("/api/dashboards", { method: "POST", json: input }), onSuccess: inv }),
+    update: useMutation({
+      mutationFn: ({ id, ...patch }: { id: string; name?: string; icon?: string | null; shared?: boolean; ownerId?: string | null; access?: string[] }) => hubFetch<Dashboard>(`/api/dashboards/${id}`, { method: "PATCH", json: patch }),
+      onSuccess: inv,
+    }),
     remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/dashboards/${id}`, { method: "DELETE" }), onSuccess: inv }),
     reorder: useMutation({ mutationFn: (ids: string[]) => hubFetch("/api/dashboards/reorder", { method: "POST", json: { ids } }), onSuccess: inv }),
     addWidget: useMutation({
@@ -154,5 +162,29 @@ export function useDeviceMutations() {
     update: useMutation({ mutationFn: ({ id, ...patch }: { id: string; label?: string | null; claimedBy?: string | null }) => hubFetch<Device>(`/api/devices/${id}`, { method: "PATCH", json: patch }), onSuccess: inv }),
     remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/devices/${id}`, { method: "DELETE" }), onSuccess: inv }),
     scan: useMutation({ mutationFn: () => hubFetch<{ ok: boolean }>("/api/devices/scan", { method: "POST" }), onSuccess: inv }),
+  };
+}
+
+/* ---------- users / accounts ---------- */
+
+export type Role = "owner" | "admin" | "member";
+export type PublicUser = { id: string; name: string; role: Role; disabled: boolean; createdAt: string; sessions: number };
+export const isAdminRole = (role: string | undefined) => role === "owner" || role === "admin";
+
+export function useUsers(enabled = true) {
+  return useQuery({ queryKey: qk.users, queryFn: () => hubFetch<PublicUser[]>("/api/users"), enabled, staleTime: 30_000 });
+}
+
+export function useUserMutations() {
+  const qc = useQueryClient();
+  const inv = () => qc.invalidateQueries({ queryKey: qk.users });
+  return {
+    create: useMutation({ mutationFn: (input: { name: string; password: string; role?: Role }) => hubFetch<PublicUser>("/api/users", { method: "POST", json: input }), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, ...patch }: { id: string; name?: string; role?: Role; disabled?: boolean }) => hubFetch<PublicUser>(`/api/users/${id}`, { method: "PATCH", json: patch }), onSuccess: inv }),
+    resetPassword: useMutation({ mutationFn: ({ id, password }: { id: string; password: string }) => hubFetch(`/api/users/${id}/password`, { method: "POST", json: { password } }), onSuccess: inv }),
+    logoutAll: useMutation({ mutationFn: (id: string) => hubFetch(`/api/users/${id}/logout`, { method: "POST" }), onSuccess: inv }),
+    remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/users/${id}`, { method: "DELETE" }), onSuccess: inv }),
+    updateMe: useMutation({ mutationFn: (input: { name: string }) => hubFetch<PublicUser>("/api/users/me", { method: "PATCH", json: input }), onSuccess: () => { inv(); void qc.invalidateQueries({ queryKey: qk.auth }); } }),
+    changePassword: useMutation({ mutationFn: (input: { current: string; password: string }) => hubFetch<{ ok: boolean; reauth: boolean }>("/api/users/me/password", { method: "POST", json: input }) }),
   };
 }

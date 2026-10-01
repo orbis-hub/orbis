@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { extname, join, resolve } from "node:path";
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireAuth } from "../auth";
+import { requireAuth, requireRole } from "../auth";
 import { config } from "../config";
 import * as registry from "../modules/registry";
 import * as runtime from "../modules/runtime";
@@ -21,7 +21,7 @@ export const moduleRoutes = new Hono()
       modules: modules.map((m) => ({ ...m, installedVersion: installed.get(m.id) ?? null })),
     });
   })
-  .post("/install", async (c) => {
+  .post("/install", requireRole("admin"), async (c) => {
     const body = z.object({ id: z.string().optional(), url: z.string().url().optional(), version: z.string().optional() }).safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: "invalid input" }, 400);
     try {
@@ -43,7 +43,7 @@ export const moduleRoutes = new Hono()
     const s = runtime.get(c.req.param("id"));
     return s ? c.json({ ...runtime.toPublic(s), settings: s.settings }) : c.json({ error: "not found" }, 404);
   })
-  .patch("/:id", async (c) => {
+  .patch("/:id", requireRole("admin"), async (c) => {
     const body = z.object({ enabled: z.boolean().optional() }).safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: "invalid input" }, 400);
     try {
@@ -55,14 +55,14 @@ export const moduleRoutes = new Hono()
       return c.json({ error: (err as Error).message }, 400);
     }
   })
-  .post("/:id/reload", async (c) => {
+  .post("/:id/reload", requireRole("admin"), async (c) => {
     try {
       return c.json(runtime.toPublic(await runtime.reload(c.req.param("id"))));
     } catch (err) {
       return c.json({ error: (err as Error).message }, 400);
     }
   })
-  .delete("/:id", async (c) => {
+  .delete("/:id", requireRole("admin"), async (c) => {
     try {
       await runtime.uninstall(c.req.param("id"));
       return c.json({ ok: true });
@@ -74,7 +74,7 @@ export const moduleRoutes = new Hono()
     const s = runtime.get(c.req.param("id"));
     return s ? c.json(s.settings) : c.json({ error: "not found" }, 404);
   })
-  .patch("/:id/settings", async (c) => {
+  .patch("/:id/settings", requireRole("admin"), async (c) => {
     const body = z.record(z.string(), z.unknown()).safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: "invalid input" }, 400);
     try {

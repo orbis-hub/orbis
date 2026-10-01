@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { requireAuth } from "../auth";
+import { isAdminRole, requireAuth, requireRole } from "../auth";
 import * as dash from "../services/dashboards";
 import * as devices from "../services/devices";
 import { scanNetwork, scanStatus } from "../services/scanner";
@@ -36,10 +36,15 @@ async function json<T extends z.ZodTypeAny>(c: { req: { json: () => Promise<unkn
   return r.success ? r.data : null;
 }
 
+function fail(c: { json: (b: unknown, s: 400 | 403 | 404) => Response }, err: unknown) {
+  const e = err as { status?: 403 | 404; message?: string };
+  return c.json({ error: e.message ?? "error" }, e.status ?? 400);
+}
+
 export const settingsRoutes = new Hono()
   .use(requireAuth)
   .get("/", (c) => c.json(getAllSettings()))
-  .patch("/", async (c) => {
+  .patch("/", requireRole("admin"), async (c) => {
     const body = await json(c, settingsPatch);
     if (!body) return c.json({ error: "invalid input" }, 400);
     return c.json(patchSettings(body));
@@ -47,70 +52,107 @@ export const settingsRoutes = new Hono()
 
 export const dashboardRoutes = new Hono()
   .use(requireAuth)
-  .get("/", (c) => c.json(dash.listDashboards()))
+  .get("/", (c) => c.json(dash.listDashboards(c.var.user)))
   .post("/", async (c) => {
-    const body = await json(c, z.object({ name: z.string().min(1).max(64), icon: z.string().optional() }));
+    const body = await json(c, z.object({ name: z.string().min(1).max(64), icon: z.string().optional(), shared: z.boolean().optional() }));
     if (!body) return c.json({ error: "invalid input" }, 400);
-    return c.json(dash.createDashboard(body.name, body.icon ?? null), 201);
+    // members create private dashboards by default, admins shared ones
+    const shared = body.shared ?? isAdminRole(c.var.user.role);
+    return c.json(dash.createDashboard(body.name, body.icon ?? null, c.var.user, shared), 201);
   })
   .post("/reorder", async (c) => {
     const body = await json(c, z.object({ ids: z.array(z.string()) }));
     if (!body) return c.json({ error: "invalid input" }, 400);
-    dash.reorderDashboards(body.ids);
+    const editable = new Set(dash.listDashboards(c.var.user).filter((d) => d.canEdit).map((d) => d.id));
+    dash.reorderDashboards(body.ids.filter((id) => editable.has(id)));
     return c.json({ ok: true });
   })
   .get("/:id", (c) => {
-    const d = dash.getDashboard(c.req.param("id"));
+    const d = dash.getDashboard(c.req.param("id"), c.var.user);
     return d ? c.json(d) : c.json({ error: "not found" }, 404);
   })
   .patch("/:id", async (c) => {
-    const body = await json(c, z.object({ name: z.string().min(1).max(64).optional(), icon: z.string().nullable().optional() }));
+    const body = await json(c, z.object({ name: z.string().min(1).max(64).optional(), icon: z.string().nullable().optional(), shared: z.boolean().optional(), ownerId: z.string().nullable().optional(), access: z.array(z.string()).optional() }));
     if (!body) return c.json({ error: "invalid input" }, 400);
-    const d = dash.updateDashboard(c.req.param("id"), body);
-    return d ? c.json(d) : c.json({ error: "not found" }, 404);
+    try {
+      dash.assertEdit(c.req.param("id"), c.var.user);
+      if (body.ownerId !== undefined && !isAdminRole(c.var.user.role)) return c.json({ error: "only admins can transfer dashboards" }, 403);
+      const { access, ...patch } = body;
+      let d = dash.updateDashboard(c.req.param("id"), patch, c.var.user);
+      if (access) d = dash.setAccess(c.req.param("id"), access, c.var.user);
+      return c.json(d);
+    } catch (err) {
+      return fail(c, err);
+    }
   })
   .delete("/:id", (c) => {
-    if (dash.listDashboards().length <= 1) return c.json({ error: "cannot delete the last dashboard" }, 400);
-    dash.deleteDashboard(c.req.param("id"));
-    return c.json({ ok: true });
+    try {
+      dash.assertEdit(c.req.param("id"), c.var.user);
+      if (dash.listDashboards().length <= 1) return c.json({ error: "cannot delete the last dashboard" }, 400);
+      dash.deleteDashboard(c.req.param("id"));
+      return c.json({ ok: true });
+    } catch (err) {
+      return fail(c, err);
+    }
   })
   .post("/:id/widgets", async (c) => {
     const body = await json(c, widgetInput);
     if (!body) return c.json({ error: "invalid input" }, 400);
-    if (!dash.getDashboard(c.req.param("id"))) return c.json({ error: "not found" }, 404);
-    return c.json(dash.addWidget(c.req.param("id"), body), 201);
+    try {
+      dash.assertEdit(c.req.param("id"), c.var.user);
+      return c.json(dash.addWidget(c.req.param("id"), body), 201);
+    } catch (err) {
+      return fail(c, err);
+    }
   })
   .put("/:id/layout", async (c) => {
     const body = await json(c, layoutInput);
     if (!body) return c.json({ error: "invalid input" }, 400);
-    dash.saveLayout(c.req.param("id"), body);
-    return c.json({ ok: true });
+    try {
+      dash.assertEdit(c.req.param("id"), c.var.user);
+      dash.saveLayout(c.req.param("id"), body);
+      return c.json({ ok: true });
+    } catch (err) {
+      return fail(c, err);
+    }
   })
   .patch("/:id/widgets/:wid", async (c) => {
     const body = await json(c, widgetInput.pick({ x: true, y: true, w: true, h: true, config: true }).partial());
     if (!body) return c.json({ error: "invalid input" }, 400);
-    const w = dash.updateWidget(c.req.param("wid"), body);
-    return w ? c.json(w) : c.json({ error: "not found" }, 404);
+    try {
+      dash.assertEdit(c.req.param("id"), c.var.user);
+      if (dash.widgetDashboard(c.req.param("wid")) !== c.req.param("id")) return c.json({ error: "not found" }, 404);
+      const w = dash.updateWidget(c.req.param("wid"), body);
+      return w ? c.json(w) : c.json({ error: "not found" }, 404);
+    } catch (err) {
+      return fail(c, err);
+    }
   })
   .delete("/:id/widgets/:wid", (c) => {
-    dash.removeWidget(c.req.param("wid"));
-    return c.json({ ok: true });
+    try {
+      dash.assertEdit(c.req.param("id"), c.var.user);
+      if (dash.widgetDashboard(c.req.param("wid")) !== c.req.param("id")) return c.json({ error: "not found" }, 404);
+      dash.removeWidget(c.req.param("wid"));
+      return c.json({ ok: true });
+    } catch (err) {
+      return fail(c, err);
+    }
   });
 
 export const deviceRoutes = new Hono()
   .use(requireAuth)
   .get("/", (c) => c.json(devices.listDevices()))
   .get("/scan", (c) => c.json(scanStatus()))
-  .post("/scan", (c) => {
+  .post("/scan", requireRole("admin"), (c) => {
     void scanNetwork();
     return c.json({ ok: true, ...scanStatus() }, 202);
   })
-  .post("/", async (c) => {
+  .post("/", requireRole("admin"), async (c) => {
     const body = await json(c, z.object({ ip: z.string().min(3), label: z.string().optional() }));
     if (!body) return c.json({ error: "invalid input" }, 400);
     return c.json(devices.addManualDevice(body.ip, body.label ?? null), 201);
   })
-  .patch("/:id", async (c) => {
+  .patch("/:id", requireRole("admin"), async (c) => {
     const body = await json(c, z.object({ label: z.string().nullable().optional(), claimedBy: z.string().nullable().optional() }));
     if (!body) return c.json({ error: "invalid input" }, 400);
     const id = c.req.param("id");
@@ -125,7 +167,7 @@ export const deviceRoutes = new Hono()
     const d = devices.getDevice(id);
     return d ? c.json(d) : c.json({ error: "not found" }, 404);
   })
-  .delete("/:id", (c) => {
+  .delete("/:id", requireRole("admin"), (c) => {
     devices.deleteDevice(c.req.param("id"));
     return c.json({ ok: true });
   });

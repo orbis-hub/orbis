@@ -1,6 +1,7 @@
 import type { Dashboard, WidgetInstance } from "@orbis/sdk";
 import { asc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { isAdminRole, type AuthUser } from "../auth";
 import { getDb, now, schema } from "../db";
 import { broadcast } from "../ws";
 
@@ -14,41 +15,96 @@ function rowToWidget(r: typeof schema.dashboardWidgets.$inferSelect): WidgetInst
   return { id: r.id, module: r.module, widget: r.widget, x: r.x, y: r.y, w: r.w, h: r.h, config };
 }
 
-export function listDashboards(): Dashboard[] {
+/** Everything in the db, with per-user edit rights computed for `viewer` (undefined = system view, all editable). */
+function loadAll(viewer?: AuthUser): Dashboard[] {
   const db = getDb();
   const dashes = db.select().from(schema.dashboards).orderBy(asc(schema.dashboards.sort), asc(schema.dashboards.createdAt)).all();
   const widgets = db.select().from(schema.dashboardWidgets).all();
-  return dashes.map((d) => ({
-    id: d.id,
-    name: d.name,
-    icon: d.icon,
-    sort: d.sort,
-    widgets: widgets.filter((w) => w.dashboardId === d.id).map(rowToWidget),
-  }));
+  const access = db.select().from(schema.dashboardAccess).all();
+  return dashes.map((d) => {
+    const grants = access.filter((a) => a.dashboardId === d.id).map((a) => a.userId);
+    // hub-level dashboards (no owner) are editable by admins only
+    const canEdit = !viewer || isAdminRole(viewer.role) || d.ownerId === viewer.id;
+    return {
+      id: d.id,
+      name: d.name,
+      icon: d.icon,
+      sort: d.sort,
+      ownerId: d.ownerId,
+      shared: d.shared,
+      access: grants,
+      canEdit,
+      widgets: widgets.filter((w) => w.dashboardId === d.id).map(rowToWidget),
+    };
+  });
 }
 
-export function getDashboard(id: string): Dashboard | null {
-  return listDashboards().find((d) => d.id === id) ?? null;
+export function canView(d: Dashboard, user: AuthUser) {
+  return isAdminRole(user.role) || d.shared || d.ownerId === user.id || d.ownerId === null || d.access.includes(user.id);
 }
 
-export function createDashboard(name: string, icon?: string | null): Dashboard {
+/** Dashboards visible to a user. */
+export function listDashboards(user?: AuthUser): Dashboard[] {
+  const all = loadAll(user);
+  return user ? all.filter((d) => canView(d, user)) : all;
+}
+
+export function getDashboard(id: string, user?: AuthUser): Dashboard | null {
+  return listDashboards(user).find((d) => d.id === id) ?? null;
+}
+
+/** Throws if the user may not edit. */
+export function assertEdit(id: string, user: AuthUser): Dashboard {
+  const d = getDashboard(id, user);
+  if (!d) throw new NotFound();
+  if (!d.canEdit) throw new Forbidden("you cannot edit this dashboard");
+  return d;
+}
+
+export class NotFound extends Error {
+  status = 404 as const;
+  constructor() {
+    super("not found");
+  }
+}
+export class Forbidden extends Error {
+  status = 403 as const;
+}
+
+export function createDashboard(name: string, icon: string | null, owner?: AuthUser, shared = true): Dashboard {
   const db = getDb();
   const count = db.select().from(schema.dashboards).all().length;
   const id = nanoid(10);
-  db.insert(schema.dashboards).values({ id, name, icon: icon ?? null, sort: count, createdAt: now() }).run();
+  db.insert(schema.dashboards).values({ id, name, icon, sort: count, createdAt: now(), ownerId: owner?.id ?? null, shared }).run();
   broadcast({ type: "dashboards:changed", dashboardId: id });
-  return { id, name, icon: icon ?? null, sort: count, widgets: [] };
+  return getDashboard(id, owner)!;
 }
 
-export function updateDashboard(id: string, patch: { name?: string; icon?: string | null; sort?: number }) {
-  getDb().update(schema.dashboards).set(patch).where(eq(schema.dashboards.id, id)).run();
+export function updateDashboard(id: string, patch: { name?: string; icon?: string | null; sort?: number; shared?: boolean; ownerId?: string | null }, user?: AuthUser) {
+  const set: Partial<typeof schema.dashboards.$inferInsert> = {};
+  if (patch.name !== undefined) set.name = patch.name;
+  if (patch.icon !== undefined) set.icon = patch.icon;
+  if (patch.sort !== undefined) set.sort = patch.sort;
+  if (patch.shared !== undefined) set.shared = patch.shared;
+  if (patch.ownerId !== undefined) set.ownerId = patch.ownerId;
+  getDb().update(schema.dashboards).set(set).where(eq(schema.dashboards.id, id)).run();
   broadcast({ type: "dashboards:changed", dashboardId: id });
-  return getDashboard(id);
+  return getDashboard(id, user);
+}
+
+/** Replace the explicit grant list (who may see a non-shared dashboard). */
+export function setAccess(id: string, userIds: string[], user?: AuthUser) {
+  const db = getDb();
+  db.delete(schema.dashboardAccess).where(eq(schema.dashboardAccess.dashboardId, id)).run();
+  for (const userId of new Set(userIds)) db.insert(schema.dashboardAccess).values({ dashboardId: id, userId }).run();
+  broadcast({ type: "dashboards:changed", dashboardId: id });
+  return getDashboard(id, user);
 }
 
 export function deleteDashboard(id: string) {
   const db = getDb();
   db.delete(schema.dashboardWidgets).where(eq(schema.dashboardWidgets.dashboardId, id)).run();
+  db.delete(schema.dashboardAccess).where(eq(schema.dashboardAccess.dashboardId, id)).run();
   db.delete(schema.dashboards).where(eq(schema.dashboards.id, id)).run();
   broadcast({ type: "dashboards:changed", dashboardId: id });
 }
@@ -88,10 +144,17 @@ export function saveLayout(dashboardId: string, layout: Array<{ id: string; x: n
   const db = getDb();
   db.transaction((tx) => {
     for (const l of layout) {
-      tx.update(schema.dashboardWidgets).set({ x: l.x, y: l.y, w: l.w, h: l.h }).where(eq(schema.dashboardWidgets.id, l.id)).run();
+      tx.update(schema.dashboardWidgets)
+        .set({ x: l.x, y: l.y, w: l.w, h: l.h })
+        .where(eq(schema.dashboardWidgets.id, l.id))
+        .run();
     }
   });
   broadcast({ type: "dashboards:changed", dashboardId });
+}
+
+export function widgetDashboard(widgetId: string): string | null {
+  return getDb().select().from(schema.dashboardWidgets).where(eq(schema.dashboardWidgets.id, widgetId)).get()?.dashboardId ?? null;
 }
 
 export function removeWidget(id: string) {
@@ -108,5 +171,5 @@ export function removeWidgetsOfModule(moduleId: string) {
 }
 
 export function ensureDefaultDashboard() {
-  if (listDashboards().length === 0) createDashboard("Home", "home");
+  if (loadAll().length === 0) createDashboard("Home", "home", undefined, true);
 }

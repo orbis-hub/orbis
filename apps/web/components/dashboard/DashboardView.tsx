@@ -5,7 +5,7 @@ import { Button, cx, Empty, Icon, Input, Menu, Modal, useToast, iconNames } from
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GridLayout, { useContainerWidth, verticalCompactor, type Layout } from "react-grid-layout";
-import { useDashboardMutations, useDashboards, useModules } from "@/lib/queries";
+import { isAdminRole, useAuthStatus, useDashboardMutations, useDashboards, useModules, useUsers } from "@/lib/queries";
 import { useShell } from "@/lib/store";
 import { Shell } from "../Shell";
 import { AddWidgetModal } from "./AddWidgetModal";
@@ -24,6 +24,8 @@ export function DashboardView() {
   const { editMode, setEditMode, activeDashboard, setActiveDashboard } = useShell();
   const m = useDashboardMutations();
   const toast = useToast();
+  const auth = useAuthStatus();
+  const admin = isAdminRole(auth.data?.user?.role);
 
   const list = dashboards.data ?? [];
   const requested = params.get("d");
@@ -36,6 +38,9 @@ export function DashboardView() {
   const [configuring, setConfiguring] = useState<WidgetInstance | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const canEdit = !!dash?.canEdit;
+  const editing = editMode && canEdit;
 
   const modMap = useMemo(() => new Map((modules.data ?? []).map((x) => [x.id, x])), [modules.data]);
 
@@ -50,6 +55,8 @@ export function DashboardView() {
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
       <Icon name={dash.icon ?? "home"} size={16} style={{ color: "var(--accent)" }} />
       {dash.name}
+      {!dash.shared ? <Icon name="lock" size={12} className="soft" title="private" /> : null}
+      {!canEdit ? <span className="chip" style={{ fontSize: 10 }}>read only</span> : null}
     </span>
   ) : (
     "dashboard"
@@ -57,14 +64,18 @@ export function DashboardView() {
 
   const actions = (
     <>
-      <Button size="sm" onClick={() => setAdding(true)} disabled={!dash}>
-        <Icon name="plus" size={14} />
-        <span className="hide-sm">widget</span>
-      </Button>
-      <Button size="sm" aria-pressed={editMode} onClick={() => setEditMode(!editMode)} disabled={!dash}>
-        <Icon name={editMode ? "check" : "move"} size={14} />
-        <span className="hide-sm">{editMode ? "done" : "edit"}</span>
-      </Button>
+      {canEdit ? (
+        <>
+          <Button size="sm" onClick={() => setAdding(true)} disabled={!dash}>
+            <Icon name="plus" size={14} />
+            <span className="hide-sm">widget</span>
+          </Button>
+          <Button size="sm" aria-pressed={editing} onClick={() => setEditMode(!editMode)} disabled={!dash}>
+            <Icon name={editing ? "check" : "move"} size={14} />
+            <span className="hide-sm">{editing ? "done" : "edit"}</span>
+          </Button>
+        </>
+      ) : null}
       <Menu
         trigger={
           <Button icon size="sm" aria-label="dashboard menu">
@@ -73,13 +84,14 @@ export function DashboardView() {
         }
         items={[
           { label: "new dashboard", icon: "plus", onSelect: () => setCreating(true) },
-          { label: "rename / icon", icon: "edit", onSelect: () => setRenaming(true), disabled: !dash },
+          { label: "rename / icon", icon: "edit", onSelect: () => setRenaming(true), disabled: !canEdit },
+          { label: "sharing & access", icon: "users", onSelect: () => setSharing(true), disabled: !canEdit },
           { sep: true, label: "" },
           {
             label: "delete dashboard",
             icon: "trash",
             danger: true,
-            disabled: !dash || list.length <= 1,
+            disabled: !canEdit || list.length <= 1,
             onSelect: async () => {
               if (!dash || !confirm(`delete "${dash.name}" and its ${dash.widgets.length} widgets?`)) return;
               await m.remove.mutateAsync(dash.id);
@@ -113,7 +125,7 @@ export function DashboardView() {
         <Grid
           dash={dash}
           modMap={modMap}
-          editing={editMode}
+          editing={editing}
           onConfigure={setConfiguring}
           onRemove={async (w) => {
             await m.removeWidget.mutateAsync({ dashboardId: dash.id, id: w.id });
@@ -134,9 +146,11 @@ export function DashboardView() {
           await m.updateWidget.mutateAsync({ dashboardId: dash.id, id: configuring.id, config });
         }}
       />
+      <ShareModal open={sharing} dash={dash ?? null} admin={admin} onClose={() => setSharing(false)} />
       <DashboardFormModal
         open={creating || renaming}
-        initial={renaming && dash ? { name: dash.name, icon: dash.icon ?? "home" } : undefined}
+        admin={admin}
+        initial={renaming && dash ? { name: dash.name, icon: dash.icon ?? "home", shared: dash.shared } : undefined}
         onClose={() => {
           setCreating(false);
           setRenaming(false);
@@ -215,16 +229,18 @@ function Grid({ dash, modMap, editing, onConfigure, onRemove, onLayout }: { dash
   );
 }
 
-function DashboardFormModal({ open, initial, onClose, onSave }: { open: boolean; initial?: { name: string; icon: string }; onClose: () => void; onSave: (v: { name: string; icon: string }) => Promise<void> }) {
+function DashboardFormModal({ open, initial, admin, onClose, onSave }: { open: boolean; admin: boolean; initial?: { name: string; icon: string; shared: boolean }; onClose: () => void; onSave: (v: { name: string; icon: string; shared: boolean }) => Promise<void> }) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("home");
+  const [shared, setShared] = useState(true);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (open) {
       setName(initial?.name ?? "");
       setIcon(initial?.icon ?? "home");
+      setShared(initial?.shared ?? admin);
     }
-  }, [open, initial]);
+  }, [open, initial, admin]);
   const icons = useMemo(() => iconNames(), []);
   return (
     <Modal open={open} onClose={onClose} title={initial ? "rename dashboard" : "new dashboard"}>
@@ -234,7 +250,7 @@ function DashboardFormModal({ open, initial, onClose, onSave }: { open: boolean;
           if (!name.trim()) return;
           setBusy(true);
           try {
-            await onSave({ name: name.trim(), icon });
+            await onSave({ name: name.trim(), icon, shared });
             onClose();
           } finally {
             setBusy(false);
@@ -256,6 +272,13 @@ function DashboardFormModal({ open, initial, onClose, onSave }: { open: boolean;
             ))}
           </div>
         </div>
+        {!initial ? (
+          <label className="check" style={{ fontSize: 12 }}>
+            <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
+            <i aria-hidden />
+            <span>visible to everyone on this hub{!shared ? " (off: only you, plus people an admin grants access)" : ""}</span>
+          </label>
+        ) : null}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <Button onClick={onClose}>cancel</Button>
           <Button type="submit" variant="primary" loading={busy}>
@@ -263,6 +286,95 @@ function DashboardFormModal({ open, initial, onClose, onSave }: { open: boolean;
           </Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function ShareModal({ open, dash, admin, onClose }: { open: boolean; dash: Dashboard | null; admin: boolean; onClose: () => void }) {
+  const users = useUsers(open && admin);
+  const m = useDashboardMutations();
+  const toast = useToast();
+  const auth = useAuthStatus();
+  const [shared, setShared] = useState(true);
+  const [access, setAccess] = useState<string[]>([]);
+  const [owner, setOwner] = useState<string | null>(null);
+  useEffect(() => {
+    if (open && dash) {
+      setShared(dash.shared);
+      setAccess(dash.access);
+      setOwner(dash.ownerId);
+    }
+  }, [open, dash]);
+  if (!dash) return null;
+  const others = (users.data ?? []).filter((u) => u.id !== (owner ?? "") && u.role !== "owner" && u.role !== "admin");
+  return (
+    <Modal open={open} onClose={onClose} title={`sharing · ${dash.name}`}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <label className="check" style={{ fontSize: 13 }}>
+          <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
+          <i aria-hidden />
+          <span>shared with everyone on this hub</span>
+        </label>
+        {!shared ? (
+          admin ? (
+            <div className="field">
+              <label>who else may see it</label>
+              {others.length === 0 ? (
+                <div className="soft" style={{ fontSize: 12 }}>no other members yet (admins always see everything)</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {others.map((u) => (
+                    <label key={u.id} className="check" style={{ fontSize: 12 }}>
+                      <input type="checkbox" checked={access.includes(u.id)} onChange={(e) => setAccess(e.target.checked ? [...access, u.id] : access.filter((x) => x !== u.id))} />
+                      <i aria-hidden />
+                      <span>{u.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <span className="hint">read only for them; only the dashboard owner and admins can edit.</span>
+            </div>
+          ) : (
+            <div className="soft" style={{ fontSize: 12 }}>private: only you and admins can see this dashboard. ask an admin to grant other people access.</div>
+          )
+        ) : null}
+        {admin ? (
+          <div className="field">
+            <label>owner</label>
+            <select className="input" value={owner ?? ""} onChange={(e) => setOwner(e.target.value || null)}>
+              <option value="">hub (admins only)</option>
+              {(users.data ?? []).map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                  {u.id === auth.data?.user?.id ? " (you)" : ""}
+                </option>
+              ))}
+            </select>
+            <span className="hint">the owner can edit the dashboard and its widgets.</span>
+          </div>
+        ) : null}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <Button onClick={onClose}>cancel</Button>
+          <Button
+            variant="primary"
+            loading={m.update.isPending}
+            onClick={() =>
+              m.update.mutate(
+                { id: dash.id, shared, access, ...(admin ? { ownerId: owner } : {}) },
+                {
+                  onSuccess: () => {
+                    toast("sharing updated", "ok");
+                    onClose();
+                  },
+                  onError: (err) => toast(err.message, "bad"),
+                },
+              )
+            }
+          >
+            save
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

@@ -30,6 +30,7 @@ export type HubEvent =
   | { type: "devices:changed" }
   | { type: "dashboards:changed"; dashboardId?: string }
   | { type: "settings:changed"; key?: string }
+  | { type: "users:changed" }
   | { type: "hello"; hubVersion: string };
 
 export type WidgetInstance = {
@@ -49,6 +50,14 @@ export type Dashboard = {
   icon: string | null;
   sort: number;
   widgets: WidgetInstance[];
+  /** user id of the creator; null for hub-level dashboards */
+  ownerId: string | null;
+  /** visible to every account */
+  shared: boolean;
+  /** explicit grants when not shared */
+  access: string[];
+  /** can the requesting user edit it */
+  canEdit: boolean;
 };
 
 export type InstalledModule = {

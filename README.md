@@ -42,6 +42,10 @@ docker compose up -d        # web + api on http://<host>:3001, data in ./data
 | `modules/*`              | first-party modules: clock, todo, weather (built like external ones)                   |
 | `registry/`              | example `index.json` for a module registry                                             |
 
+## accounts
+
+the first account created at setup is the **owner**. admins (promoted by the owner) manage users, modules, devices and hub settings. members get their own dashboards plus everything shared with them. dashboards are either shared with everyone or private with explicit grants (accounts page, dashboard menu → sharing & access). passwords are changed under accounts; admins can reset them.
+
 ## modules
 
 a module is a folder (or a `module.tgz` on a github release) with:
@@ -98,7 +102,8 @@ the hub derives `https://github.com/<repo>/releases/download/v<latest>/module.tg
 - [x] web: shell, dashboard grid, module loader, store, devices, settings
 - [x] modules: clock, todo, weather
 - [x] device registry + network scanner (ping sweep, arp, mdns)
+- [x] accounts: owner/admin/member roles, user management, private/shared dashboards with grants
 - [ ] home assistant module, shelly/hue modules using discovery matchers
 - [ ] capacitor builds (android apk first), push notifications
 - [ ] e-ink renderer (`/api/eink/<display>.png`)
-- [ ] worker isolation for third-party modules, multi-user
+- [ ] worker isolation for third-party modules

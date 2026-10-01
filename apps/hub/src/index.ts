@@ -11,6 +11,7 @@ import * as runtime from "./modules/runtime";
 import { authRoutes } from "./routes/auth";
 import { dashboardRoutes, deviceRoutes, settingsRoutes } from "./routes/core";
 import { moduleApiProxy, moduleFiles, moduleRoutes } from "./routes/modules";
+import { userRoutes } from "./routes/users";
 import { ensureDefaultDashboard } from "./services/dashboards";
 import { logWebStatus, serveWeb } from "./static";
 import { addClient, clientCount, removeClient } from "./ws";
@@ -55,6 +56,7 @@ app.use("/modules/*", corsPolicy);
 
 app.get("/api/health", (c) => c.json({ ok: true, version: config.version, clients: clientCount(), modules: runtime.list().filter((m) => m.loaded).length }));
 app.route("/api/auth", authRoutes);
+app.route("/api/users", userRoutes);
 app.route("/api/settings", settingsRoutes);
 app.route("/api/dashboards", dashboardRoutes);
 app.route("/api/devices", deviceRoutes);

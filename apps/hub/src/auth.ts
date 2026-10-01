@@ -57,6 +57,7 @@ export function purgeExpiredSessions() {
 }
 
 export type AuthUser = { id: string; name: string; role: string };
+export const isAdminRole = (role: string) => role === "owner" || role === "admin";
 
 export function resolveToken(token: string): AuthUser | null {
   const db = getDb();
@@ -67,7 +68,8 @@ export function resolveToken(token: string): AuthUser | null {
     return null;
   }
   const user = db.select().from(schema.users).where(eq(schema.users.id, session.userId)).get();
-  return user ? { id: user.id, name: user.name, role: user.role } : null;
+  if (!user || user.disabled) return null;
+  return { id: user.id, name: user.name, role: user.role };
 }
 
 export function tokenFromRequest(c: Context): string | null {
@@ -99,3 +101,13 @@ export const requireAuth: MiddlewareHandler<AuthEnv> = async (c, next) => {
   c.set("user", user);
   await next();
 };
+
+/** Requires at least the given role. owner > admin > member. Must run after requireAuth. */
+export function requireRole(min: "admin" | "owner"): MiddlewareHandler<AuthEnv> {
+  return async (c, next) => {
+    const role = c.var.user?.role;
+    const ok = min === "owner" ? role === "owner" : isAdminRole(role ?? "");
+    if (!ok) return c.json({ error: "forbidden: " + min + " role required" }, 403);
+    await next();
+  };
+}
