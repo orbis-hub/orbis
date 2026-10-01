@@ -6,7 +6,7 @@ FROM node:22-bookworm-slim AS build
 RUN corepack enable && corepack prepare pnpm@12.8.1 --activate
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY pnpm-workspace.yaml package.json tsconfig.base.json turbo.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml .npmrc package.json tsconfig.base.json turbo.json ./
 COPY apps/hub/package.json apps/hub/
 COPY apps/web/package.json apps/web/
 COPY apps/mobile/package.json apps/mobile/
