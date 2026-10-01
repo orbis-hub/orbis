@@ -15,8 +15,6 @@
 
 orbis is a self-hosted, modular life manager. one **hub** you run yourself (a pi is plenty), **dashboards** you lay out with drag and drop, and **modules** for everything on them: todos, calendar, weather, music, smart home, whatever someone writes next. web, android/ios and (soon) e-ink displays all talk to the same hub. no cloud, no account with us, your data stays in one sqlite file at home.
 
-<p align="center"><img src="brand/png/social-preview.png" alt="" width="640"></p>
-
 ## install
 
 ```bash
