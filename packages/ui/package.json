@@ -12,7 +12,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "icons": "node scripts/gen-icons.mjs"
+    "icons": "node scripts/gen-icons.mjs",
+    "build": "tsup src/index.ts src/icons.generated.ts --format esm --dts --out-dir dist --clean --external react --external react-dom && node -e \"require('fs').copyFileSync('src/styles.css','dist/styles.css')\""
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -26,12 +27,38 @@
     "@types/react-dom": "^19.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "tsup": "^8.5.0"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/orbis-hub/orbis",
     "directory": "packages/ui"
-  }
+  },
+  "description": "Orbis design system: retro window boxes, pixel icons, weather icons, tiny charts.",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./styles.css": "./dist/styles.css",
+      "./icons": {
+        "types": "./dist/icons.generated.d.ts",
+        "import": "./dist/icons.generated.js"
+      }
+    }
+  },
+  "keywords": [
+    "orbis",
+    "ui",
+    "react",
+    "pixel"
+  ]
 }
