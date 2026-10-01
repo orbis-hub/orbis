@@ -6,7 +6,7 @@
       "name": "Clock",
       "description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.1",
+      "latest": "0.1.2",
       "tags": [
         "time",
         "builtin"
@@ -20,7 +20,7 @@
       "name": "Todo",
       "description": "Lists and tasks with due dates. A widget per list plus a full page.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.1",
+      "latest": "0.1.2",
       "tags": [
         "productivity",
         "builtin"
@@ -34,7 +34,7 @@
       "name": "Weather",
       "description": "Current conditions and forecast from Open-Meteo. No API key needed.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.1",
+      "latest": "0.1.2",
       "tags": [
         "weather",
         "builtin"
@@ -48,7 +48,7 @@
       "name": "Calendar",
       "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail …).",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.1",
+      "latest": "0.1.2",
       "tags": [
         "calendar",
         "builtin"
@@ -62,7 +62,7 @@
       "name": "Media",
       "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.1",
+      "latest": "0.1.2",
       "tags": [
         "media",
         "spotify",
@@ -70,7 +70,24 @@
       ],
       "author": "orbis",
       "icon": "music",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/media.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/media.tgz",
+      "softDeps": [
+        "home-assistant"
+      ]
+    },
+    {
+      "id": "home-assistant",
+      "name": "Home Assistant",
+      "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.2",
+      "tags": [
+        "smart home",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "home",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/home-assistant.tgz"
     }
   ]
 }

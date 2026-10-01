@@ -18,6 +18,7 @@ COPY modules/core-todo/package.json modules/core-todo/
 COPY modules/core-weather/package.json modules/core-weather/
 COPY modules/core-calendar/package.json modules/core-calendar/
 COPY modules/core-media/package.json modules/core-media/
+COPY modules/core-home-assistant/package.json modules/core-home-assistant/
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter "./modules/*" build \
@@ -43,6 +44,8 @@ COPY --from=build /app/modules/core-calendar/module.json ./modules/core-calendar
 COPY --from=build /app/modules/core-calendar/dist ./modules/core-calendar/dist
 COPY --from=build /app/modules/core-media/module.json ./modules/core-media/module.json
 COPY --from=build /app/modules/core-media/dist ./modules/core-media/dist
+COPY --from=build /app/modules/core-home-assistant/module.json ./modules/core-home-assistant/module.json
+COPY --from=build /app/modules/core-home-assistant/dist ./modules/core-home-assistant/dist
 VOLUME ["/data"]
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
