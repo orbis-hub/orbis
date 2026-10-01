@@ -26,6 +26,7 @@ export type ModuleState = {
   settings: Record<string, unknown>;
   installedAt: string;
   loaded: boolean;
+  loadedAt: string | null;
   error: string | null;
   server?: ModuleServer;
   built?: BuiltContext;
@@ -42,7 +43,7 @@ export function get(id: string) {
 }
 
 export function toPublic(s: ModuleState): InstalledModule {
-  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: s.manifest, error: s.error, installedAt: s.installedAt };
+  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: s.manifest, error: s.error, installedAt: s.installedAt, loadedAt: s.loadedAt };
 }
 
 /* ---------- persistence ---------- */
@@ -87,6 +88,7 @@ function upsertFromDisk(d: DiscoveredModule): ModuleState {
     settings,
     installedAt: row?.installedAt ?? now(),
     loaded: prev?.loaded ?? false,
+    loadedAt: prev?.loadedAt ?? null,
     error: null,
     server: prev?.server,
     built: prev?.built,
@@ -113,6 +115,7 @@ export async function load(id: string): Promise<ModuleState> {
   }
   if (!s.manifest.entry.server) {
     s.loaded = true; // client-only module
+    s.loadedAt = now();
     s.error = null;
     return s;
   }
@@ -131,6 +134,7 @@ export async function load(id: string): Promise<ModuleState> {
     s.server = server;
     s.built = built;
     s.loaded = true;
+    s.loadedAt = now();
     s.error = null;
     log.info({ id, version: s.version, source: s.source }, "module loaded");
   } catch (err) {
@@ -247,6 +251,7 @@ export async function bootstrap() {
       settings: safeJson(row.settings),
       installedAt: row.installedAt,
       loaded: false,
+      loadedAt: null,
       error: "module files missing – reinstall or remove",
     });
   }

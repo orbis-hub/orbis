@@ -68,6 +68,8 @@ export type InstalledModule = {
   manifest: import("./manifest").ModuleManifest;
   error: string | null;
   installedAt: string;
+  /** changes on every (re)load; clients use it to bust their bundle cache */
+  loadedAt: string | null;
 };
 
 export type RegistryEntry = {

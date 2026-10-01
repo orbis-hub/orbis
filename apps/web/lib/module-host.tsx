@@ -103,11 +103,11 @@ const bundleCache = new Map<string, Promise<ModuleClient>>();
 export function loadModuleClient(mod: InstalledModule): Promise<ModuleClient> {
   const entry = mod.manifest.entry.client;
   if (!entry) return Promise.resolve({});
-  const key = `${mod.id}@${mod.version}`;
+  const key = `${mod.id}@${mod.version}@${mod.loadedAt ?? ""}`;
   let p = bundleCache.get(key);
   if (!p) {
     installHostBridge();
-    const url = hubAbs(`/modules/${mod.id}/${entry}?v=${encodeURIComponent(mod.version)}${mod.source === "dev" ? `&t=${Date.now()}` : ""}`);
+    const url = hubAbs(`/modules/${mod.id}/${entry}?v=${encodeURIComponent(mod.version)}&l=${encodeURIComponent(mod.loadedAt ?? "")}`);
     p = import(/* webpackIgnore: true */ /* turbopackIgnore: true */ url)
       .then((m) => (m.default ?? m) as ModuleClient)
       .catch((err) => {
@@ -125,7 +125,7 @@ export function evictModuleClient(id: string) {
 
 export function useModuleClient(mod: InstalledModule | undefined) {
   const [state, setState] = useState<{ client?: ModuleClient; error?: Error; key?: string }>({});
-  const key = mod ? `${mod.id}@${mod.version}:${mod.enabled}` : undefined;
+  const key = mod ? `${mod.id}@${mod.version}@${mod.loadedAt ?? ""}:${mod.enabled}` : undefined;
   useEffect(() => {
     if (!mod || !mod.enabled) return;
     let alive = true;
