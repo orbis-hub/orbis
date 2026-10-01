@@ -1,0 +1,64 @@
+{
+  "id": "bookmarks",
+  "name": "Bookmarks",
+  "version": "0.1.4",
+  "description": "A start page: links with icons, in groups. Favicons fetched by the hub, no third-party services.",
+  "author": "orbis",
+  "icon": "bookmark",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "links",
+      "name": "Links",
+      "description": "A grid of link tiles from one group (or all).",
+      "defaultSize": {
+        "w": 4,
+        "h": 3
+      },
+      "minSize": {
+        "w": 2,
+        "h": 1
+      },
+      "chromeless": false,
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "string",
+            "title": "Group (empty = all)"
+          },
+          "size": {
+            "type": "string",
+            "title": "Tile size",
+            "enum": [
+              "small",
+              "medium",
+              "large"
+            ],
+            "default": "medium"
+          },
+          "labels": {
+            "type": "boolean",
+            "title": "Show labels",
+            "default": true
+          }
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "bookmarks",
+      "name": "Bookmarks",
+      "icon": "bookmark"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "network:fetch"
+  ]
+}

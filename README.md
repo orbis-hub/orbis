@@ -37,6 +37,10 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **notes** | note, scratchpad | markdown-ish notes with checkboxes, autosave |
 | **countdown** | countdown | days / weeks / hours to a date, yearly for birthdays |
 | **hub status** | overview, single gauge | cpu, memory, disk, uptime, 30 min history |
+| **habits** | today, habit grid | streaks, contribution-style grid, evening nudge |
+| **bookmarks** | links | a start page with groups, favicons via the hub |
+| **focus timer** | timer | pomodoro on the hub, shared across devices |
+| **birthdays** | upcoming | people and dates, reminders a week before and on the day |
 
 plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 

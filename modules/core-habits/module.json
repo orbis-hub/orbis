@@ -1,0 +1,79 @@
+{
+  "id": "habits",
+  "name": "Habits",
+  "version": "0.1.4",
+  "description": "Daily habits with streaks. Tick today in the widget, see the month grid per habit on the page.",
+  "author": "orbis",
+  "icon": "check-double",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "today",
+      "name": "Today's habits",
+      "description": "All habits as checkboxes for today, with the current streak.",
+      "defaultSize": {
+        "w": 3,
+        "h": 3
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "showStreak": {
+            "type": "boolean",
+            "title": "Show streaks",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "id": "grid",
+      "name": "Habit grid",
+      "description": "One habit, the last weeks as a contribution-style grid.",
+      "defaultSize": {
+        "w": 4,
+        "h": 2
+      },
+      "minSize": {
+        "w": 2,
+        "h": 1
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "habitId": {
+            "type": "string",
+            "title": "Habit id (empty = first)"
+          },
+          "weeks": {
+            "type": "integer",
+            "title": "Weeks",
+            "default": 12,
+            "minimum": 4,
+            "maximum": 52
+          }
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "habits",
+      "name": "Habits",
+      "icon": "check-double"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "scheduler",
+    "notifications"
+  ]
+}
