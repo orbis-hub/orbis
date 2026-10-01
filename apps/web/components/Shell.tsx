@@ -85,6 +85,7 @@ function Sidebar() {
         <div className="nav-group">system</div>
         <NavLink href="/modules/" icon="blocks" label="modules" pathname={pathname} onClick={close} badge={(modules.data ?? []).filter((m) => m.enabled && (m.error || (m.status && m.status.state !== "ok"))).length || undefined} />
         <NavLink href="/devices/" icon="wifi" label="devices" pathname={pathname} onClick={close} />
+        <NavLink href="/eink/" icon="tv" label="e-ink" pathname={pathname} onClick={close} />
         <NavLink href="/accounts/" icon="users" label="accounts" pathname={pathname} onClick={close} />
         <NavLink href="/settings/" icon="sliders" label="settings" pathname={pathname} onClick={close} />
       </nav>

@@ -131,5 +131,72 @@ export default defineModule<Settings>({
     });
 
     ctx.logger.info("weather ready");
+
+    // e-ink: reuse the cached data; the hub calls this for every render
+    einkRender = async (req) => {
+      const cfg = req.config as { location?: string; days?: number; details?: boolean };
+      const d = await get(cfg.location || undefined);
+      const deg = d.units === "imperial" ? "°F" : "°C";
+      const icon = (code: number, day = true) => {
+        if (code === 0 || code === 1) return day ? "sun" : "moon";
+        if (code === 2) return day ? "cloud-sun" : "cloud-moon";
+        if (code === 3) return "cloud";
+        if (code === 45 || code === 48) return "fog";
+        if (code <= 57) return "drizzle";
+        if (code <= 67 || (code >= 80 && code <= 82)) return "rain";
+        if (code <= 77 || code === 85 || code === 86) return "snow";
+        if (code >= 95) return "thunder";
+        return "cloud";
+      };
+      if (req.widget === "forecast") {
+        const days = d.daily.slice(0, Math.max(2, Math.min(7, cfg.days ?? 5)));
+        return {
+          type: "row",
+          grow: 1,
+          gap: 4,
+          children: days.map((day, i) => ({
+            type: "col" as const,
+            grow: 1,
+            align: "center" as const,
+            justify: "center" as const,
+            gap: 2,
+            children: [
+              { type: "text" as const, text: i === 0 ? "today" : new Date(day.date).toLocaleDateString(req.locale, { weekday: "short" }).toLowerCase(), size: 13, gray: 0.5 },
+              { type: "weather-icon" as const, name: icon(day.code), size: Math.max(20, Math.min(40, req.width / days.length - 12)) },
+              { type: "text" as const, text: `${Math.round(day.max)}° ${Math.round(day.min)}°`, size: 14, pixel: false },
+              ...(day.precipProb >= 20 ? [{ type: "text" as const, text: `☂ ${day.precipProb}%`, size: 11, pixel: false, gray: 0.5 }] : []),
+            ],
+          })),
+        };
+      }
+      const c = d.current;
+      const big = Math.max(24, Math.min(req.height * 0.5, req.width / 4));
+      return {
+        type: "row",
+        grow: 1,
+        align: "center",
+        gap: 12,
+        children: [
+          { type: "weather-icon", name: icon(c.code, c.isDay), size: big * 1.1 },
+          {
+            type: "col",
+            grow: 1,
+            justify: "center",
+            gap: 2,
+            children: [
+              { type: "text", text: `${Math.round(c.temp)}${deg}`, size: big },
+              { type: "text", text: `${d.location.name} · feels ${Math.round(c.feelsLike)}°`, size: 12, pixel: false, gray: 0.4 },
+              ...(cfg.details !== false && d.daily[0] ? [{ type: "text" as const, text: `${Math.round(d.daily[0].min)}° / ${Math.round(d.daily[0].max)}° · ${Math.round(c.wind)} ${d.units === "imperial" ? "mph" : "km/h"} · ${c.humidity}% rh`, size: 11, pixel: false, gray: 0.5 }] : []),
+            ],
+          },
+        ],
+      };
+    };
+  },
+  eink(_ctx, req) {
+    if (!einkRender) throw new Error("not ready");
+    return einkRender(req);
   },
 });
+
+let einkRender: ((req: import("@orbis/sdk/server").EinkRequest) => Promise<import("@orbis/sdk/server").EinkTree>) | null = null;

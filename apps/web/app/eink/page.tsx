@@ -1,0 +1,214 @@
+"use client";
+
+import type { EinkDisplay } from "@orbis/sdk";
+import { Button, Chip, Empty, Field, Icon, Input, Modal, Select, useToast, Window } from "@orbis/ui";
+import { useEffect, useState } from "react";
+import { Shell } from "@/components/Shell";
+import { getHubUrl } from "@/lib/hub";
+import { isAdminRole, useAuthStatus, useDashboards, useEinkDisplays, useEinkMutations } from "@/lib/queries";
+
+/** presets for the boards the firmware supports; sizes are the panel's native landscape resolution */
+const BOARDS: Array<{ id: string; label: string; width: number; height: number; grayscale: 1 | 2 | 4 | 8; touch: boolean }> = [
+  { id: "inkplate6", label: "Inkplate 6 (800×600, 3-bit gray)", width: 800, height: 600, grayscale: 4, touch: false },
+  { id: "inkplate6plus", label: "Inkplate 6PLUS (1024×758, touch)", width: 1024, height: 758, grayscale: 4, touch: true },
+  { id: "inkplate10", label: "Inkplate 10 (1200×825)", width: 1200, height: 825, grayscale: 4, touch: false },
+  { id: "inkplate6color", label: "Inkplate 6COLOR (600×448, b/w mode)", width: 600, height: 448, grayscale: 1, touch: false },
+  { id: "lilygo-t5-47", label: "LilyGo T5 4.7\" (960×540, 16 gray)", width: 960, height: 540, grayscale: 4, touch: false },
+  { id: "lilygo-t5-47-plus", label: "LilyGo T5 4.7\" Plus / S3 (960×540, touch)", width: 960, height: 540, grayscale: 4, touch: true },
+  { id: "waveshare-75", label: "Waveshare 7.5\" b/w (800×480) + ESP32 driver board", width: 800, height: 480, grayscale: 1, touch: false },
+  { id: "waveshare-42", label: "Waveshare 4.2\" b/w (400×300)", width: 400, height: 300, grayscale: 1, touch: false },
+  { id: "waveshare-29", label: "Waveshare 2.9\" b/w (296×128)", width: 296, height: 128, grayscale: 1, touch: false },
+  { id: "custom", label: "custom / other", width: 800, height: 480, grayscale: 1, touch: false },
+];
+
+export default function EinkPage() {
+  const status = useAuthStatus();
+  const admin = isAdminRole(status.data?.user?.role);
+  const displays = useEinkDisplays();
+  const dashboards = useDashboards();
+  const m = useEinkMutations();
+  const toast = useToast();
+  const [creating, setCreating] = useState(false);
+  const [tokenFor, setTokenFor] = useState<EinkDisplay | null>(null);
+  const [preview, setPreview] = useState<EinkDisplay | null>(null);
+  const hub = getHubUrl() ?? "";
+
+  return (
+    <Shell
+      title={
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Icon name="tv" size={16} style={{ color: "var(--accent)" }} /> e-ink displays
+        </span>
+      }
+      actions={admin ? <Button size="sm" onClick={() => setCreating(true)}><Icon name="plus" size={14} /> display</Button> : null}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {displays.isPending ? null : (displays.data ?? []).length === 0 ? (
+          <Empty icon="tv" title="no e-ink displays yet">
+            <p style={{ marginBottom: 10 }}>add a display, flash the firmware onto an inkplate, lilygo or waveshare board, paste the token. the hub renders a dashboard to a bitmap the board fetches every few minutes.</p>
+            {admin ? <Button variant="primary" onClick={() => setCreating(true)}>add display</Button> : null}
+          </Empty>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
+            {(displays.data ?? []).map((d) => (
+              <Window
+                key={d.id}
+                title={d.name}
+                right={
+                  <Chip style={{ fontSize: 10 }} tone={d.lastSeen && Date.now() - new Date(d.lastSeen).getTime() < d.refreshMinutes * 2 * 60_000 ? "ok" : undefined}>
+                    {d.lastSeen ? `seen ${new Date(d.lastSeen).toLocaleTimeString()}` : "never connected"}
+                  </Chip>
+                }
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
+                  <button type="button" onClick={() => setPreview(d)} style={{ border: "1.5px solid var(--line)", background: "#fff", aspectRatio: `${d.rotate % 180 ? d.height : d.width} / ${d.rotate % 180 ? d.width : d.height}`, overflow: "hidden", cursor: "zoom-in" }} title="preview">
+                    <img src={`${hub}/api/eink/displays/${d.id}/preview.png?t=${Math.floor(Date.now() / 60_000)}`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", imageRendering: "pixelated", display: "block" }} />
+                  </button>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    <Chip>{d.width}×{d.height}</Chip>
+                    <Chip>{d.grayscale === 1 ? "b/w" : `${1 << d.grayscale} grays`}</Chip>
+                    <Chip>every {d.refreshMinutes} min</Chip>
+                    {d.rotate ? <Chip>{d.rotate}°</Chip> : null}
+                    {d.board ? <Chip>{d.board}</Chip> : null}
+                    {d.battery !== null ? <Chip tone={d.battery < 20 ? "bad" : undefined}>🔋 {d.battery}%</Chip> : null}
+                  </div>
+                  <Field label="dashboard">
+                    <Select value={d.dashboardId ?? ""} disabled={!admin} onChange={(e) => m.update.mutate({ id: d.id, dashboardId: e.target.value || null }, { onError: (err) => toast(err.message, "bad") })}>
+                      <option value="">— none —</option>
+                      {(dashboards.data ?? []).map((x) => (
+                        <option key={x.id} value={x.id}>{x.name}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <Field label="rotation">
+                      <Select value={d.rotate} disabled={!admin} onChange={(e) => m.update.mutate({ id: d.id, rotate: Number(e.target.value) as 0 | 90 | 180 | 270 })}>
+                        {[0, 90, 180, 270].map((r) => <option key={r} value={r}>{r}°</option>)}
+                      </Select>
+                    </Field>
+                    <Field label="refresh (min)">
+                      <Input type="number" min={1} max={1440} defaultValue={d.refreshMinutes} disabled={!admin} onBlur={(e) => Number(e.target.value) !== d.refreshMinutes && m.update.mutate({ id: d.id, refreshMinutes: Number(e.target.value) })} />
+                    </Field>
+                  </div>
+                  <div className="soft" style={{ fontSize: 11 }}>
+                    image url: <code style={{ overflowWrap: "anywhere" }}>{hub}/api/eink/{d.id}.bin</code>
+                  </div>
+                  {admin ? (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <Button size="sm" onClick={() => setTokenFor(d)}><Icon name="key" size={12} /> token & setup</Button>
+                      <a className="btn btn-sm" href={`${hub}/api/eink/displays/${d.id}/preview.png`} target="_blank" rel="noreferrer"><Icon name="image" size={12} /> open png</a>
+                      <Button size="sm" variant="danger" onClick={() => confirm(`remove ${d.name}?`) && m.remove.mutate(d.id)}><Icon name="trash" size={12} /></Button>
+                    </div>
+                  ) : null}
+                </div>
+              </Window>
+            ))}
+          </div>
+        )}
+        <Window title="how it works" dashed>
+          <ol style={{ fontSize: 12, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4, margin: 0 }}>
+            <li>add a display here (board preset sets size and gray levels), assign a dashboard.</li>
+            <li>flash the orbis firmware onto the board from the <a href="https://orbis-hub.github.io/flash/" target="_blank" rel="noreferrer">web flasher</a> (chrome/edge, usb cable). supports inkplate 6/6plus/10/6color, lilygo t5 4.7 (+touch), waveshare esp32 driver boards.</li>
+            <li>the board opens a wifi <b>orbis-eink</b>: connect, enter your wifi, the hub url and the display token from <i>token & setup</i>.</li>
+            <li>it fetches <code>/api/eink/&lt;id&gt;.bin</code> every n minutes, shows it and sleeps. touch boards send taps to the hub.</li>
+          </ol>
+        </Window>
+      </div>
+
+      <CreateModal open={creating} onClose={() => setCreating(false)} onCreated={(d) => setTokenFor(d)} />
+      <TokenModal display={tokenFor} onClose={() => setTokenFor(null)} />
+      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview ? `${preview.name} · ${preview.width}×${preview.height}` : ""} width={Math.min(1100, (preview?.width ?? 800) + 60)}>
+        {preview ? <img src={`${hub}/api/eink/displays/${preview.id}/preview.png?t=${Date.now()}`} alt="" style={{ width: "100%", imageRendering: "pixelated", border: "1.5px solid var(--line)", background: "#fff" }} /> : null}
+      </Modal>
+    </Shell>
+  );
+}
+
+function CreateModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (d: EinkDisplay) => void }) {
+  const m = useEinkMutations();
+  const dashboards = useDashboards();
+  const toast = useToast();
+  const [board, setBoard] = useState(BOARDS[0]!);
+  const [name, setName] = useState("kitchen");
+  const [w, setW] = useState(board.width);
+  const [h, setH] = useState(board.height);
+  const [dash, setDash] = useState("");
+  useEffect(() => {
+    setW(board.width);
+    setH(board.height);
+  }, [board]);
+  return (
+    <Modal open={open} onClose={onClose} title="new e-ink display">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          m.create.mutate(
+            { name, width: w, height: h, grayscale: board.grayscale, dashboardId: dash || null, board: board.id === "custom" ? null : board.id, refreshMinutes: 10 },
+            {
+              onSuccess: (d) => {
+                onClose();
+                onCreated(d);
+              },
+              onError: (err) => toast(err.message, "bad"),
+            },
+          );
+        }}
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
+      >
+        <Field label="name"><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></Field>
+        <Field label="board">
+          <Select value={board.id} onChange={(e) => setBoard(BOARDS.find((b) => b.id === e.target.value) ?? BOARDS[0]!)}>
+            {BOARDS.map((b) => <option key={b.id} value={b.id}>{b.label}{b.touch ? " · touch" : ""}</option>)}
+          </Select>
+        </Field>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <Field label="width"><Input type="number" value={w} onChange={(e) => setW(Number(e.target.value))} min={64} /></Field>
+          <Field label="height"><Input type="number" value={h} onChange={(e) => setH(Number(e.target.value))} min={64} /></Field>
+        </div>
+        <Field label="dashboard" hint="tip: make a dedicated dashboard with big widgets for the display">
+          <Select value={dash} onChange={(e) => setDash(e.target.value)}>
+            <option value="">— choose later —</option>
+            {(dashboards.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </Select>
+        </Field>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <Button onClick={onClose}>cancel</Button>
+          <Button type="submit" variant="primary" loading={m.create.isPending}>create</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function TokenModal({ display, onClose }: { display: EinkDisplay | null; onClose: () => void }) {
+  const m = useEinkMutations();
+  const toast = useToast();
+  const [d, setD] = useState<EinkDisplay | null>(display);
+  useEffect(() => setD(display), [display]);
+  const hub = getHubUrl() ?? "";
+  if (!d) return null;
+  const token = d.token ?? "(hidden – rotate to get a new one)";
+  return (
+    <Modal open onClose={onClose} title={`${d.name} · device setup`}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12 }}>
+        <Field label="hub url" hint="what the board can reach on your network">
+          <Input readOnly value={hub} onFocus={(e) => e.target.select()} />
+        </Field>
+        <Field label="display id"><Input readOnly value={d.id} onFocus={(e) => e.target.select()} /></Field>
+        <Field label="token" hint="shown in full only right after creating or rotating it">
+          <div style={{ display: "flex", gap: 6 }}>
+            <Input readOnly value={token} onFocus={(e) => e.target.select()} />
+            <Button size="sm" onClick={() => m.rotateToken.mutate(d.id, { onSuccess: (nd) => { setD(nd); toast("new token – update the device", "ok"); } })}>rotate</Button>
+          </div>
+        </Field>
+        <div className="win win-dashed win-flat" style={{ padding: "8px 10px" }}>
+          <div className="pixel" style={{ marginBottom: 4 }}>test it without hardware</div>
+          <code style={{ overflowWrap: "anywhere" }}>curl -H "authorization: Bearer {d.token ?? "<token>"}" {hub}/api/eink/{d.id}.png -o display.png</code>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button onClick={onClose}>done</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

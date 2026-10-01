@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dashboard, Device, HubEvent, InstalledModule, RegistryEntry, WidgetInstance } from "@orbis/sdk";
+import type { Dashboard, Device, EinkDisplay, HubEvent, InstalledModule, RegistryEntry, WidgetInstance } from "@orbis/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { hubFetch, subscribeHub } from "./hub";
@@ -27,6 +27,7 @@ export const qk = {
   registry: ["registry"] as const,
   devices: ["devices"] as const,
   users: ["users"] as const,
+  eink: ["eink"] as const,
 };
 
 export function useAuthStatus(enabled = true) {
@@ -186,5 +187,22 @@ export function useUserMutations() {
     remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/users/${id}`, { method: "DELETE" }), onSuccess: inv }),
     updateMe: useMutation({ mutationFn: (input: { name: string }) => hubFetch<PublicUser>("/api/users/me", { method: "PATCH", json: input }), onSuccess: () => { inv(); void qc.invalidateQueries({ queryKey: qk.auth }); } }),
     changePassword: useMutation({ mutationFn: (input: { current: string; password: string }) => hubFetch<{ ok: boolean; reauth: boolean }>("/api/users/me/password", { method: "POST", json: input }) }),
+  };
+}
+
+/* ---------- e-ink displays ---------- */
+
+export function useEinkDisplays() {
+  return useQuery({ queryKey: qk.eink, queryFn: () => hubFetch<EinkDisplay[]>("/api/eink/displays"), staleTime: 30_000, refetchInterval: 60_000 });
+}
+
+export function useEinkMutations() {
+  const qc = useQueryClient();
+  const inv = () => qc.invalidateQueries({ queryKey: qk.eink });
+  return {
+    create: useMutation({ mutationFn: (input: Partial<EinkDisplay> & { name: string; width: number; height: number }) => hubFetch<EinkDisplay>("/api/eink/displays", { method: "POST", json: input }), onSuccess: inv }),
+    update: useMutation({ mutationFn: ({ id, ...patch }: { id: string } & Partial<EinkDisplay>) => hubFetch<EinkDisplay>(`/api/eink/displays/${id}`, { method: "PATCH", json: patch }), onSuccess: inv }),
+    rotateToken: useMutation({ mutationFn: (id: string) => hubFetch<EinkDisplay>(`/api/eink/displays/${id}/token`, { method: "POST" }), onSuccess: inv }),
+    remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/eink/displays/${id}`, { method: "DELETE" }), onSuccess: inv }),
   };
 }

@@ -12,6 +12,8 @@ import { authRoutes } from "./routes/auth";
 import { dashboardRoutes, deviceRoutes, settingsRoutes } from "./routes/core";
 import { moduleApiProxy, moduleFiles, moduleRoutes } from "./routes/modules";
 import { userRoutes } from "./routes/users";
+import { einkAdminRoutes, einkDeviceRoutes } from "./routes/eink";
+import { logReady as einkReady } from "./services/eink";
 import { ensureDefaultDashboard } from "./services/dashboards";
 import { logWebStatus, serveWeb } from "./static";
 import { addClient, clientCount, removeClient } from "./ws";
@@ -62,6 +64,8 @@ app.route("/api/dashboards", dashboardRoutes);
 app.route("/api/devices", deviceRoutes);
 app.route("/api/modules", moduleRoutes);
 app.route("/api/m", moduleApiProxy);
+app.route("/api/eink/displays", einkAdminRoutes);
+app.route("/api/eink", einkDeviceRoutes);
 app.route("/modules", moduleFiles);
 
 app.get(
@@ -109,6 +113,7 @@ const server = serve({ fetch: app.fetch, port: config.port, hostname: config.hos
 injectWebSocket(server);
 
 await runtime.bootstrap();
+einkReady();
 
 setInterval(purgeExpiredSessions, 6 * 3600_000).unref();
 

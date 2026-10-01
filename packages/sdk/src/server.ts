@@ -101,12 +101,34 @@ export type ModuleServer<TSettings = Record<string, unknown>> = {
   eink?(ctx: ModuleServerContext<TSettings>, req: EinkRequest): Promise<EinkTree> | EinkTree;
 };
 
-export type EinkRequest = { displayId: string; width: number; height: number; widget: string; config: Record<string, unknown> };
+export type EinkRequest = {
+  displayId: string;
+  /** pixel size of the area this widget gets */
+  width: number;
+  height: number;
+  /** 1 = black/white, 4 = 16 grays, 8 = 256 grays (what the panel can show) */
+  grayLevelsBits: number;
+  widget: string;
+  config: Record<string, unknown>;
+  locale: string;
+  timezone: string;
+  now: Date;
+};
+
+/**
+ * Tiny layout language for e-ink: the hub lays it out with flexbox (satori) and rasterises it.
+ * Sizes are in pixels. Keep it simple – no colors, only black, grays and white.
+ */
 export type EinkTree =
-  | { type: "text"; text: string; size?: "xs" | "sm" | "md" | "lg" | "xl"; bold?: boolean; align?: "left" | "center" | "right" }
-  | { type: "row" | "col"; gap?: number; children: EinkTree[] }
-  | { type: "rule" }
-  | { type: "icon"; name: string; size?: number };
+  | { type: "text"; text: string; size?: number; bold?: boolean; pixel?: boolean; align?: "left" | "center" | "right"; gray?: number; wrap?: boolean; grow?: number }
+  | { type: "row" | "col"; gap?: number; pad?: number; align?: "start" | "center" | "end" | "stretch"; justify?: "start" | "center" | "end" | "between"; grow?: number; width?: number | string; height?: number | string; children: EinkTree[] }
+  | { type: "box"; border?: number; pad?: number; fill?: number; grow?: number; width?: number | string; height?: number | string; children: EinkTree[] }
+  | { type: "rule"; dashed?: boolean; vertical?: boolean }
+  | { type: "spacer"; size?: number; grow?: number }
+  | { type: "icon"; name: string; size?: number; gray?: number }
+  | { type: "weather-icon"; name: string; size?: number }
+  | { type: "bar"; value: number; max?: number; height?: number }
+  | { type: "dots"; count: number; filled: number; size?: number };
 
 export function defineModule<TSettings = Record<string, unknown>>(mod: ModuleServer<TSettings>): ModuleServer<TSettings> {
   return mod;
