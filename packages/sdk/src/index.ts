@@ -58,6 +58,8 @@ export type Dashboard = {
   access: string[];
   /** can the requesting user edit it */
   canEdit: boolean;
+  /** accent preset id (see ACCENTS in @orbis/ui) or null for the hub default */
+  accent: string | null;
 };
 
 /** What a module reports about itself: shown on the module card and counted in the sidebar. */

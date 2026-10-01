@@ -112,9 +112,9 @@ export function useDashboardMutations() {
   const qc = useQueryClient();
   const inv = () => qc.invalidateQueries({ queryKey: qk.dashboards });
   return {
-    create: useMutation({ mutationFn: (input: { name: string; icon?: string; shared?: boolean }) => hubFetch<Dashboard>("/api/dashboards", { method: "POST", json: input }), onSuccess: inv }),
+    create: useMutation({ mutationFn: (input: { name: string; icon?: string; shared?: boolean; accent?: string | null }) => hubFetch<Dashboard>("/api/dashboards", { method: "POST", json: input }), onSuccess: inv }),
     update: useMutation({
-      mutationFn: ({ id, ...patch }: { id: string; name?: string; icon?: string | null; shared?: boolean; ownerId?: string | null; access?: string[] }) => hubFetch<Dashboard>(`/api/dashboards/${id}`, { method: "PATCH", json: patch }),
+      mutationFn: ({ id, ...patch }: { id: string; name?: string; icon?: string | null; shared?: boolean; ownerId?: string | null; access?: string[]; accent?: string | null }) => hubFetch<Dashboard>(`/api/dashboards/${id}`, { method: "PATCH", json: patch }),
       onSuccess: inv,
     }),
     remove: useMutation({ mutationFn: (id: string) => hubFetch(`/api/dashboards/${id}`, { method: "DELETE" }), onSuccess: inv }),

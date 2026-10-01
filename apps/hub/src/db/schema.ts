@@ -32,6 +32,7 @@ export const dashboards = sqliteTable("dashboards", {
   createdAt: text("created_at").notNull(),
   ownerId: text("owner_id"),
   shared: integer("shared", { mode: "boolean" }).notNull().default(true),
+  accent: text("accent"),
 });
 
 export const dashboardWidgets = sqliteTable("dashboard_widgets", {
@@ -125,3 +126,5 @@ export const einkDisplays = sqliteTable("eink_displays", {
 migrations.push(
   `CREATE TABLE IF NOT EXISTS eink_displays (id TEXT PRIMARY KEY, name TEXT NOT NULL, token TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, dashboard_id TEXT, rotate INTEGER NOT NULL DEFAULT 0, invert INTEGER NOT NULL DEFAULT 0, grayscale INTEGER NOT NULL DEFAULT 1, refresh_minutes INTEGER NOT NULL DEFAULT 10, board TEXT, last_seen TEXT, battery INTEGER, created_at TEXT NOT NULL)`,
 );
+
+migrations.push(`ALTER TABLE dashboards ADD COLUMN accent TEXT`);

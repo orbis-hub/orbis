@@ -84,3 +84,12 @@
 .editing .widget:hover .win { outline-color: var(--accent); }
 .widget-stack { display: flex; flex-direction: column; gap: 14px; }
 .widget-stack .widget { height: auto; min-height: 120px; }
+
+/* ---------- kiosk mode (wall tablets): bigger touch targets, no text selection, no scroll bounce ---------- */
+:root[data-kiosk] body { user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
+:root[data-kiosk] .widget .win-title { font-size: 15px; min-height: 34px; }
+:root[data-kiosk] .check > i { width: 20px; height: 20px; }
+:root[data-kiosk] .check > input:checked + i::after { left: 6px; top: 1px; width: 5px; height: 11px; }
+:root[data-kiosk] .btn { padding: 8px 16px; }
+:root[data-kiosk] .btn-icon { width: 36px; height: 36px; }
+:root[data-kiosk] .widget-body { font-size: 15px; }
