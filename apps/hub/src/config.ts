@@ -10,7 +10,7 @@ const repoRoot = resolve(hubRoot, "../..");
 const env = (k: string, d?: string) => process.env[k] ?? d;
 
 export const config = {
-  version: "0.1.1",
+  version: "0.1.2",
   port: Number(env("PORT", "3001")),
   host: env("HOST", "0.0.0.0")!,
   dev: env("NODE_ENV") !== "production",
