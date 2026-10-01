@@ -279,8 +279,8 @@ function CalendarPage(_p: PageProps) {
 /* ---------- accounts ---------- */
 
 const PRESETS: Array<{ id: string; label: string; type: "ics" | "caldav"; url: string; hint: string }> = [
-  { id: "google", label: "Google", type: "caldav", url: "https://apidata.googleusercontent.com/caldav/v2", hint: "username = your gmail address, password = an app password (google account → security → 2-step verification → app passwords). alternatively paste a calendar's 'secret address in ical format' as an ics feed." },
-  { id: "icloud", label: "iCloud", type: "caldav", url: "https://caldav.icloud.com", hint: "username = your apple id email, password = an app-specific password from appleid.apple.com." },
+  { id: "google", label: "Google", type: "ics", url: "https://calendar.google.com/calendar/ical/", hint: "google only allows oauth on caldav, so use the per-calendar feed: google calendar (web) → settings → pick the calendar → 'integrate calendar' → copy the 'secret address in ical format' and paste it here. one account per calendar. nobody but you should see that url." },
+  { id: "icloud", label: "iCloud", type: "caldav", url: "https://caldav.icloud.com", hint: "username = your full apple id e-mail. password = an app-specific password: appleid.apple.com → sign-in and security → app-specific passwords (two-factor authentication has to be on). your normal apple password is rejected with 401." },
   { id: "nextcloud", label: "Nextcloud", type: "caldav", url: "https://cloud.example.com", hint: "the base url of your nextcloud. use an app password (settings → security → devices & sessions)." },
   { id: "fastmail", label: "Fastmail", type: "caldav", url: "https://caldav.fastmail.com", hint: "username = your fastmail address, password = an app password with calendar access." },
   { id: "caldav", label: "other CalDAV", type: "caldav", url: "https://", hint: "radicale, baikal, synology, posteo, mailbox.org … any caldav server." },

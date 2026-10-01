@@ -54,6 +54,26 @@ export function normalizeCaldavUrl(input: string, username?: string): string {
   return u.replace(/\/+$/, "");
 }
 
+function explainCaldavError(err: Error, serverUrl: string): string {
+  const m = err.message ?? String(err);
+  const host = (() => {
+    try {
+      return new URL(serverUrl).host;
+    } catch {
+      return serverUrl;
+    }
+  })();
+  if (/401|Unauthorized|Invalid credentials/i.test(m)) {
+    if (host.includes("icloud.com")) return "icloud rejected the login (401). use an app-specific password from appleid.apple.com → sign-in and security → app-specific passwords (two-factor auth must be on), and your full apple id e-mail as username.";
+    if (host.includes("fastmail.com")) return "fastmail rejected the login (401). create an app password with calendar access under settings → privacy & security → integrations.";
+    return `${host} rejected the login (401). most servers want an app password instead of your account password; check username (often the full e-mail) and password.`;
+  }
+  if (/principalUrl|principal/i.test(m)) return `could not find a caldav account at ${host}. check the server url (for nextcloud the base url is enough, for others try the full caldav url your provider documents).`;
+  if (/ENOTFOUND|ECONNREFUSED|fetch failed|getaddrinfo/i.test(m)) return `cannot reach ${host} from the hub (${m}).`;
+  if (/403|Forbidden/i.test(m)) return `${host} answered 403 forbidden: the account is valid but may not allow caldav access or this app password lacks calendar rights.`;
+  return m;
+}
+
 /* ---------- ics parsing (shared by feeds and caldav objects) ---------- */
 
 function parseIcs(text: string, cal: Calendar, from: Date, to: Date): CalEvent[] {
@@ -135,7 +155,7 @@ export default defineModule<{ refreshMinutes?: number }>({
     async function fetchIcs(acc: Account): Promise<{ calendars: Calendar[]; events: CalEvent[] }> {
       const url = acc.url.replace(/^webcal:\/\//i, "https://");
       const headers: Record<string, string> = {};
-      if (acc.username && acc.password) headers.authorization = `Basic ${Buffer.from(`${acc.username}:${acc.password}`).toString("base64")}`;
+      if (acc.username && acc.password) headers.authorization = `Basic ${Buffer.from(`${acc.username.trim()}:${acc.password.replace(/\s+/g, "")}`).toString("base64")}`;
       const res = await ctx.fetch(url, { headers, signal: AbortSignal.timeout(20_000), redirect: "follow" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const cal: Calendar = { id: acc.id, accountId: acc.id, name: acc.name, color: acc.color, url, writable: false };
@@ -145,13 +165,41 @@ export default defineModule<{ refreshMinutes?: number }>({
 
     async function fetchCaldav(acc: Account): Promise<{ calendars: Calendar[]; events: CalEvent[] }> {
       if (!acc.username || !acc.password) throw new Error("username and password required");
-      const client = await createDAVClient({
-        serverUrl: normalizeCaldavUrl(acc.url, acc.username),
-        credentials: { username: acc.username, password: acc.password },
-        authMethod: "Basic",
-        defaultAccountType: "caldav",
-      });
-      const cals = (await client.fetchCalendars()) as DAVCalendar[];
+      const serverUrl = normalizeCaldavUrl(acc.url, acc.username);
+      if (serverUrl.includes("googleusercontent.com") || serverUrl.includes("google.com")) {
+        throw new Error("google calendar only allows oauth on caldav, app passwords are rejected. use the calendar's 'secret address in ical format' (google calendar → settings → your calendar → integrate calendar) as an ics feed instead.");
+      }
+      // probe the credentials ourselves first: tsdav hides a 401 behind "cannot find principalUrl"
+      {
+        const auth = `Basic ${Buffer.from(`${acc.username.trim()}:${acc.password.replace(/\s+/g, "")}`).toString("base64")}`;
+        let probe: Response | null = null;
+        for (const u of [`${serverUrl}/.well-known/caldav`, serverUrl]) {
+          try {
+            probe = await ctx.fetch(u, { method: "PROPFIND", headers: { authorization: auth, depth: "0", "content-type": "application/xml" }, body: `<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>`, redirect: "follow", signal: AbortSignal.timeout(15_000) });
+            if (probe.status !== 404 && probe.status !== 405) break;
+          } catch (err) {
+            throw new Error(explainCaldavError(err as Error, serverUrl));
+          }
+        }
+        if (probe && (probe.status === 401 || probe.status === 403)) throw new Error(explainCaldavError(new Error(`HTTP ${probe.status} Unauthorized`), serverUrl));
+      }
+      let client: Awaited<ReturnType<typeof createDAVClient>>;
+      try {
+        client = await createDAVClient({
+          serverUrl,
+          credentials: { username: acc.username.trim(), password: acc.password.replace(/\s+/g, "") },
+          authMethod: "Basic",
+          defaultAccountType: "caldav",
+        });
+      } catch (err) {
+        throw new Error(explainCaldavError(err as Error, serverUrl));
+      }
+      let cals: DAVCalendar[];
+      try {
+        cals = (await client.fetchCalendars()) as DAVCalendar[];
+      } catch (err) {
+        throw new Error(explainCaldavError(err as Error, serverUrl));
+      }
       const { from, to } = range();
       const calendars: Calendar[] = [];
       const evs: CalEvent[] = [];
