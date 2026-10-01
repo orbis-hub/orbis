@@ -23,7 +23,16 @@ pnpm web                    # next dev on http://localhost:3000
 
 open http://localhost:3000, create the owner account, add widgets.
 
-## production (docker)
+## install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/orbis-hub/orbis/main/install.sh | sh     # linux / macos / pi
+irm https://raw.githubusercontent.com/orbis-hub/orbis/main/install.ps1 | iex           # windows
+```
+
+the installer asks what this machine should run: **hub + web** (one container, the usual case), **hub only** (api, the web ui lives elsewhere) or **web only** (static files behind nginx pointing at a hub somewhere else). hub and web are independent: the web app is a static build that talks to whatever hub url you give it, so you can put the hub on a pi in the closet and the web app on a vps, a nas or just the same box.
+
+or by hand:
 
 ```bash
 docker compose up -d        # web + api on http://<host>:3001, data in ./data
@@ -41,7 +50,7 @@ docker compose up -d        # web + api on http://<host>:3001, data in ./data
 | `packages/sdk`           | `@orbis/sdk` – manifest schema, server context, client hooks (the module contract)     |
 | `packages/ui`            | `@orbis/ui` – design system (window boxes, buttons, pixel icons)                       |
 | `packages/module-tools`  | `orbis-module build | watch | pack | init` – esbuild based module bundler              |
-| `modules/*`              | first-party modules: clock, todo, weather (built like external ones)                   |
+| `modules/*`              | first-party modules: clock, todo, weather, calendar, media (built like external ones)  |
 | `registry/`              | example `index.json` for a module registry                                             |
 
 ## accounts
@@ -102,7 +111,8 @@ the hub derives `https://github.com/<repo>/releases/download/v<latest>/module.tg
 
 - [x] hub: auth, dashboards, settings, websocket, module runtime, installer, registry client
 - [x] web: shell, dashboard grid, module loader, store, devices, settings
-- [x] modules: clock, todo, weather
+- [x] modules: clock, todo, weather, calendar (ics + caldav: google, icloud, nextcloud …), media (spotify, device picker)
+- [x] install scripts (sh + ps1) with hub/web/both modes
 - [x] device registry + network scanner (ping sweep, arp, mdns)
 - [x] accounts: owner/admin/member roles, user management, private/shared dashboards with grants
 - [ ] home assistant module, shelly/hue modules using discovery matchers

@@ -6,8 +6,11 @@
       "name": "Clock",
       "description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.0",
-      "tags": ["time", "builtin"],
+      "latest": "0.1.1",
+      "tags": [
+        "time",
+        "builtin"
+      ],
       "author": "orbis",
       "icon": "clock",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/clock.tgz"
@@ -17,8 +20,11 @@
       "name": "Todo",
       "description": "Lists and tasks with due dates. A widget per list plus a full page.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.0",
-      "tags": ["productivity", "builtin"],
+      "latest": "0.1.1",
+      "tags": [
+        "productivity",
+        "builtin"
+      ],
       "author": "orbis",
       "icon": "checkbox-on",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/todo.tgz"
@@ -28,11 +34,43 @@
       "name": "Weather",
       "description": "Current conditions and forecast from Open-Meteo. No API key needed.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.0",
-      "tags": ["weather", "builtin"],
+      "latest": "0.1.1",
+      "tags": [
+        "weather",
+        "builtin"
+      ],
       "author": "orbis",
       "icon": "cloud-sun",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/weather.tgz"
+    },
+    {
+      "id": "calendar",
+      "name": "Calendar",
+      "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail …).",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.1",
+      "tags": [
+        "calendar",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "calendar",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/calendar.tgz"
+    },
+    {
+      "id": "media",
+      "name": "Media",
+      "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.1",
+      "tags": [
+        "media",
+        "spotify",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "music",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/media.tgz"
     }
   ]
 }

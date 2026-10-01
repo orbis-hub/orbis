@@ -34,6 +34,23 @@ jobs:
           files: out/*.tgz
           generate_release_notes: true
 
+  web:
+    # static web build as a tarball, for "web only" installs (install.sh --mode web)
+    if: startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @orbis/web build
+      - run: tar -czf web.tgz -C apps/web/out .
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: web.tgz
+          generate_release_notes: true
+
   docker:
     if: startsWith(github.ref_name, 'v')
     runs-on: ubuntu-latest

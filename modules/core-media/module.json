@@ -1,0 +1,85 @@
+{
+  "id": "media",
+  "name": "Media",
+  "version": "0.1.1",
+  "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
+  "author": "orbis",
+  "icon": "music",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "now-playing",
+      "name": "Now playing",
+      "description": "Cover, track, progress, controls and the device it plays on.",
+      "defaultSize": {
+        "w": 4,
+        "h": 3
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "showDevice": {
+            "type": "boolean",
+            "title": "Show device picker",
+            "default": true
+          },
+          "showControls": {
+            "type": "boolean",
+            "title": "Show controls",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "id": "devices",
+      "name": "Playback devices",
+      "description": "Pick where music plays.",
+      "defaultSize": {
+        "w": 3,
+        "h": 3
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "media",
+      "name": "Media",
+      "icon": "music"
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "spotifyClientId": {
+        "type": "string",
+        "title": "Spotify client id",
+        "description": "from developer.spotify.com → your app. redirect uri must be <hub url>/api/m/media/spotify/callback"
+      },
+      "pollSeconds": {
+        "type": "integer",
+        "title": "Poll playback every (seconds)",
+        "default": 5,
+        "minimum": 2,
+        "maximum": 60
+      }
+    }
+  },
+  "permissions": [
+    "network:fetch",
+    "storage",
+    "scheduler"
+  ]
+}

@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 const require = createRequire(import.meta.url);
 const root = dirname(require.resolve("pixelarticons/package.json"));
 const names = [
+  "shuffle","repeat","repeat-1","forward","tablet",
   "grid-2x2-2","grid-3x3","grid-2x3","eye-off","file-text","files","phone","monitor","watch","tv","chart-line","chart-bar-big","chart-column-decreasing","sliders-vertical","warning-diamond","lightbulb-off","trending-up","coins","wallet","money","dollar","euro","human","images","image-new","notebook","radio","cloud-moon","cloud-server","sun-solid","power-off","plug-solid","waves","window-frame","colors-swatch","avatar-square","sunglasses","phone-call","building-community",
   "home","layout","sliders","menu","close","check","check-double","plus","minus","trash","save","reload","search","zap","zap-off",
   "sun","moon","cloud","cloud-sun","cloud-moon","wind","thermometer",

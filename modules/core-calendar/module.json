@@ -1,0 +1,122 @@
+{
+  "id": "calendar",
+  "name": "Calendar",
+  "version": "0.1.1",
+  "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail, Radicale …).",
+  "author": "orbis",
+  "icon": "calendar",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "agenda",
+      "name": "Agenda",
+      "description": "Upcoming events, grouped by day.",
+      "defaultSize": {
+        "w": 4,
+        "h": 5
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "title": "Days ahead",
+            "default": 7,
+            "minimum": 1,
+            "maximum": 60
+          },
+          "calendars": {
+            "type": "array",
+            "title": "Only these calendar ids (empty = all)"
+          },
+          "showAllDay": {
+            "type": "boolean",
+            "title": "Show all-day events",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "id": "month",
+      "name": "Month",
+      "description": "A month grid with event dots.",
+      "defaultSize": {
+        "w": 4,
+        "h": 5
+      },
+      "minSize": {
+        "w": 3,
+        "h": 4
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "calendars": {
+            "type": "array",
+            "title": "Only these calendar ids (empty = all)"
+          },
+          "weekStartsMonday": {
+            "type": "boolean",
+            "title": "Week starts on monday",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "id": "next",
+      "name": "Next up",
+      "description": "The very next event, big.",
+      "defaultSize": {
+        "w": 3,
+        "h": 2
+      },
+      "minSize": {
+        "w": 2,
+        "h": 1
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "calendars": {
+            "type": "array",
+            "title": "Only these calendar ids (empty = all)"
+          }
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "calendar",
+      "name": "Calendar",
+      "icon": "calendar"
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "refreshMinutes": {
+        "type": "integer",
+        "title": "Refresh every (minutes)",
+        "default": 10,
+        "minimum": 2,
+        "maximum": 240
+      }
+    }
+  },
+  "permissions": [
+    "network:fetch",
+    "storage",
+    "scheduler"
+  ]
+}

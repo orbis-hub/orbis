@@ -1,30 +1,61 @@
 {
   "id": "clock",
   "name": "Clock",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
   "author": "orbis",
   "icon": "clock",
   "minHub": "0.1.0",
-  "entry": { "server": "dist/server.js", "client": "dist/client.js" },
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
   "widgets": [
     {
       "id": "digital",
       "name": "Digital clock",
-      "defaultSize": { "w": 3, "h": 2 },
-      "minSize": { "w": 2, "h": 1 },
+      "defaultSize": {
+        "w": 3,
+        "h": 2
+      },
+      "minSize": {
+        "w": 2,
+        "h": 1
+      },
       "configSchema": {
         "type": "object",
         "properties": {
-          "showSeconds": { "type": "boolean", "title": "Show seconds", "default": false },
-          "showDate": { "type": "boolean", "title": "Show date", "default": true },
-          "hour12": { "type": "boolean", "title": "12-hour clock", "default": false },
-          "timezone": { "type": "string", "title": "Timezone (empty = hub default)", "default": "" },
-          "label": { "type": "string", "title": "Label", "default": "" }
+          "showSeconds": {
+            "type": "boolean",
+            "title": "Show seconds",
+            "default": false
+          },
+          "showDate": {
+            "type": "boolean",
+            "title": "Show date",
+            "default": true
+          },
+          "hour12": {
+            "type": "boolean",
+            "title": "12-hour clock",
+            "default": false
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone (empty = hub default)",
+            "default": ""
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          }
         }
       }
     }
   ],
   "pages": [],
-  "permissions": ["settings:read"]
+  "permissions": [
+    "settings:read"
+  ]
 }

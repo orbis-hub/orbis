@@ -16,6 +16,8 @@ COPY packages/module-tools/package.json packages/module-tools/
 COPY modules/core-clock/package.json modules/core-clock/
 COPY modules/core-todo/package.json modules/core-todo/
 COPY modules/core-weather/package.json modules/core-weather/
+COPY modules/core-calendar/package.json modules/core-calendar/
+COPY modules/core-media/package.json modules/core-media/
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter "./modules/*" build \
@@ -37,6 +39,10 @@ COPY --from=build /app/modules/core-todo/module.json ./modules/core-todo/module.
 COPY --from=build /app/modules/core-todo/dist ./modules/core-todo/dist
 COPY --from=build /app/modules/core-weather/module.json ./modules/core-weather/module.json
 COPY --from=build /app/modules/core-weather/dist ./modules/core-weather/dist
+COPY --from=build /app/modules/core-calendar/module.json ./modules/core-calendar/module.json
+COPY --from=build /app/modules/core-calendar/dist ./modules/core-calendar/dist
+COPY --from=build /app/modules/core-media/module.json ./modules/core-media/module.json
+COPY --from=build /app/modules/core-media/dist ./modules/core-media/dist
 VOLUME ["/data"]
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

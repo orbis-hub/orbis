@@ -95,6 +95,8 @@ export async function buildModule(dir, { watch = false, minify = !watch, onRebui
       platform: "node",
       target: "node22",
       packages: "bundle",
+      // cjs dependencies (debug, etc.) call require() at runtime; give the esm bundle one
+      banner: { js: 'import { createRequire as __orbisCreateRequire } from "node:module"; const require = __orbisCreateRequire(import.meta.url);' },
       external: ["better-sqlite3", "hono", "hono/*"],
     });
   }

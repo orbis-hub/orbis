@@ -1,0 +1,22 @@
+{
+  "name": "@orbis/module-media",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "orbis-module build",
+    "watch": "orbis-module watch --dev=../../apps/hub/data",
+    "typecheck": "tsc --noEmit",
+    "pack:module": "orbis-module pack"
+  },
+  "devDependencies": {
+    "@orbis/module-tools": "workspace:*",
+    "@orbis/sdk": "workspace:*",
+    "@orbis/ui": "workspace:*",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.0.0",
+    "hono": "^4.13.12",
+    "react": "^19.0.0",
+    "typescript": "^5.9.0"
+  }
+}
