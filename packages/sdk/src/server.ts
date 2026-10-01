@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import type { Device, ModuleManifest } from "./index";
+import type { Device, ModuleManifest, ModuleStatus } from "./index";
 
 export type Logger = {
   debug: (msg: string, ...args: unknown[]) => void;
@@ -65,6 +65,8 @@ export type ModuleServerContext<TSettings = Record<string, unknown>> = {
   events: ModuleEvents;
   devices: ModuleDevices;
   settings: ModuleSettings<TSettings>;
+  /** Report setup state: `ctx.status.set({ state: "needs-setup", message: "add an account", action: { label: "open calendar", page: "calendar" } })`. */
+  status: { set(status: ModuleStatus | null): void; get(): ModuleStatus | null };
   /**
    * Hono router mounted at `/api/m/<moduleId>`. Requests are already authenticated.
    * Example: ctx.http.get("/items", (c) => c.json(items))

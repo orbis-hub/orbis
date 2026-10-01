@@ -121,6 +121,7 @@ export default defineModule<Settings>({
       const j = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number; scope: string };
       storage.set("spotify:tokens", { access: j.access_token, refresh: j.refresh_token, expiresAt: Date.now() + j.expires_in * 1000, scope: j.scope } satisfies Tokens);
       logger.info("spotify connected");
+      reportStatus();
       void poll(true);
       return c.redirect(pending.back);
     });
@@ -129,6 +130,7 @@ export default defineModule<Settings>({
       storage.delete("spotify:tokens");
       state = empty();
       events.publish("state", state);
+      reportStatus();
       return c.json({ ok: true });
     });
 
@@ -201,8 +203,17 @@ export default defineModule<Settings>({
     }
 
     const schedule = () => ctx.scheduler.every("poll", (settings.get().pollSeconds ?? 10) * 1000, () => poll(), { immediate: true });
+    const reportStatus = () => {
+      if (!clientId()) ctx.status.set({ state: "needs-setup", message: "add your spotify client id", action: { label: "settings", settings: true } });
+      else if (!tokens()) ctx.status.set({ state: "needs-setup", message: "spotify is not connected yet", action: { label: "connect", page: "media" } });
+      else ctx.status.set({ state: "ok" });
+    };
+    reportStatus();
     schedule();
-    settings.onChange(schedule);
+    settings.onChange(() => {
+      reportStatus();
+      schedule();
+    });
 
     /* ---------- api for clients ---------- */
 
@@ -257,17 +268,26 @@ export default defineModule<Settings>({
       }
       return c.json(out);
     }));
+    const searchCache = new Map<string, { at: number; value: unknown }>();
     http.get("/search", wrap(async (c) => {
-      const q = c.req.query("q")?.trim();
+      const q = c.req.query("q")?.trim().toLowerCase();
       if (!q) return c.json({ tracks: [], albums: [], artists: [], playlists: [] });
-      const r = await api<Record<string, { items: Array<Record<string, unknown>> }>>(`/search?type=track,album,artist,playlist&limit=8&q=${encodeURIComponent(q)}`);
+      const types = (c.req.query("types") ?? "track,album,artist,playlist").split(",").filter((t) => ["track", "album", "artist", "playlist"].includes(t)).join(",") || "track";
+      const limit = Math.min(10, Math.max(1, Number(c.req.query("limit") ?? 8)));
+      const key = `${types}|${limit}|${q}`;
+      const hit = searchCache.get(key);
+      if (hit && Date.now() - hit.at < 5 * 60_000) return c.json(hit.value);
+      if (searchCache.size > 200) searchCache.clear();
+      const r = await api<Record<string, { items: Array<Record<string, unknown>> }>>(`/search?type=${types}&limit=${limit}&q=${encodeURIComponent(q)}`);
       const simple = (x: Record<string, unknown>) => ({ id: String(x.id), name: String(x.name ?? ""), uri: String(x.uri ?? ""), cover: ((x.images as Array<{ url: string }> | undefined) ?? [])[0]?.url ?? null, sub: ((x.artists as Array<{ name: string }> | undefined) ?? []).map((a) => a.name).join(", ") || String((x.owner as { display_name?: string } | undefined)?.display_name ?? "") });
-      return c.json({
+      const value = {
         tracks: (r?.tracks?.items ?? []).map((t) => mapTrack(t)).filter(Boolean),
         albums: (r?.albums?.items ?? []).filter(Boolean).map(simple),
         artists: (r?.artists?.items ?? []).filter(Boolean).map(simple),
         playlists: (r?.playlists?.items ?? []).filter(Boolean).map(simple),
-      });
+      };
+      searchCache.set(key, { at: Date.now(), value });
+      return c.json(value);
     }));
 
     logger.info(`media ready (spotify ${tokens() ? "connected" : "not connected"})`);

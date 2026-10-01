@@ -249,12 +249,20 @@ export default defineModule<{ refreshMinutes?: number }>({
         next.events.sort((a, b) => a.start.localeCompare(b.start));
         state = next;
         storage.set("state", state);
+        reportStatus();
         events.publish("updated", { events: state.events.length, errors: Object.keys(state.errors).length });
       })().finally(() => (refreshing = null));
       return refreshing;
     }
 
     const schedule = () => ctx.scheduler.every("refresh", (ctx.settings.get().refreshMinutes ?? 10) * 60_000, refresh, { immediate: true });
+    const reportStatus = () => {
+      const list = accounts();
+      if (list.length === 0) ctx.status.set({ state: "needs-setup", message: "no calendar accounts yet", action: { label: "add account", page: "calendar" } });
+      else if (Object.keys(state.errors).length) ctx.status.set({ state: "warning", message: `${Object.keys(state.errors).length} account(s) failing: ${Object.values(state.errors)[0]}`, action: { label: "open calendar", page: "calendar" } });
+      else ctx.status.set({ state: "ok" });
+    };
+    reportStatus();
     schedule();
     ctx.settings.onChange(schedule);
 
@@ -275,6 +283,7 @@ export default defineModule<{ refreshMinutes?: number }>({
         hiddenCalendars: [],
       };
       saveAccounts([...accounts(), acc]);
+      reportStatus();
       void refresh();
       return c.json(publicAccount(acc), 201);
     });
@@ -296,6 +305,7 @@ export default defineModule<{ refreshMinutes?: number }>({
     });
     http.delete("/accounts/:id", (c) => {
       saveAccounts(accounts().filter((a) => a.id !== c.req.param("id")));
+      reportStatus();
       void refresh();
       return c.json({ ok: true });
     });

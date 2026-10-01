@@ -176,36 +176,174 @@ function Volume({ state }: { state: State }) {
   );
 }
 
+/* ---------- search with autocomplete ---------- */
+
+type SearchResults = { tracks: Track[]; albums: Simple[]; artists: Simple[]; playlists: Simple[] };
+const searchMemo = new Map<string, SearchResults>();
+
+function SearchBox({ types = ["track", "playlist", "album"], compact, onPlayed }: { types?: string[]; compact?: boolean; onPlayed?: () => void }) {
+  const api = useModuleApi();
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<SearchResults | null>(null);
+  const [active, setActive] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const typeKey = types.join(",");
+
+  useEffect(() => {
+    const term = q.trim().toLowerCase();
+    clearTimeout(timer.current);
+    if (term.length < 2) {
+      setRes(null);
+      return;
+    }
+    const key = `${typeKey}|${term}`;
+    const hit = searchMemo.get(key);
+    if (hit) {
+      setRes(hit);
+      setOpen(true);
+      return;
+    }
+    timer.current = setTimeout(async () => {
+      setBusy(true);
+      try {
+        const r = await api<SearchResults>(`/search?q=${encodeURIComponent(term)}&types=${typeKey}&limit=5`);
+        searchMemo.set(key, r);
+        if (searchMemo.size > 100) searchMemo.delete(searchMemo.keys().next().value!);
+        setRes(r);
+        setOpen(true);
+        setActive(0);
+      } catch {
+        /* ignore */
+      } finally {
+        setBusy(false);
+      }
+    }, 280);
+    return () => clearTimeout(timer.current);
+  }, [q, typeKey, api]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  type Item = { key: string; kind: string; name: string; sub: string; cover: string | null; uri: string };
+  const items: Item[] = [];
+  if (res) {
+    for (const t of res.tracks) items.push({ key: "t" + t.id, kind: "track", name: t.title, sub: t.artists.join(", "), cover: t.cover, uri: t.uri });
+    for (const p of res.playlists) items.push({ key: "p" + p.id, kind: "playlist", name: p.name, sub: p.sub, cover: p.cover, uri: p.uri });
+    for (const a of res.albums) items.push({ key: "a" + a.id, kind: "album", name: a.name, sub: a.sub, cover: a.cover, uri: a.uri });
+    for (const a of res.artists) items.push({ key: "r" + a.id, kind: "artist", name: a.name, sub: "artist", cover: a.cover, uri: a.uri });
+  }
+  const play = async (it: Item) => {
+    setOpen(false);
+    setQ("");
+    await api("/play", { method: "POST", json: it.kind === "track" ? { uri: it.uri } : { contextUri: it.uri } }).catch(() => undefined);
+    onPlayed?.();
+  };
+  const queue = async (it: Item) => {
+    await api("/queue", { method: "POST", json: { uri: it.uri } }).catch(() => undefined);
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Icon name="search" size={12} className="soft" style={{ flex: "none" }} />
+        <input
+          className="input"
+          value={q}
+          placeholder={compact ? "search…" : `search ${types.join(", ")}…`}
+          style={{ padding: compact ? "3px 6px" : "4px 8px", fontSize: 12 }}
+          onChange={(e) => setQ(e.target.value)}
+          onFocus={() => res && setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(items.length - 1, a + 1)); setOpen(true); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(0, a - 1)); }
+            else if (e.key === "Enter" && items[active]) { e.preventDefault(); void play(items[active]!); }
+            else if (e.key === "Escape") setOpen(false);
+          }}
+        />
+        {busy ? <span className="spinner" style={{ flex: "none" }} /> : null}
+      </div>
+      {open && items.length ? (
+        <div className="menu scroll-y" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, maxHeight: 260, zIndex: 60, padding: 2 }}>
+          {items.map((it, i) => (
+            <div key={it.key} className={cx("menu-item")} style={{ padding: "4px 8px", gap: 8, background: i === active ? "var(--accent-soft)" : undefined, cursor: "pointer" }} onMouseEnter={() => setActive(i)} onClick={() => void play(it)}>
+              <div style={{ width: 24, height: 24, flex: "none", background: "var(--paper-2)", border: "1px solid var(--line)", overflow: "hidden" }}>{it.cover ? <img src={it.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+                <div className="soft" style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
+              </div>
+              <Chip style={{ fontSize: 9 }}>{it.kind}</Chip>
+              {it.kind === "track" ? (
+                <button type="button" className="btn btn-icon btn-sm btn-ghost" title="add to queue" aria-label="add to queue" onClick={(e) => { e.stopPropagation(); void queue(it); }}>
+                  <Icon name="plus" size={11} />
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /* ---------- widgets ---------- */
 
-function NowPlayingWidget({ config, size }: WidgetProps<{ showDevice?: boolean; showControls?: boolean }>) {
+type NowPlayingConfig = {
+  showCover?: boolean;
+  showTitle?: boolean;
+  showProgress?: boolean;
+  showControls?: boolean;
+  showDevice?: boolean;
+  showVolume?: boolean;
+  showSearch?: boolean;
+  searchTypes?: string[];
+  layout?: "auto" | "horizontal" | "vertical";
+};
+
+function NowPlayingWidget({ config, size }: WidgetProps<NowPlayingConfig>) {
   const { state, progress } = usePlayer();
   const api = useModuleApi();
   if (!state?.connected) return <ConnectHint state={state} />;
   const t = state.track;
-  const vertical = size.height > size.width * 0.95;
+  const on = (k: keyof NowPlayingConfig, d = true) => (config[k] === undefined ? d : !!config[k]);
+  const vertical = config.layout === "vertical" || (config.layout !== "horizontal" && size.height > size.width * 0.95);
   const compact = !vertical && size.height < 150;
-  const cover = vertical ? Math.max(60, Math.min(size.width - 8, size.height - 130)) : Math.max(44, Math.min(size.height - 24, size.width * 0.3, 160));
+  const searchH = on("showSearch") ? 34 : 0;
+  const cover = vertical ? Math.max(48, Math.min(size.width - 8, size.height - 130 - searchH)) : Math.max(44, Math.min(size.height - 24 - searchH, size.width * 0.3, 160));
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: vertical ? "column" : "row", gap: 12, alignItems: vertical ? "center" : "stretch", textAlign: vertical ? "center" : undefined }}>
-      <div style={{ width: cover, height: cover, flex: "none", border: "1.5px solid var(--line)", boxShadow: "3px 3px 0 var(--line)", background: "var(--paper-2)", alignSelf: "center", overflow: "hidden" }}>
-        {t?.cover ? <img src={t.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", imageRendering: "auto", display: "block" }} /> : <Icon name="music" size={cover * 0.5} className="soft" style={{ margin: cover * 0.25 }} />}
-      </div>
-      <div style={{ flex: 1, minWidth: 0, width: vertical ? "100%" : undefined, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6 }}>
-        {t ? (
-          <div style={{ minWidth: 0 }}>
-            <div className="pixel" style={{ fontSize: compact ? 13 : 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
-            <div className="soft" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.artists.join(", ")}{!compact && t.album ? ` · ${t.album}` : ""}</div>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+      {on("showSearch") ? <SearchBox types={config.searchTypes?.length ? config.searchTypes : ["track", "playlist", "album"]} compact={compact || size.width < 260} /> : null}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: vertical ? "column" : "row", gap: 12, alignItems: vertical ? "center" : "stretch", textAlign: vertical ? "center" : undefined }}>
+        {on("showCover") ? (
+          <div style={{ width: cover, height: cover, flex: "none", border: "1.5px solid var(--line)", boxShadow: "3px 3px 0 var(--line)", background: "var(--paper-2)", alignSelf: "center", overflow: "hidden" }}>
+            {t?.cover ? <img src={t.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Icon name="music" size={cover * 0.5} className="soft" style={{ margin: cover * 0.25 }} />}
           </div>
-        ) : (
-          <div className="soft" style={{ fontSize: 12 }}>nothing playing{state.device ? ` on ${state.device.name}` : ""}</div>
-        )}
-        {t ? <Progress state={state} progress={progress} onSeek={(ms) => void api("/seek", { method: "POST", json: { positionMs: ms } })} /> : null}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: vertical ? "center" : undefined }}>
-          {config.showControls !== false ? <Controls state={state} size={compact ? "sm" : "md"} /> : null}
-          {config.showDevice !== false && !compact ? <DevicePicker state={state} compact /> : null}
+        ) : null}
+        <div style={{ flex: 1, minWidth: 0, width: vertical ? "100%" : undefined, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6 }}>
+          {on("showTitle") ? (
+            t ? (
+              <div style={{ minWidth: 0 }}>
+                <div className="pixel" style={{ fontSize: compact ? 13 : 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
+                <div className="soft" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.artists.join(", ")}{!compact && t.album ? ` · ${t.album}` : ""}</div>
+              </div>
+            ) : (
+              <div className="soft" style={{ fontSize: 12 }}>nothing playing{state.device ? ` on ${state.device.name}` : ""}</div>
+            )
+          ) : null}
+          {on("showProgress") && t ? <Progress state={state} progress={progress} onSeek={(ms) => void api("/seek", { method: "POST", json: { positionMs: ms } })} /> : null}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: vertical ? "center" : undefined }}>
+            {on("showControls") ? <Controls state={state} size={compact ? "sm" : "md"} /> : null}
+            {on("showVolume", false) ? <Volume state={state} /> : null}
+            {on("showDevice") && !compact ? <DevicePicker state={state} compact /> : null}
+          </div>
+          {state.error ? <div style={{ color: "var(--dnd)", fontSize: 10 }}>{state.error}</div> : null}
         </div>
-        {state.error ? <div style={{ color: "var(--dnd)", fontSize: 10 }}>{state.error}</div> : null}
       </div>
     </div>
   );

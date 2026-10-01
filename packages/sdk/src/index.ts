@@ -60,6 +60,14 @@ export type Dashboard = {
   canEdit: boolean;
 };
 
+/** What a module reports about itself: shown on the module card and counted in the sidebar. */
+export type ModuleStatus = {
+  state: "ok" | "needs-setup" | "warning" | "error";
+  message?: string;
+  /** where the user should go to fix it */
+  action?: { label: string; page?: string; settings?: boolean };
+};
+
 export type InstalledModule = {
   id: string;
   version: string;
@@ -70,6 +78,7 @@ export type InstalledModule = {
   installedAt: string;
   /** changes on every (re)load; clients use it to bust their bundle cache */
   loadedAt: string | null;
+  status: ModuleStatus | null;
 };
 
 export type RegistryEntry = {

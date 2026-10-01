@@ -83,7 +83,7 @@ function Sidebar() {
           );
         })}
         <div className="nav-group">system</div>
-        <NavLink href="/modules/" icon="blocks" label="modules" pathname={pathname} onClick={close} />
+        <NavLink href="/modules/" icon="blocks" label="modules" pathname={pathname} onClick={close} badge={(modules.data ?? []).filter((m) => m.enabled && (m.error || (m.status && m.status.state !== "ok"))).length || undefined} />
         <NavLink href="/devices/" icon="wifi" label="devices" pathname={pathname} onClick={close} />
         <NavLink href="/accounts/" icon="users" label="accounts" pathname={pathname} onClick={close} />
         <NavLink href="/settings/" icon="sliders" label="settings" pathname={pathname} onClick={close} />
@@ -110,12 +110,13 @@ function Sidebar() {
   );
 }
 
-function NavLink({ href, icon, label, pathname, onClick }: { href: string; icon: string; label: string; pathname: string | null; onClick: () => void }) {
+function NavLink({ href, icon, label, pathname, onClick, badge }: { href: string; icon: string; label: string; pathname: string | null; onClick: () => void; badge?: number }) {
   const active = pathname === href || pathname === href.replace(/\/$/, "");
   return (
-    <Link href={href} className="nav-item" aria-current={active ? "page" : undefined} onClick={onClick} title={label}>
+    <Link href={href} className="nav-item" aria-current={active ? "page" : undefined} onClick={onClick} title={badge ? `${label} · ${badge} need attention` : label} style={{ position: "relative" }}>
       <Icon name={icon} className="ico" />
-      <span>{label}</span>
+      <span style={{ flex: 1 }}>{label}</span>
+      {badge ? <span className="chip chip-warn" style={{ fontSize: 9, padding: "0 5px", lineHeight: "14px" }}>{badge}</span> : null}
     </Link>
   );
 }

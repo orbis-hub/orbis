@@ -1,7 +1,7 @@
 import { existsSync, statSync, watch, type FSWatcher } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { InstalledModule, ModuleManifest } from "@orbis/sdk";
+import type { InstalledModule, ModuleManifest, ModuleStatus } from "@orbis/sdk";
 import type { ModuleServer } from "@orbis/sdk/server";
 import { eq } from "drizzle-orm";
 import { config } from "../config";
@@ -28,6 +28,7 @@ export type ModuleState = {
   loaded: boolean;
   loadedAt: string | null;
   error: string | null;
+  status: ModuleStatus | null;
   server?: ModuleServer;
   built?: BuiltContext;
 };
@@ -43,7 +44,7 @@ export function get(id: string) {
 }
 
 export function toPublic(s: ModuleState): InstalledModule {
-  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: s.manifest, error: s.error, installedAt: s.installedAt, loadedAt: s.loadedAt };
+  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: s.manifest, error: s.error, installedAt: s.installedAt, loadedAt: s.loadedAt, status: s.status };
 }
 
 /* ---------- persistence ---------- */
@@ -90,6 +91,7 @@ function upsertFromDisk(d: DiscoveredModule): ModuleState {
     loaded: prev?.loaded ?? false,
     loadedAt: prev?.loadedAt ?? null,
     error: null,
+    status: prev?.status ?? null,
     server: prev?.server,
     built: prev?.built,
   };
@@ -129,6 +131,10 @@ export async function load(id: string): Promise<ModuleState> {
       s.dir,
       () => s.settings,
       (patch) => void updateSettings(id, patch),
+      (status) => {
+        s.status = status;
+        broadcast({ type: "modules:changed" });
+      },
     );
     await server.setup(built.ctx);
     s.server = server;
@@ -157,6 +163,7 @@ export async function unload(id: string) {
   s.server = undefined;
   s.built = undefined;
   s.loaded = false;
+  s.status = null;
   log.info({ id }, "module unloaded");
 }
 
@@ -252,6 +259,7 @@ export async function bootstrap() {
       installedAt: row.installedAt,
       loaded: false,
       loadedAt: null,
+      status: null,
       error: "module files missing – reinstall or remove",
     });
   }

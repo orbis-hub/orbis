@@ -17,7 +17,7 @@
       "description": "Cover, track, progress, controls and the device it plays on.",
       "defaultSize": {
         "w": 4,
-        "h": 3
+        "h": 4
       },
       "minSize": {
         "w": 2,
@@ -26,15 +26,64 @@
       "configSchema": {
         "type": "object",
         "properties": {
-          "showDevice": {
+          "showCover": {
             "type": "boolean",
-            "title": "Show device picker",
+            "title": "Cover art",
+            "default": true
+          },
+          "showTitle": {
+            "type": "boolean",
+            "title": "Title & artist",
+            "default": true
+          },
+          "showProgress": {
+            "type": "boolean",
+            "title": "Progress bar",
             "default": true
           },
           "showControls": {
             "type": "boolean",
-            "title": "Show controls",
+            "title": "Playback controls",
             "default": true
+          },
+          "showDevice": {
+            "type": "boolean",
+            "title": "Device picker",
+            "default": true
+          },
+          "showVolume": {
+            "type": "boolean",
+            "title": "Volume slider",
+            "default": false
+          },
+          "showSearch": {
+            "type": "boolean",
+            "title": "Search bar (autocomplete)",
+            "default": true
+          },
+          "searchTypes": {
+            "type": "array",
+            "title": "Search in (track, playlist, album, artist)",
+            "default": [
+              "track",
+              "playlist",
+              "album"
+            ]
+          },
+          "layout": {
+            "type": "string",
+            "title": "Layout",
+            "enum": [
+              "auto",
+              "horizontal",
+              "vertical"
+            ],
+            "enumNames": [
+              "auto (by size)",
+              "horizontal",
+              "vertical"
+            ],
+            "default": "auto"
           }
         }
       }

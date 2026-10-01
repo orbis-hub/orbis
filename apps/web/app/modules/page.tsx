@@ -3,6 +3,7 @@
 import type { InstalledModule } from "@orbis/sdk";
 import type { SettingsProps } from "@orbis/sdk/client";
 import { Button, Chip, Empty, Field, Icon, Input, Modal, Switch, Tab, Tabs, useToast, Window } from "@orbis/ui";
+import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
 import { SchemaForm, schemaDefaults, type JsonSchema } from "@/components/SchemaForm";
 import { Shell } from "@/components/Shell";
@@ -76,11 +77,26 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
                 <Chip tone="bad" title={mod.error}>
                   error
                 </Chip>
+              ) : mod.status && mod.status.state !== "ok" ? (
+                <Chip tone={mod.status.state === "error" ? "bad" : "warn"}>{mod.status.state === "needs-setup" ? "needs setup" : mod.status.state}</Chip>
               ) : mod.enabled ? (
                 <Chip tone="ok">running</Chip>
               ) : null}
             </div>
             {mod.error ? <div style={{ color: "var(--dnd)", fontSize: 11, overflowWrap: "anywhere" }}>{mod.error}</div> : null}
+            {!mod.error && mod.status && mod.status.state !== "ok" ? (
+              <div className="win win-dashed win-flat" style={{ padding: "6px 8px", fontSize: 11, display: "flex", gap: 8, alignItems: "center", flexDirection: "row", borderColor: mod.status.state === "error" ? "var(--dnd)" : "var(--idle)" }}>
+                <Icon name="warning-diamond" size={12} style={{ color: mod.status.state === "error" ? "var(--dnd)" : "var(--idle)", flex: "none" }} />
+                <span style={{ flex: 1 }}>{mod.status.message ?? "this module needs attention"}</span>
+                {mod.status.action ? (
+                  mod.status.action.page ? (
+                    <Link href={`/m/?id=${mod.id}&page=${mod.status.action.page}`} className="btn btn-sm">{mod.status.action.label}</Link>
+                  ) : (
+                    <Button size="sm" onClick={() => onSettings(mod)}>{mod.status.action.label}</Button>
+                  )
+                ) : null}
+              </div>
+            ) : null}
             {mod.manifest.permissions.length ? (
               <div className="soft" style={{ fontSize: 11 }}>
                 permissions: {mod.manifest.permissions.join(", ")}

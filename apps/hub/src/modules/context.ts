@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { ModuleManifest } from "@orbis/sdk";
+import type { ModuleManifest, ModuleStatus } from "@orbis/sdk";
 import type { Logger, ModuleDevices, ModuleEvents, ModuleScheduler, ModuleServerContext, ModuleSettings, ModuleStorage } from "@orbis/sdk/server";
 import { and, eq, like } from "drizzle-orm";
 import { Hono } from "hono";
@@ -17,7 +17,13 @@ export type BuiltContext = {
   emitSettings: (s: Record<string, unknown>) => void;
 };
 
-export function buildContext(manifest: ModuleManifest, dir: string, getSettings: () => Record<string, unknown>, setSettings: (patch: Record<string, unknown>) => void): BuiltContext {
+export function buildContext(
+  manifest: ModuleManifest,
+  dir: string,
+  getSettings: () => Record<string, unknown>,
+  setSettings: (patch: Record<string, unknown>) => void,
+  onStatus: (status: ModuleStatus | null) => void = () => {},
+): BuiltContext {
   const id = manifest.id;
   const log = childLog(`mod:${id}`);
   const disposers: Array<() => void> = [];
@@ -152,6 +158,17 @@ export function buildContext(manifest: ModuleManifest, dir: string, getSettings:
 
   const http = new Hono();
 
+  let currentStatus: ModuleStatus | null = null;
+  const statusApi = {
+    set(s: ModuleStatus | null) {
+      const sig = JSON.stringify(s);
+      if (sig === JSON.stringify(currentStatus)) return;
+      currentStatus = s;
+      onStatus(s);
+    },
+    get: () => currentStatus,
+  };
+
   const ctx: ModuleServerContext = {
     manifest,
     dir,
@@ -163,6 +180,7 @@ export function buildContext(manifest: ModuleManifest, dir: string, getSettings:
     events,
     devices: deviceApi,
     settings: settingsApi,
+    status: statusApi,
     http,
     fetch: globalThis.fetch.bind(globalThis),
   };
