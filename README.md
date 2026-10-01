@@ -33,6 +33,7 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **weather** | current, forecast | hours and 7 days, open-meteo, no api key |
 | **calendar** | agenda, month, next up | ics feeds + caldav (google, icloud, nextcloud, fastmail …) |
 | **media** | now playing, playback devices | spotify: search, playlists, queue, pick the device it plays on |
+| **home assistant** | switch/light, sensor + sparkline, climate, scenes, entity list | all your ha entities, live over its websocket |
 
 plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 
@@ -72,10 +73,11 @@ pnpm web     # http://localhost:3000
 ## roadmap
 
 - [x] hub, web, sdk, module store, device scanner, accounts, installer
-- [x] clock · todo · weather · calendar · media
-- [ ] home assistant module, shelly/hue direct, notifications
+- [x] clock · todo · weather · calendar · media · home assistant
+- [x] notifications (bell, ntfy, telegram), backup & restore, kiosk mode, dashboard accents
+- [x] e-ink: hub renderer, firmware for inkplate / lilygo / waveshare, web flasher
+- [ ] shelly/hue direct, more media providers
 - [ ] android apk, ios
-- [ ] e-ink renderer + esp32 sketch
 - [ ] worker isolation for third-party modules, npm packages for the sdk
 
 mit licensed. made in würzburg by [vensin](https://vensin.dev).

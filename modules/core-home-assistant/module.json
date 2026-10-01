@@ -1,0 +1,198 @@
+{
+  "id": "home-assistant",
+  "name": "Home Assistant",
+  "version": "0.1.2",
+  "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket.",
+  "author": "orbis",
+  "icon": "home",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "toggle",
+      "name": "Switch / light",
+      "description": "One entity with its state and a big toggle. Lights get brightness.",
+      "defaultSize": {
+        "w": 2,
+        "h": 2
+      },
+      "minSize": {
+        "w": 1,
+        "h": 1
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "title": "Entity id",
+            "placeholder": "light.living_room"
+          },
+          "name": {
+            "type": "string",
+            "title": "Label (empty = HA name)"
+          }
+        }
+      }
+    },
+    {
+      "id": "sensor",
+      "name": "Sensor",
+      "description": "A value with unit, plus a small history sparkline.",
+      "defaultSize": {
+        "w": 2,
+        "h": 2
+      },
+      "minSize": {
+        "w": 1,
+        "h": 1
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "title": "Entity id",
+            "placeholder": "sensor.temperature"
+          },
+          "name": {
+            "type": "string",
+            "title": "Label"
+          },
+          "decimals": {
+            "type": "integer",
+            "title": "Decimals",
+            "default": 1,
+            "minimum": 0,
+            "maximum": 3
+          },
+          "sparkline": {
+            "type": "boolean",
+            "title": "Show 24h sparkline",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "id": "climate",
+      "name": "Climate",
+      "description": "Current and target temperature with +/- and mode.",
+      "defaultSize": {
+        "w": 3,
+        "h": 2
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "title": "Entity id",
+            "placeholder": "climate.living_room"
+          },
+          "name": {
+            "type": "string",
+            "title": "Label"
+          },
+          "step": {
+            "type": "number",
+            "title": "Step",
+            "default": 0.5
+          }
+        }
+      }
+    },
+    {
+      "id": "scenes",
+      "name": "Scenes & scripts",
+      "description": "Buttons that activate scenes or run scripts.",
+      "defaultSize": {
+        "w": 3,
+        "h": 2
+      },
+      "minSize": {
+        "w": 2,
+        "h": 1
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "entities": {
+            "type": "array",
+            "title": "Scene / script entity ids (comma separated)"
+          }
+        }
+      }
+    },
+    {
+      "id": "group",
+      "name": "Entity list",
+      "description": "Several entities as compact rows with toggles and values.",
+      "defaultSize": {
+        "w": 3,
+        "h": 4
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "entities": {
+            "type": "array",
+            "title": "Entity ids (comma separated)"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          }
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "entities",
+      "name": "Home Assistant",
+      "icon": "home"
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "title": "Home Assistant url",
+        "placeholder": "http://homeassistant.local:8123",
+        "format": "url"
+      },
+      "token": {
+        "type": "string",
+        "title": "Long-lived access token",
+        "format": "password",
+        "description": "HA → your profile → security → long-lived access tokens"
+      }
+    }
+  },
+  "permissions": [
+    "network:fetch",
+    "storage",
+    "scheduler",
+    "devices:read",
+    "notifications"
+  ],
+  "discovery": {
+    "mdns": [
+      "_home-assistant._tcp"
+    ],
+    "hostname": "homeassistant"
+  }
+}

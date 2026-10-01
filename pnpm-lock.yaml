@@ -387,6 +387,30 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  modules/core-home-assistant:
+    devDependencies:
+      '@orbis/module-tools':
+        specifier: workspace:*
+        version: link:../../packages/module-tools
+      '@orbis/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@orbis/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.0
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.3.0
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   modules/core-media:
     devDependencies:
       '@orbis/module-tools':
