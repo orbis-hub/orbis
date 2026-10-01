@@ -15,14 +15,14 @@ struct TouchPoint {
 #include <Inkplate.h>
 extern Inkplate epd;
 inline const char* touchBegin() {
-  if (epd.tsInit(true)) return "inkplate";
+  if (epd.touchscreen.init(true)) return "inkplate";
   return nullptr;
 }
 inline TouchPoint touchRead() {
   TouchPoint p;
-  if (epd.tsAvailable()) {
+  if (epd.touchscreen.available()) {
     uint16_t x[2], y[2];
-    uint8_t n = epd.tsGetData(x, y);
+    uint8_t n = epd.touchscreen.getData(x, y);
     if (n > 0) {
       p.pressed = true;
       p.x = x[0];
@@ -31,7 +31,7 @@ inline TouchPoint touchRead() {
   }
   return p;
 }
-inline void touchSleep() { epd.tsShutdown(); }
+inline void touchSleep() { epd.touchscreen.shutdown(); }
 
 #elif defined(ORBIS_TOUCH_I2C)
 #include <Wire.h>
@@ -40,7 +40,7 @@ inline void touchSleep() { epd.tsShutdown(); }
 #define ORBIS_SCL 22
 #endif
 static uint8_t touchAddr = 0;
-static enum { TOUCH_NONE, TOUCH_GT911, TOUCH_FT6X36 } touchKind = TOUCH_NONE;
+static enum { TOUCH_NONE, TOUCH_GT911, TOUCH_FT6X36 } touchCtl = TOUCH_NONE;
 
 static bool i2cPing(uint8_t addr) {
   Wire.beginTransmission(addr);
@@ -79,7 +79,7 @@ inline const char* touchBegin() {
   for (uint8_t a : {0x5D, 0x14}) {
     if (i2cPing(a)) {
       touchAddr = a;
-      touchKind = TOUCH_GT911;
+      touchCtl = TOUCH_GT911;
       uint8_t id[4] = {0};
       gtRead(0x8140, id, 4);
       Serial.printf("[touch] gt911 at 0x%02X id %c%c%c%c\n", a, id[0], id[1], id[2], id[3]);
@@ -88,7 +88,7 @@ inline const char* touchBegin() {
   }
   if (i2cPing(0x38)) {
     touchAddr = 0x38;
-    touchKind = TOUCH_FT6X36;
+    touchCtl = TOUCH_FT6X36;
     Serial.println("[touch] ft6x36 at 0x38");
     return "ft6x36";
   }
@@ -98,7 +98,7 @@ inline const char* touchBegin() {
 
 inline TouchPoint touchRead() {
   TouchPoint p;
-  if (touchKind == TOUCH_GT911) {
+  if (touchCtl == TOUCH_GT911) {
     uint8_t st = 0;
     if (!gtRead(0x814E, &st, 1)) return p;
     if (st & 0x80) {
@@ -112,7 +112,7 @@ inline TouchPoint touchRead() {
       }
       gtWrite(0x814E, 0);  // clear status
     }
-  } else if (touchKind == TOUCH_FT6X36) {
+  } else if (touchCtl == TOUCH_FT6X36) {
     uint8_t d[7];
     if (!ftRead(0x02, d, 7)) return p;
     uint8_t n = d[0] & 0x0F;
@@ -125,7 +125,7 @@ inline TouchPoint touchRead() {
   return p;
 }
 inline void touchSleep() {
-  if (touchKind == TOUCH_GT911) gtWrite(0x8040, 0x05);  // sleep command
+  if (touchCtl == TOUCH_GT911) gtWrite(0x8040, 0x05);  // sleep command
 }
 
 #else

@@ -54,11 +54,13 @@ export const dashboardRoutes = new Hono()
   .use(requireAuth)
   .get("/", (c) => c.json(dash.listDashboards(c.var.user)))
   .post("/", async (c) => {
-    const body = await json(c, z.object({ name: z.string().min(1).max(64), icon: z.string().optional(), shared: z.boolean().optional() }));
+    const body = await json(c, z.object({ name: z.string().min(1).max(64), icon: z.string().optional(), shared: z.boolean().optional(), accent: z.string().max(32).nullable().optional() }));
     if (!body) return c.json({ error: "invalid input" }, 400);
     // members create private dashboards by default, admins shared ones
     const shared = body.shared ?? isAdminRole(c.var.user.role);
-    return c.json(dash.createDashboard(body.name, body.icon ?? null, c.var.user, shared), 201);
+    const created = dash.createDashboard(body.name, body.icon ?? null, c.var.user, shared);
+    if (body.accent) dash.updateDashboard(created.id, { accent: body.accent }, c.var.user);
+    return c.json(dash.getDashboard(created.id, c.var.user) ?? created, 201);
   })
   .post("/reorder", async (c) => {
     const body = await json(c, z.object({ ids: z.array(z.string()) }));
@@ -72,7 +74,7 @@ export const dashboardRoutes = new Hono()
     return d ? c.json(d) : c.json({ error: "not found" }, 404);
   })
   .patch("/:id", async (c) => {
-    const body = await json(c, z.object({ name: z.string().min(1).max(64).optional(), icon: z.string().nullable().optional(), shared: z.boolean().optional(), ownerId: z.string().nullable().optional(), access: z.array(z.string()).optional() }));
+    const body = await json(c, z.object({ name: z.string().min(1).max(64).optional(), icon: z.string().nullable().optional(), shared: z.boolean().optional(), ownerId: z.string().nullable().optional(), access: z.array(z.string()).optional(), accent: z.string().max(32).nullable().optional() }));
     if (!body) return c.json({ error: "invalid input" }, 400);
     try {
       dash.assertEdit(c.req.param("id"), c.var.user);

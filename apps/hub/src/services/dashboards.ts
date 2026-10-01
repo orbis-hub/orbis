@@ -34,6 +34,7 @@ function loadAll(viewer?: AuthUser): Dashboard[] {
       shared: d.shared,
       access: grants,
       canEdit,
+      accent: d.accent,
       widgets: widgets.filter((w) => w.dashboardId === d.id).map(rowToWidget),
     };
   });
@@ -80,13 +81,14 @@ export function createDashboard(name: string, icon: string | null, owner?: AuthU
   return getDashboard(id, owner)!;
 }
 
-export function updateDashboard(id: string, patch: { name?: string; icon?: string | null; sort?: number; shared?: boolean; ownerId?: string | null }, user?: AuthUser) {
+export function updateDashboard(id: string, patch: { name?: string; icon?: string | null; sort?: number; shared?: boolean; ownerId?: string | null; accent?: string | null }, user?: AuthUser) {
   const set: Partial<typeof schema.dashboards.$inferInsert> = {};
   if (patch.name !== undefined) set.name = patch.name;
   if (patch.icon !== undefined) set.icon = patch.icon;
   if (patch.sort !== undefined) set.sort = patch.sort;
   if (patch.shared !== undefined) set.shared = patch.shared;
   if (patch.ownerId !== undefined) set.ownerId = patch.ownerId;
+  if (patch.accent !== undefined) set.accent = patch.accent;
   getDb().update(schema.dashboards).set(set).where(eq(schema.dashboards.id, id)).run();
   broadcast({ type: "dashboards:changed", dashboardId: id });
   return getDashboard(id, user);
