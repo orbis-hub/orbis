@@ -6,7 +6,7 @@
       "name": "Clock",
       "description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "time",
         "builtin"
@@ -20,7 +20,7 @@
       "name": "Todo",
       "description": "Lists and tasks with due dates. A widget per list plus a full page.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "productivity",
         "builtin"
@@ -34,7 +34,7 @@
       "name": "Weather",
       "description": "Current conditions and forecast from Open-Meteo. No API key needed.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "weather",
         "builtin"
@@ -48,7 +48,7 @@
       "name": "Calendar",
       "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail …).",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "calendar",
         "builtin"
@@ -62,7 +62,7 @@
       "name": "Media",
       "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "media",
         "spotify",
@@ -80,7 +80,7 @@
       "name": "Home Assistant",
       "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "smart home",
         "builtin"
@@ -94,7 +94,7 @@
       "name": "Notes",
       "description": "Plain notes with a little markdown. A pinned note on the dashboard, a page to write.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "productivity",
         "builtin"
@@ -108,7 +108,7 @@
       "name": "Countdown",
       "description": "Big number counting down to a date. Client-only, one widget per countdown.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "fun",
         "builtin"
@@ -122,7 +122,7 @@
       "name": "Hub status",
       "description": "cpu, memory, disk, uptime, database size, loaded modules.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.2",
+      "latest": "0.1.3",
       "tags": [
         "system",
         "builtin"
