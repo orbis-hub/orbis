@@ -6,8 +6,8 @@
   "scripts": {
     "build": "orbis-module build",
     "watch": "orbis-module watch --dev=../../apps/hub/data",
-    "pack": "orbis-module pack",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pack:module": "orbis-module pack"
   },
   "devDependencies": {
     "@orbis/module-tools": "workspace:*",

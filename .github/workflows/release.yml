@@ -1,0 +1,66 @@
+name: release
+
+# tag `v0.2.0` → docker image ghcr.io/orbis-hub/orbis:0.2.0 + :latest
+# tag `modules-v0.2.0` → github release with clock.tgz, todo.tgz, weather.tgz (what registry/index.json points at)
+on:
+  push:
+    tags: ["v*", "modules-v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  modules:
+    if: startsWith(github.ref_name, 'modules-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 12 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "./modules/*" build
+      - name: pack
+        run: |
+          mkdir -p out
+          for d in modules/*/; do
+            id=$(node -p "require('./$d/module.json').id")
+            node packages/module-tools/bin/orbis-module.mjs pack "$d" --out="out/$id.tgz"
+          done
+          ls -la out
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.tgz
+          generate_release_notes: true
+
+  docker:
+    if: startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
