@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@12.8.1",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
@@ -19,6 +21,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "prettier": "^3.6.0",
+    "sharp": "^0.35.5",
     "turbo": "^2.5.0",
     "typescript": "^5.9.0"
   }

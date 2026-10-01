@@ -1,6 +1,8 @@
-# ◎ orbis
+<p align="center"><img src="brand/wordmark-auto.svg" alt="orbis" width="420"></p>
 
-your life, one dashboard. a self-hosted, modular life manager: todos, weather, calendar, smart home – each one a module you install at runtime, arranged as widgets on dashboards you design yourself. web, android/ios (capacitor) and, later, e-ink displays all talk to one hub.
+<p align="center"><b>your life, one dashboard.</b></p>
+
+ a self-hosted, modular life manager: todos, weather, calendar, smart home – each one a module you install at runtime, arranged as widgets on dashboards you design yourself. web, android/ios (capacitor) and, later, e-ink displays all talk to one hub.
 
 ```
 ┌──────────── clients ────────────┐      ┌──────────── hub (node, docker) ───────────────┐
