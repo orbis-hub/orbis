@@ -1,0 +1,71 @@
+{
+  "id": "pomodoro",
+  "name": "Focus timer",
+  "version": "0.1.4",
+  "description": "Pomodoro-style focus timer. State lives on the hub, so it keeps running across devices and reloads.",
+  "author": "orbis",
+  "icon": "alarm-clock",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "timer",
+      "name": "Focus timer",
+      "defaultSize": {
+        "w": 3,
+        "h": 3
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "focusMinutes": {
+            "type": "integer",
+            "title": "Focus (min)",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 180
+          },
+          "breakMinutes": {
+            "type": "integer",
+            "title": "Short break (min)",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 60
+          },
+          "longBreakMinutes": {
+            "type": "integer",
+            "title": "Long break (min)",
+            "default": 15,
+            "minimum": 1,
+            "maximum": 90
+          },
+          "roundsBeforeLong": {
+            "type": "integer",
+            "title": "Rounds before a long break",
+            "default": 4,
+            "minimum": 1,
+            "maximum": 10
+          },
+          "showRounds": {
+            "type": "boolean",
+            "title": "Show round dots",
+            "default": true
+          }
+        }
+      }
+    }
+  ],
+  "pages": [],
+  "permissions": [
+    "storage",
+    "scheduler",
+    "notifications"
+  ]
+}
