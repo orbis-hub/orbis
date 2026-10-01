@@ -2,120 +2,82 @@
 
 <p align="center"><b>your life, one dashboard.</b></p>
 
- a self-hosted, modular life manager: todos, weather, calendar, smart home – each one a module you install at runtime, arranged as widgets on dashboards you design yourself. web, android/ios (capacitor) and, later, e-ink displays all talk to one hub.
+<p align="center">
+  <a href="https://github.com/orbis-hub/orbis/wiki/Getting-Started">getting started</a> ·
+  <a href="https://github.com/orbis-hub/orbis/wiki/Install">install</a> ·
+  <a href="https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide">build a module</a> ·
+  <a href="https://github.com/orbis-hub/orbis/wiki">wiki</a> ·
+  <a href="https://github.com/orbis-hub/registry">registry</a> ·
+  <a href="https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22">module ideas</a>
+</p>
 
-```
-┌──────────── clients ────────────┐      ┌──────────── hub (node, docker) ───────────────┐
-│ web (next.js static export)     │ REST │ hono + sqlite                                 │
-│ mobile (capacitor, same build)  │  +   │ auth · settings · dashboards · module runtime │
-│ e-ink (esp32 fetches a png)     │  WS  │ device registry + network scanner · registry  │
-└─────────────────────────────────┘      └───────────────────────────────────────────────┘
-```
+---
 
-## quick start (development)
+orbis is a self-hosted, modular life manager. one **hub** you run yourself (a pi is plenty), **dashboards** you lay out with drag and drop, and **modules** for everything on them: todos, calendar, weather, music, smart home, whatever someone writes next. web, android/ios and (soon) e-ink displays all talk to the same hub. no cloud, no account with us, your data stays in one sqlite file at home.
 
-```bash
-pnpm install
-pnpm modules:build          # bundles the first-party modules in modules/*
-pnpm hub                    # hub on http://localhost:3001 (api + websocket)
-pnpm web                    # next dev on http://localhost:3000
-```
-
-open http://localhost:3000, create the owner account, add widgets.
+<p align="center"><img src="brand/png/social-preview.png" alt="" width="640"></p>
 
 ## install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/orbis-hub/orbis/main/install.sh | sh     # linux / macos / pi
+curl -fsSL https://raw.githubusercontent.com/orbis-hub/orbis/main/install.sh | sh      # linux · macos · raspberry pi
 irm https://raw.githubusercontent.com/orbis-hub/orbis/main/install.ps1 | iex           # windows
 ```
 
-the installer asks what this machine should run: **hub + web** (one container, the usual case), **hub only** (api, the web ui lives elsewhere) or **web only** (static files behind nginx pointing at a hub somewhere else). hub and web are independent: the web app is a static build that talks to whatever hub url you give it, so you can put the hub on a pi in the closet and the web app on a vps, a nas or just the same box.
+the installer asks whether this machine runs **hub + web** (one container, the usual case), **hub only** or **web only**. docker required. open `http://<host>:3001`, create the owner account, add widgets. more ways to run it, env vars, https and backups: [install](https://github.com/orbis-hub/orbis/wiki/Install).
 
-or by hand:
+## what's in the box
 
-```bash
-docker compose up -d        # web + api on http://<host>:3001, data in ./data
-```
+| module | widgets | page |
+| --- | --- | --- |
+| **clock** | digital clock | |
+| **todo** | list, due today | lists & tasks with due dates |
+| **weather** | current, forecast | hours and 7 days, open-meteo, no api key |
+| **calendar** | agenda, month, next up | ics feeds + caldav (google, icloud, nextcloud, fastmail …) |
+| **media** | now playing, playback devices | spotify: search, playlists, queue, pick the device it plays on |
 
-`network_mode: host` is used so the hub can discover devices on your lan. put caddy/nginx in front for https and set `ORBIS_CORS_ORIGINS` if the app is served from another origin. see `.env.example`.
-
-## repo layout
-
-| path                     | what                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `apps/hub`               | the server: hono, drizzle + better-sqlite3, module runtime, device registry, installer |
-| `apps/web`               | next.js 16 app router, `output: "export"`, tailwind v4, react-grid-layout              |
-| `apps/mobile`            | capacitor project wrapping `apps/web/out`                                              |
-| `packages/sdk`           | `@orbis/sdk` – manifest schema, server context, client hooks (the module contract)     |
-| `packages/ui`            | `@orbis/ui` – design system (window boxes, buttons, pixel icons)                       |
-| `packages/module-tools`  | `orbis-module build | watch | pack | init` – esbuild based module bundler              |
-| `modules/*`              | first-party modules: clock, todo, weather, calendar, media (built like external ones)  |
-| `registry/`              | example `index.json` for a module registry                                             |
-
-## accounts
-
-the first account created at setup is the **owner**. admins (promoted by the owner) manage users, modules, devices and hub settings. members get their own dashboards plus everything shared with them. dashboards are either shared with everyone or private with explicit grants (accounts page, dashboard menu → sharing & access). passwords are changed under accounts; admins can reset them.
+plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 
 ## modules
 
-a module is a folder (or a `module.tgz` on a github release) with:
-
-```
-module.json          manifest: id, version, widgets, pages, settingsSchema, permissions, discovery
-dist/server.js       runs inside the hub: `defineModule({ setup(ctx) { ... } })`
-dist/client.js       runs in the browser: `defineClient({ widgets, pages, settings })`
-```
-
-**server context** (`@orbis/sdk/server`): `ctx.http` (hono router at `/api/m/<id>`), `ctx.storage` (kv + own sqlite tables via `{{t:name}}`), `ctx.scheduler`, `ctx.events.publish()`, `ctx.devices` (claim discovered devices), `ctx.settings`, `ctx.fetch`, `ctx.logger`.
-
-**client** (`@orbis/sdk/client`): `useModuleApi()`, `useModuleQuery()`, `useModuleEvents()`, `useModuleSettings()`, `useModuleDevices()`. react, react-dom, `@orbis/sdk/client` and `@orbis/ui` are provided by the host at runtime (`window.__ORBIS__`), so bundles stay tiny and share one react. that includes the icons: `<Icon name="calendar" />` (190+ pixelarticons, `iconNames()`), `<WeatherIcon name="rain" />` and `describeWmo(code)` for wmo weather codes.
-
-### create a module
+a module is a folder with a `module.json`, a `dist/server.js` that runs inside the hub and a `dist/client.js` that renders widgets and pages in the app. install from the store at runtime, no hub rebuild. react and the design system come from the host, so module bundles are tiny and look native.
 
 ```bash
-mkdir my-module && cd my-module
-npx orbis-module init . --id=my-module --name="My Module"   # or copy modules/core-clock
-# write src/server.ts and src/client.tsx
-npx orbis-module watch --dev=../orbis/apps/hub/data           # hot-reloads into a running hub
-npx orbis-module pack                                        # → module.tgz for a release
+# use the template → github.com/orbis-hub/module-template
+pnpm dev --dev=<hub data dir>   # hot-reloads into a running hub
+pnpm pack:module                # module.tgz for a release
 ```
 
-modules live in the hub's `data/modules/` (installed), `data/modules-dev/` (watched, hot reload) or `modules/` in this repo (built-in).
+[module developer guide](https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide) · [sdk reference](https://github.com/orbis-hub/orbis/wiki/SDK-Reference) · [publishing](https://github.com/orbis-hub/orbis/wiki/Publishing-and-Registry)
 
-### registry
+## repo
 
-a registry is just a json file:
-
-```json
-{ "name": "orbis official", "modules": [
-  { "id": "weather", "name": "Weather", "description": "…", "repo": "github:orbis-hub/module-weather", "latest": "0.1.0", "tags": ["weather"] }
-] }
+```
+apps/hub            the server: hono + sqlite, auth, dashboards, module runtime, installer, device registry
+apps/web            next.js 16 static export, the dashboard ui
+apps/mobile         capacitor wrapper around the web build
+packages/sdk        @orbis/sdk – the module contract (manifest schema, server context, client hooks)
+packages/ui         @orbis/ui – design system + pixel icons
+packages/module-tools   orbis-module build | watch | pack
+modules/*           first-party modules, built like third-party ones
+brand/              logo + wordmark generator
 ```
 
-the hub derives `https://github.com/<repo>/releases/download/v<latest>/module.tgz`; set `tarball` to override. add registries under settings.
+```bash
+pnpm install && pnpm modules:build
+pnpm hub     # http://localhost:3001
+pnpm web     # http://localhost:3000
+```
 
-## scripts
-
-| command                | does                                                        |
-| ---------------------- | ----------------------------------------------------------- |
-| `pnpm dev`             | hub + web in parallel (turbo)                               |
-| `pnpm build`           | everything                                                  |
-| `pnpm typecheck`       | all packages                                                |
-| `pnpm test`            | vitest (sdk, hub)                                           |
-| `pnpm modules:build`   | bundle `modules/*`                                          |
-| `pnpm mobile:sync`     | build web → `cap sync`                                      |
-| `pnpm mobile:android`  | open android studio (`pnpm --filter @orbis/mobile add:android` once) |
+[development setup](https://github.com/orbis-hub/orbis/wiki/Development-Setup) · [architecture](https://github.com/orbis-hub/orbis/wiki/Architecture) · [hub api](https://github.com/orbis-hub/orbis/wiki/Hub-API) · [contributing](https://github.com/orbis-hub/orbis/wiki/Contributing)
 
 ## roadmap
 
-- [x] hub: auth, dashboards, settings, websocket, module runtime, installer, registry client
-- [x] web: shell, dashboard grid, module loader, store, devices, settings
-- [x] modules: clock, todo, weather, calendar (ics + caldav: google, icloud, nextcloud …), media (spotify, device picker)
-- [x] install scripts (sh + ps1) with hub/web/both modes
-- [x] device registry + network scanner (ping sweep, arp, mdns)
-- [x] accounts: owner/admin/member roles, user management, private/shared dashboards with grants
-- [ ] home assistant module, shelly/hue modules using discovery matchers
-- [ ] capacitor builds (android apk first), push notifications
-- [ ] e-ink renderer (`/api/eink/<display>.png`)
-- [ ] worker isolation for third-party modules
+- [x] hub, web, sdk, module store, device scanner, accounts, installer
+- [x] clock · todo · weather · calendar · media
+- [ ] home assistant module, shelly/hue direct, notifications
+- [ ] android apk, ios
+- [ ] e-ink renderer + esp32 sketch
+- [ ] worker isolation for third-party modules, npm packages for the sdk
+
+mit licensed. made in würzburg by [vensin](https://vensin.dev).
