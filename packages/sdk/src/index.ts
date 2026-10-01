@@ -83,6 +83,8 @@ export type InstalledModule = {
   /** changes on every (re)load; clients use it to bust their bundle cache */
   loadedAt: string | null;
   status: ModuleStatus | null;
+  /** server code runs in a worker_thread (store modules) */
+  isolated?: boolean;
 };
 
 export type RegistryEntry = {

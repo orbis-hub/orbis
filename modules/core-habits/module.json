@@ -1,7 +1,7 @@
 {
   "id": "habits",
   "name": "Habits",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Daily habits with streaks. Tick today in the widget, see the month grid per habit on the page.",
   "author": "orbis",
   "icon": "check-double",

@@ -1,7 +1,7 @@
 {
   "id": "media",
   "name": "Media",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Spotify (and Home Assistant media players: Sonos, Chromecast, Kodi, …) on your dashboard: now playing, controls, device picker, search. Any browser tab can become a Spotify Connect speaker.",
   "author": "orbis",
   "icon": "music",

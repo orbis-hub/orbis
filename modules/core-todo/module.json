@@ -1,7 +1,7 @@
 {
   "id": "todo",
   "name": "Todo",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Lists and tasks with due dates. A widget per list plus a full page.",
   "author": "orbis",
   "icon": "checkbox-on",
