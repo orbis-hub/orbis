@@ -70,7 +70,7 @@ const corsPolicy = cors({
       // same-host LAN access from the Next dev server on another port
       try {
         const u = new URL(origin);
-        if (config.dev && (u.port === "3000" || u.hostname.endsWith(".local"))) return origin;
+        if (config.dev && (["localhost", "127.0.0.1"].includes(u.hostname) || u.hostname.endsWith(".local") || /^192.168./.test(u.hostname))) return origin;
       } catch {
         /* ignore */
       }
