@@ -1,7 +1,7 @@
 {
   "id": "rss",
   "name": "Feeds",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "RSS / Atom headlines next to your weather. A few feeds, a widget with the latest, a page to skim and mark read.",
   "author": "orbis",
   "icon": "radio",

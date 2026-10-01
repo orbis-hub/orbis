@@ -255,12 +255,9 @@ export async function unload(id: string) {
 
 export async function reload(id: string) {
   await unload(id);
-  const s = states.get(id);
-  if (s?.dir) {
-    // re-read manifest from disk in case it changed
-    const fresh = [...discoverDev(), ...discoverInstalled(), ...discoverBuiltin()].find((d) => d.manifest.id === id);
-    if (fresh) upsertFromDisk(fresh);
-  }
+  // re-read manifest from disk in case it changed (also picks up builtins added while running)
+  const fresh = [...discoverDev(), ...discoverInstalled(), ...discoverBuiltin()].find((d) => d.manifest.id === id);
+  if (fresh) upsertFromDisk(fresh);
   const out = await load(id);
   broadcast({ type: "modules:changed" });
   return out;

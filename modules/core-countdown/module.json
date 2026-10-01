@@ -1,7 +1,7 @@
 {
   "id": "countdown",
   "name": "Countdown",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Big number counting down to a date: vacation, birthday, deadline. Client-only, one widget per countdown.",
   "author": "orbis",
   "icon": "hourglass",
