@@ -34,6 +34,67 @@ export type ModuleState = {
 };
 
 const states = new Map<string, ModuleState>();
+const moduleChangeListeners = new Set<(loaded: string[]) => void>();
+
+function loadedIds() {
+  return [...states.values()].filter((s) => s.loaded && s.enabled).map((s) => s.id);
+}
+function notifyModulesChanged() {
+  const ids = loadedIds();
+  for (const cb of moduleChangeListeners) {
+    try {
+      cb(ids);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** The modules api handed to every module context. */
+function modulesApiFor(selfId: string) {
+  return {
+    list: () => [...states.values()].filter((s) => s.loaded && s.enabled && s.id !== selfId).map((s) => ({ id: s.id, version: s.version, name: s.manifest.name })),
+    has: (id: string) => !!states.get(id)?.loaded && !!states.get(id)?.enabled,
+    async call<T = unknown>(id: string, path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
+      const t = states.get(id);
+      if (!t || !t.enabled || !t.loaded || !t.built) throw new Error(`module ${id} is not available`);
+      const headers = new Headers(init.headers);
+      let body = init.body;
+      if (init.json !== undefined) {
+        headers.set("content-type", "application/json");
+        body = JSON.stringify(init.json);
+      }
+      headers.set("x-orbis-caller", selfId);
+      const res = await t.built.ctx.http.fetch(new Request(`http://modules.local${path.startsWith("/") ? path : `/${path}`}`, { ...init, headers, body }));
+      const text = await res.text();
+      let data: unknown = text;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        /* non-json */
+      }
+      if (!res.ok) throw Object.assign(new Error((data as { error?: string })?.error ?? `${id} answered HTTP ${res.status}`), { status: res.status });
+      return data as T;
+    },
+    onChange(cb: (loaded: string[]) => void) {
+      moduleChangeListeners.add(cb);
+      return () => moduleChangeListeners.delete(cb);
+    },
+  };
+}
+
+/** Hard dependencies that are not installed, disabled or not loaded. */
+export function missingDeps(s: ModuleState): string[] {
+  return s.manifest.deps.filter((d) => {
+    const t = states.get(d);
+    return !t || !t.enabled || !t.loaded;
+  });
+}
+
+/** Enabled modules that hard-depend on `id`. */
+export function dependentsOf(id: string): ModuleState[] {
+  return [...states.values()].filter((s) => s.enabled && s.manifest.deps.includes(id));
+}
 
 export function list(): ModuleState[] {
   return [...states.values()].sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
@@ -115,10 +176,19 @@ export async function load(id: string): Promise<ModuleState> {
     s.error = "module files missing";
     return s;
   }
+  const missing = missingDeps(s);
+  if (missing.length) {
+    s.error = `needs ${missing.map((m) => `"${m}"`).join(", ")} – install and enable ${missing.length > 1 ? "them" : "it"} first`;
+    s.loaded = false;
+    log.warn({ id, missing }, "module waits for dependencies");
+    return s;
+  }
   if (!s.manifest.entry.server) {
     s.loaded = true; // client-only module
     s.loadedAt = now();
     s.error = null;
+    notifyModulesChanged();
+    await loadDependents(id);
     return s;
   }
   const file = join(s.dir, s.manifest.entry.server);
@@ -135,6 +205,7 @@ export async function load(id: string): Promise<ModuleState> {
         s.status = status;
         broadcast({ type: "modules:changed" });
       },
+      modulesApiFor(id),
     );
     await server.setup(built.ctx);
     s.server = server;
@@ -143,6 +214,8 @@ export async function load(id: string): Promise<ModuleState> {
     s.loadedAt = now();
     s.error = null;
     log.info({ id, version: s.version, source: s.source }, "module loaded");
+    notifyModulesChanged();
+    await loadDependents(id);
   } catch (err) {
     s.error = (err as Error).message ?? String(err);
     s.loaded = false;
@@ -151,9 +224,21 @@ export async function load(id: string): Promise<ModuleState> {
   return s;
 }
 
+/** After `id` loaded: retry enabled modules that were waiting for it. */
+async function loadDependents(id: string) {
+  for (const d of dependentsOf(id)) if (!d.loaded && missingDeps(d).length === 0) await load(d.id);
+}
+
 export async function unload(id: string) {
   const s = states.get(id);
   if (!s || !s.loaded) return;
+  // dependents go down first and remember why
+  for (const d of dependentsOf(id)) {
+    if (d.loaded) {
+      await unload(d.id);
+      d.error = `needs "${id}" – it was disabled or removed`;
+    }
+  }
   try {
     await s.server?.teardown?.();
   } catch (err) {
@@ -165,6 +250,7 @@ export async function unload(id: string) {
   s.loaded = false;
   s.status = null;
   log.info({ id }, "module unloaded");
+  notifyModulesChanged();
 }
 
 export async function reload(id: string) {
@@ -218,6 +304,8 @@ export async function uninstall(id: string) {
   const s = states.get(id);
   if (!s) throw new Error(`unknown module ${id}`);
   if (s.source === "builtin") throw new Error("built-in modules cannot be uninstalled, disable them instead");
+  const deps = dependentsOf(id);
+  if (deps.length) throw new Error(`${deps.map((d) => d.manifest.name).join(", ")} depend${deps.length > 1 ? "" : "s"} on this module – remove or disable ${deps.length > 1 ? "them" : "it"} first`);
   await unload(id);
   if (s.source === "registry" || s.source === "url") removeInstalledFiles(id);
   removeWidgetsOfModule(id);
@@ -241,6 +329,11 @@ export async function bootstrap() {
   // rows whose files vanished
   for (const row of getDb().select().from(schema.installedModules).all()) {
     if (seen.has(row.id)) continue;
+    if (row.source === "dev") {
+      // dev modules are ephemeral: folder gone = module gone
+      getDb().delete(schema.installedModules).where(eq(schema.installedModules.id, row.id)).run();
+      continue;
+    }
     let manifest: ModuleManifest;
     try {
       manifest = JSON.parse(row.manifest);
@@ -263,7 +356,8 @@ export async function bootstrap() {
       error: "module files missing – reinstall or remove",
     });
   }
-  for (const s of states.values()) if (s.enabled) await load(s.id);
+  // load in dependency order: modules without unmet deps first, then whoever got unblocked (load() retries dependents)
+  for (const s of [...states.values()].sort((a, b) => a.manifest.deps.length - b.manifest.deps.length)) if (s.enabled && !s.loaded) await load(s.id);
   log.info({ count: states.size, loaded: [...states.values()].filter((s) => s.loaded).length }, "modules bootstrapped");
   watchDev();
 }

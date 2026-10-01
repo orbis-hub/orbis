@@ -65,6 +65,10 @@ export const manifestSchema = z.object({
   settingsSchema: z.record(z.string(), z.unknown()).optional(),
   permissions: z.array(permissionSchema).default([]),
   discovery: discoveryMatcherSchema.optional(),
+  /** Modules that must be installed and enabled for this one to load (hard dependency). The store installs them along. */
+  deps: z.array(z.string().regex(/^[a-z0-9][a-z0-9-]*$/)).default([]),
+  /** Modules this one can use when present (optional feature), e.g. "home-assistant" for media players. Shown in the store, never required. */
+  softDeps: z.array(z.string().regex(/^[a-z0-9][a-z0-9-]*$/)).default([]),
   /** Module http paths (prefix match, relative to /api/m/<id>) that need no session, e.g. oauth callbacks. */
   publicPaths: z.array(z.string().regex(/^\//)).default([]),
   eink: z.boolean().default(false),

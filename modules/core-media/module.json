@@ -133,5 +133,8 @@
   ],
   "publicPaths": [
     "/spotify/callback"
+  ],
+  "softDeps": [
+    "home-assistant"
   ]
 }

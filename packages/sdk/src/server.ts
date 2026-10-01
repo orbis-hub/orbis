@@ -52,6 +52,20 @@ export type ModuleSettings<T = Record<string, unknown>> = {
   onChange(cb: (settings: T) => void): () => void;
 };
 
+/** Other modules on this hub: check soft dependencies and talk to them. */
+export type ModuleModules = {
+  /** ids of modules that are installed, enabled and loaded */
+  list(): Array<{ id: string; version: string; name: string }>;
+  has(id: string): boolean;
+  /**
+   * Call another module's http api (same as a client would, but in-process and without auth).
+   * `ctx.modules.call("home-assistant", "/entities?domain=media_player")`
+   */
+  call<T = unknown>(id: string, path: string, init?: RequestInit & { json?: unknown }): Promise<T>;
+  /** fires when a module loads or unloads */
+  onChange(cb: (loaded: string[]) => void): () => void;
+};
+
 export type ModuleServerContext<TSettings = Record<string, unknown>> = {
   manifest: ModuleManifest;
   /** Absolute path to the module's installed directory. */
@@ -67,6 +81,7 @@ export type ModuleServerContext<TSettings = Record<string, unknown>> = {
   settings: ModuleSettings<TSettings>;
   /** Report setup state: `ctx.status.set({ state: "needs-setup", message: "add an account", action: { label: "open calendar", page: "calendar" } })`. */
   status: { set(status: ModuleStatus | null): void; get(): ModuleStatus | null };
+  modules: ModuleModules;
   /**
    * Hono router mounted at `/api/m/<moduleId>`. Requests are already authenticated.
    * Example: ctx.http.get("/items", (c) => c.json(items))

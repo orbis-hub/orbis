@@ -92,6 +92,9 @@ export type RegistryEntry = {
   icon?: string;
   /** Direct tarball URL. If omitted the hub derives it from repo + latest. */
   tarball?: string;
+  /** mirror of the manifest's deps / softDeps so the store can show them before installing */
+  deps?: string[];
+  softDeps?: string[];
 };
 
 export type RegistryIndex = {
