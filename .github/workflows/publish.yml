@@ -1,0 +1,39 @@
+name: publish packages
+
+# tag `packages-v0.2.0` → @orbis/sdk, @orbis/ui and @orbis/module-tools 0.2.0 on npm.
+# needs the NPM_TOKEN secret (automation token for the scope). the version comes from the tag.
+on:
+  push:
+    tags: ["packages-v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: version from tag
+        run: |
+          VER="${GITHUB_REF_NAME#packages-v}"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          for p in sdk ui module-tools; do
+            (cd packages/$p && npm version "$VER" --no-git-tag-version --allow-same-version)
+          done
+      - run: pnpm --filter @orbis/sdk --filter @orbis/ui build
+      - name: publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for p in sdk ui module-tools; do
+            (cd packages/$p && pnpm publish --access public --no-git-checks --provenance)
+          done

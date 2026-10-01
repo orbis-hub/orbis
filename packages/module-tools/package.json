@@ -18,5 +18,18 @@
     "url": "https://github.com/orbis-hub/orbis",
     "directory": "packages/module-tools"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "orbis",
+    "module",
+    "esbuild"
+  ]
 }
