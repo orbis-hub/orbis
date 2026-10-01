@@ -4,7 +4,8 @@ import { Button, Chip, Field, Icon, Input, Select, useToast, Window } from "@orb
 import { useEffect, useState } from "react";
 import { Shell, ThemeToggle } from "@/components/Shell";
 import { getHubUrl, setHubUrl } from "@/lib/hub";
-import { useAuthStatus, usePatchSettings, useSettings, type HubSettings } from "@/lib/queries";
+import { isAdminRole, useAuthStatus, usePatchSettings, useSettings, type HubSettings } from "@/lib/queries";
+import { getToken } from "@/lib/hub";
 
 export default function SettingsPage() {
   const settings = useSettings();
@@ -122,6 +123,8 @@ export default function SettingsPage() {
           </div>
         </Window>
 
+        {isAdminRole(status.data?.user?.role) ? <BackupWindow /> : null}
+
         <Window title="this device">
           <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -146,5 +149,65 @@ export default function SettingsPage() {
         </Window>
       </div>
     </Shell>
+  );
+}
+
+function BackupWindow() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const hub = getHubUrl() ?? "";
+  async function download() {
+    setBusy(true);
+    try {
+      const res = await fetch(`${hub}/api/backup`, { headers: getToken() ? { authorization: `Bearer ${getToken()}` } : {}, credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const name = res.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "orbis-backup.tgz";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      toast(`backup failed: ${(err as Error).message}`, "bad");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function restore(file: File) {
+    if (!confirm(`restore "${file.name}"? this replaces every user, dashboard, module and setting on this hub with the backup.`)) return;
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${hub}/api/backup/restore`, { method: "POST", body: fd, headers: getToken() ? { authorization: `Bearer ${getToken()}` } : {}, credentials: "include" });
+      const j = (await res.json()) as { ok?: boolean; error?: string; note?: string };
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      toast(`restored. ${j.note ?? ""}`, "ok");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      toast(`restore failed: ${(err as Error).message}`, "bad");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Window title="backup & restore">
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
+        <p className="soft">one file with everything: users, dashboards, settings, installed modules and their data. keep it somewhere safe, it contains your calendar passwords and api tokens.</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <Button variant="primary" loading={busy} onClick={download}>
+            <Icon name="download" size={12} /> download backup
+          </Button>
+          <label className="btn" style={{ cursor: "pointer" }}>
+            <Icon name="upload" size={12} /> restore from file
+            <input type="file" accept=".tgz,.tar.gz,application/gzip" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} disabled={busy} />
+          </label>
+        </div>
+        <p className="soft" style={{ fontSize: 11 }}>
+          restoring keeps a copy of the current data next to the data folder (<code>data-before-restore</code>). scripted: <code>curl -H "authorization: Bearer …" {hub}/api/backup -o backup.tgz</code>
+        </p>
+      </div>
+    </Window>
   );
 }
