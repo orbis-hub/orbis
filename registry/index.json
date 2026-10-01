@@ -270,6 +270,20 @@
       "author": "orbis",
       "icon": "wallet",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/finance.tgz"
+    },
+    {
+      "id": "fitness",
+      "name": "Fitness",
+      "description": "Last workouts and weekly distance from Strava or anything that can POST json (Apple Health shortcut, scripts).",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.6",
+      "tags": [
+        "sport",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "heart",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/fitness.tgz"
     }
   ]
 }

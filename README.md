@@ -47,6 +47,7 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **transport** | departures | next departures from a stop with delays, stop search, germany-wide (db) + vbb/bvg/öbb |
 | **mealplan** | today's meals | week grid, recipe import from any food blog url, "add this week's ingredients" → shopping |
 | **finance** | money left, accounts | balances you type in, recurring costs, "left this month", csv import, blur for wall displays |
+| **fitness** | this week, last workouts | strava sync, ingest url for apple health shortcuts / scripts, this week vs last as pixel bars |
 
 plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 

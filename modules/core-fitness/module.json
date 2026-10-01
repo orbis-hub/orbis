@@ -1,0 +1,54 @@
+{
+  "id": "fitness",
+  "name": "Fitness",
+  "version": "0.1.6",
+  "description": "Last workouts and weekly distance. Pulls from Strava, or takes anything you post to it (Apple Health via a Shortcut, Garmin exports, a curl from your watch script).",
+  "author": "orbis",
+  "icon": "heart",
+  "minHub": "0.1.0",
+  "entry": { "server": "dist/server.js", "client": "dist/client.js" },
+  "publicPaths": ["/strava/callback", "/ingest/*"],
+  "widgets": [
+    {
+      "id": "week",
+      "name": "This week",
+      "description": "Distance or time per day, this week against last week.",
+      "defaultSize": { "w": 3, "h": 3 },
+      "minSize": { "w": 2, "h": 2 },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "metric": { "type": "string", "title": "Metric", "enum": ["distance", "duration", "calories", "count"], "enumNames": ["distance", "time", "calories", "workouts"], "default": "distance" },
+          "types": { "type": "array", "title": "Only these activity types (empty = all, e.g. run, ride)" },
+          "compare": { "type": "boolean", "title": "Show last week", "default": true }
+        }
+      }
+    },
+    {
+      "id": "recent",
+      "name": "Last workouts",
+      "description": "The last few activities with distance, time and pace.",
+      "defaultSize": { "w": 3, "h": 3 },
+      "minSize": { "w": 2, "h": 2 },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "count": { "type": "integer", "title": "Activities", "default": 5, "minimum": 1, "maximum": 20 },
+          "types": { "type": "array", "title": "Only these activity types (empty = all)" }
+        }
+      }
+    }
+  ],
+  "pages": [{ "id": "fitness", "name": "Fitness", "icon": "heart" }],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "stravaClientId": { "type": "string", "title": "Strava client id (strava.com/settings/api)" },
+      "stravaClientSecret": { "type": "string", "title": "Strava client secret", "format": "password" },
+      "units": { "type": "string", "title": "Units", "enum": ["metric", "imperial"], "default": "metric" },
+      "weekStart": { "type": "string", "title": "Week starts on", "enum": ["monday", "sunday"], "default": "monday" },
+      "syncMinutes": { "type": "integer", "title": "Strava sync every (minutes)", "default": 30, "minimum": 10, "maximum": 720 }
+    }
+  },
+  "permissions": ["network:fetch", "storage", "scheduler"]
+}
