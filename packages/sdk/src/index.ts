@@ -101,3 +101,21 @@ export type RegistryIndex = {
   name: string;
   modules: RegistryEntry[];
 };
+
+export type EinkDisplay = {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  dashboardId: string | null;
+  rotate: 0 | 90 | 180 | 270;
+  invert: boolean;
+  grayscale: number;
+  refreshMinutes: number;
+  board: string | null;
+  lastSeen: string | null;
+  battery: number | null;
+  createdAt: string;
+  /** only returned to admins on create / token rotate */
+  token?: string;
+};

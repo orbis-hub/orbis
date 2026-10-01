@@ -107,5 +107,42 @@ export default defineModule({
     });
 
     ctx.logger.info("todo ready");
+
+    einkRender = (req) => {
+      const cfg = req.config as { listId?: string; showDone?: boolean };
+      const rowH = 22;
+      const max = Math.max(1, Math.floor((req.height - 4) / rowH));
+      let list: Task[];
+      if (req.widget === "today") {
+        const today = new Date(req.now);
+        today.setHours(23, 59, 59, 999);
+        list = tasks(`WHERE done = 0 AND due IS NOT NULL AND due <= ?`, [today.toISOString()]);
+      } else {
+        list = tasks(`WHERE list_id = ?${cfg.showDone ? "" : " AND done = 0"}`, [cfg.listId || "inbox"]);
+      }
+      if (list.length === 0) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: req.widget === "today" ? "nothing due today" : "all clear ✓", size: 16, gray: 0.5 }] };
+      const rows = list.slice(0, max).map((t) => {
+        const due = t.due ? new Date(t.due) : null;
+        const overdue = due && due.getTime() < req.now.getTime() - 86400_000;
+        return {
+          type: "row" as const,
+          gap: 8,
+          align: "center" as const,
+          children: [
+            { type: "dots" as const, count: 1, filled: t.done ? 1 : 0, size: 12 },
+            { type: "text" as const, text: t.title, size: 14, pixel: false, grow: 1, wrap: false, gray: t.done ? 0.5 : 1 },
+            ...(due ? [{ type: "text" as const, text: overdue ? "overdue" : due.toLocaleDateString(req.locale, { day: "numeric", month: "short" }), size: 11, pixel: false, gray: 0.5, bold: !!overdue }] : []),
+          ],
+        };
+      });
+      if (list.length > max) rows.push({ type: "row", gap: 0, align: "center", children: [{ type: "text", text: `+${list.length - max} more`, size: 11, pixel: false, gray: 0.5, grow: 1, wrap: false }] });
+      return { type: "col", grow: 1, gap: 4, children: rows };
+    };
+  },
+  eink(_ctx, req) {
+    if (!einkRender) throw new Error("not ready");
+    return einkRender(req);
   },
 });
+
+let einkRender: ((req: import("@orbis/sdk/server").EinkRequest) => import("@orbis/sdk/server").EinkTree) | null = null;

@@ -104,3 +104,24 @@ migrations.push(
   `CREATE TABLE IF NOT EXISTS dashboard_access (dashboard_id TEXT NOT NULL, user_id TEXT NOT NULL, PRIMARY KEY (dashboard_id, user_id))`,
   `ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0`,
 );
+
+export const einkDisplays = sqliteTable("eink_displays", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  token: text("token").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  dashboardId: text("dashboard_id"),
+  rotate: integer("rotate").notNull().default(0),
+  invert: integer("invert", { mode: "boolean" }).notNull().default(false),
+  grayscale: integer("grayscale").notNull().default(1), // bits per pixel the panel can show: 1 or 4 (inkplate 3-bit → 8 levels, lilygo 4-bit → 16)
+  refreshMinutes: integer("refresh_minutes").notNull().default(10),
+  board: text("board"),
+  lastSeen: text("last_seen"),
+  battery: integer("battery"),
+  createdAt: text("created_at").notNull(),
+});
+
+migrations.push(
+  `CREATE TABLE IF NOT EXISTS eink_displays (id TEXT PRIMARY KEY, name TEXT NOT NULL, token TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, dashboard_id TEXT, rotate INTEGER NOT NULL DEFAULT 0, invert INTEGER NOT NULL DEFAULT 0, grayscale INTEGER NOT NULL DEFAULT 1, refresh_minutes INTEGER NOT NULL DEFAULT 10, board TEXT, last_seen TEXT, battery INTEGER, created_at TEXT NOT NULL)`,
+);
