@@ -44,6 +44,12 @@ export function serveWeb(c: Context): Response | Promise<Response> {
   }
   const fallback = join(root, "index.html");
   if (existsSync(fallback)) return send(c, fallback, false);
+  if ((c.req.header("accept") ?? "").includes("text/html")) {
+    return c.html(
+      `<!doctype html><meta charset="utf-8"><title>orbis hub</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#17121c;color:#f1e7f0;font:14px ui-monospace,monospace"><div style="max-width:460px;border:1.5px solid #5c4a62;box-shadow:4px 4px 0 #5c4a62;background:#1f1826"><div style="padding:5px 10px;border-bottom:1.5px solid #5c4a62;background:#291f32">● ○ ○ orbis hub</div><div style="padding:14px;line-height:1.6">this hub serves the api only – no web build here.<br><br>the api answers at <code>/api/health</code>.<br>install the web app elsewhere with <code>install.sh --mode web --hub-url &lt;this url&gt;</code>, or run <code>pnpm --filter @orbis/web build</code> next to the hub.</div></div>`,
+      404,
+    );
+  }
   return c.text("web build not found – run `pnpm --filter @orbis/web build`", 404);
 }
 
