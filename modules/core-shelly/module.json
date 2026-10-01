@@ -1,7 +1,7 @@
 {
   "id": "shelly",
   "name": "Shelly",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Shelly relays and plugs straight over the local network, no cloud, no Home Assistant. Gen2+ RPC (Plus / Pro / Mini), Gen1 basic.",
   "author": "orbis",
   "icon": "plug",

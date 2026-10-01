@@ -1,7 +1,7 @@
 {
   "id": "clock",
   "name": "Clock",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
   "author": "orbis",
   "icon": "clock",

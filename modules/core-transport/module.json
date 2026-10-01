@@ -1,0 +1,104 @@
+{
+  "id": "transport",
+  "name": "Departures",
+  "version": "0.1.6",
+  "description": "Next departures from a stop near you. Germany first (DB / HAFAS via transport.rest, no key); other providers can be added.",
+  "author": "orbis",
+  "icon": "bus",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "departures",
+      "name": "Departures",
+      "description": "Next departures with delays for one stop.",
+      "defaultSize": {
+        "w": 3,
+        "h": 4
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "stopId": {
+            "type": "string",
+            "title": "Stop id (use the search in the widget config)"
+          },
+          "stopName": {
+            "type": "string",
+            "title": "Stop name (display)"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Departures",
+            "default": 6,
+            "minimum": 1,
+            "maximum": 20
+          },
+          "lines": {
+            "type": "array",
+            "title": "Only these lines (comma separated, empty = all)"
+          },
+          "walkMinutes": {
+            "type": "integer",
+            "title": "Minutes to walk there (hides what you cannot catch)",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 60
+          },
+          "products": {
+            "type": "array",
+            "title": "Products (bus, tram, subway, suburban, regional, national; empty = all)"
+          }
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "departures",
+      "name": "Departures",
+      "icon": "bus"
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "provider": {
+        "type": "string",
+        "title": "Provider",
+        "enum": [
+          "db",
+          "vbb",
+          "bvg",
+          "oebb"
+        ],
+        "enumNames": [
+          "Germany – Deutsche Bahn (all local transport)",
+          "Berlin/Brandenburg – VBB",
+          "Berlin – BVG",
+          "Austria – ÖBB"
+        ],
+        "default": "db"
+      },
+      "refreshSeconds": {
+        "type": "integer",
+        "title": "Refresh every (seconds)",
+        "default": 60,
+        "minimum": 30,
+        "maximum": 600
+      }
+    }
+  },
+  "permissions": [
+    "network:fetch",
+    "storage",
+    "scheduler"
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "id": "home-assistant",
   "name": "Home Assistant",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket.",
   "author": "orbis",
   "icon": "home",
