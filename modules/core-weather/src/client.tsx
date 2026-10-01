@@ -1,51 +1,12 @@
 import { useState } from "react";
 import { defineClient, useModuleApi, useModuleQuery, useModuleSettings, type PageProps, type SettingsProps, type WidgetProps } from "@orbis/sdk/client";
-import { Button, Chip, Empty, Field, Icon, Input, Window } from "@orbis/ui";
+import { Button, Chip, Empty, Field, Icon, Input, Window, WeatherIcon as UiWeatherIcon, describeWmo } from "@orbis/ui";
 import type { WeatherData } from "./server";
 
-/* WMO weather codes → icon + label */
-function describe(code: number, isDay = true): { icon: string; label: string } {
-  if (code === 0) return { icon: isDay ? "sun" : "moon", label: isDay ? "clear" : "clear night" };
-  if (code <= 2) return { icon: isDay ? "cloud-sun" : "cloud-moon", label: "partly cloudy" };
-  if (code === 3) return { icon: "cloud", label: "overcast" };
-  if (code <= 48) return { icon: "cloud", label: "fog" };
-  if (code <= 57) return { icon: "cloud", label: "drizzle" };
-  if (code <= 67) return { icon: "cloud", label: "rain" };
-  if (code <= 77) return { icon: "cloud", label: "snow" };
-  if (code <= 82) return { icon: "cloud", label: "showers" };
-  if (code <= 86) return { icon: "cloud", label: "snow showers" };
-  return { icon: "zap", label: "thunderstorm" };
-}
-
-/** Hand-drawn 16×16 pixel icons for conditions the icon set lacks. */
-const PIX: Record<string, string[]> = {
-  rain: ["....######......", "..##......##....", ".#..........#...", "#............##.", "#..............#", "#..............#", ".##############.", "................", "..#...#...#.....", ".#...#...#......", "#...#...#.......", "................", "....#...#...#...", "...#...#...#....", "..#...#...#.....", "................"],
-  snow: ["....######......", "..##......##....", ".#..........#...", "#............##.", "#..............#", "#..............#", ".##############.", "................", "..#.....#.....#.", ".###...###...###", "..#.....#.....#.", "................", "#.....#.....#...", "###..###...###..", "#.....#.....#...", "................"],
-  drizzle: ["....######......", "..##......##....", ".#..........#...", "#............##.", "#..............#", "#..............#", ".##############.", "................", "...#....#....#..", "................", "......#....#....", "................", "...#....#....#..", "................", "................", "................"],
-  fog: ["................", "................", "..############..", "................", ".##############.", "................", "...##########...", "................", ".##############.", "................", "..############..", "................", "....########....", "................", "................", "................"],
-  storm: ["....######......", "..##......##....", ".#..........#...", "#............##.", "#..............#", "#..............#", ".##############.", "................", ".......###......", "......##........", ".....####.......", "........##......", ".......##.......", "......##........", ".....#..........", "................"],
-};
-function pixKey(code: number) {
-  if (code >= 95) return "storm";
-  if (code >= 71 && code <= 77) return "snow";
-  if (code >= 85 && code <= 86) return "snow";
-  if (code >= 51 && code <= 57) return "drizzle";
-  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return "rain";
-  if (code === 45 || code === 48) return "fog";
-  return null;
-}
-
+// icons + wmo mapping come from @orbis/ui (same pixel glyphs as vensin.dev)
+const describe = (code: number, isDay = true) => describeWmo(code, isDay);
 function WeatherIcon({ code, isDay = true, size = 32 }: { code: number; isDay?: boolean; size?: number }) {
-  const key = pixKey(code);
-  if (key && PIX[key]) {
-    const grid = PIX[key]!;
-    return (
-      <svg viewBox="0 0 16 16" width={size} height={size} shapeRendering="crispEdges" fill="currentColor" aria-hidden>
-        {grid.flatMap((row, y) => [...row].map((ch, x) => (ch === "#" ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} /> : null)))}
-      </svg>
-    );
-  }
-  return <Icon name={describe(code, isDay).icon} size={size} />;
+  return <UiWeatherIcon name={describe(code, isDay).icon} size={size} />;
 }
 
 const deg = (u: string) => (u === "imperial" ? "°F" : "°C");

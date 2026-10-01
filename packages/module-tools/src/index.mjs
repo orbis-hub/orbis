@@ -54,6 +54,7 @@ const NAMED_EXPORTS = {
   "@orbis/ui": [
     "cx", "Window", "Button", "Icon", "iconNames", "Tabs", "Tab", "Field", "Input", "Textarea", "Select", "Checkbox", "Switch", "Chip",
     "Spinner", "Empty", "Modal", "Menu", "ToastProvider", "useToast", "Hr", "Kbd", "useStableId", "ICONS",
+    "WeatherIcon", "weatherIconNames", "describeWmo",
   ],
 };
 

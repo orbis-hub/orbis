@@ -69,7 +69,7 @@ dist/client.js       runs in the browser: `defineClient({ widgets, pages, settin
 
 **server context** (`@orbis/sdk/server`): `ctx.http` (hono router at `/api/m/<id>`), `ctx.storage` (kv + own sqlite tables via `{{t:name}}`), `ctx.scheduler`, `ctx.events.publish()`, `ctx.devices` (claim discovered devices), `ctx.settings`, `ctx.fetch`, `ctx.logger`.
 
-**client** (`@orbis/sdk/client`): `useModuleApi()`, `useModuleQuery()`, `useModuleEvents()`, `useModuleSettings()`, `useModuleDevices()`. react, react-dom, `@orbis/sdk/client` and `@orbis/ui` are provided by the host at runtime (`window.__ORBIS__`), so bundles stay tiny and share one react.
+**client** (`@orbis/sdk/client`): `useModuleApi()`, `useModuleQuery()`, `useModuleEvents()`, `useModuleSettings()`, `useModuleDevices()`. react, react-dom, `@orbis/sdk/client` and `@orbis/ui` are provided by the host at runtime (`window.__ORBIS__`), so bundles stay tiny and share one react. that includes the icons: `<Icon name="calendar" />` (190+ pixelarticons, `iconNames()`), `<WeatherIcon name="rain" />` and `describeWmo(code)` for wmo weather codes.
 
 ### create a module
 
