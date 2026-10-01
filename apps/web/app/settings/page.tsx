@@ -4,7 +4,7 @@ import { Button, Chip, Field, Icon, Input, Select, useToast, Window } from "@orb
 import { useEffect, useState } from "react";
 import { Shell, ThemeToggle } from "@/components/Shell";
 import { getHubUrl, setHubUrl } from "@/lib/hub";
-import { isAdminRole, useAuthStatus, usePatchSettings, useSettings, type HubSettings } from "@/lib/queries";
+import { isAdminRole, useAuthStatus, useModules, useNotificationMutations, usePatchSettings, useSettings, type HubSettings } from "@/lib/queries";
 import { getToken } from "@/lib/hub";
 
 export default function SettingsPage() {
@@ -123,6 +123,7 @@ export default function SettingsPage() {
           </div>
         </Window>
 
+        {isAdminRole(status.data?.user?.role) ? <NotifyWindow /> : null}
         {isAdminRole(status.data?.user?.role) ? <BackupWindow /> : null}
 
         <Window title="this device">
@@ -207,6 +208,73 @@ function BackupWindow() {
         <p className="soft" style={{ fontSize: 11 }}>
           restoring keeps a copy of the current data next to the data folder (<code>data-before-restore</code>). scripted: <code>curl -H "authorization: Bearer …" {hub}/api/backup -o backup.tgz</code>
         </p>
+      </div>
+    </Window>
+  );
+}
+
+function NotifyWindow() {
+  const settings = useSettings();
+  const patch = usePatchSettings();
+  const modules = useModules();
+  const nm = useNotificationMutations();
+  const toast = useToast();
+  const [ch, setCh] = useState<HubSettings["notifyChannels"]>({});
+  const [muted, setMuted] = useState<string[]>([]);
+  useEffect(() => {
+    if (settings.data) {
+      setCh(settings.data.notifyChannels ?? {});
+      setMuted(settings.data.mutedModules ?? []);
+    }
+  }, [settings.data]);
+  const save = () => patch.mutate({ notifyChannels: ch, mutedModules: muted }, { onSuccess: () => toast("saved", "ok"), onError: (e) => toast(e.message, "bad") });
+  const ntfy = ch.ntfy ?? { topic: "" };
+  const tg = ch.telegram ?? { botToken: "", chatId: "" };
+  return (
+    <Window title="notifications">
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12 }}>
+        <p className="soft">modules ring the bell in the app. forward them to your phone with one of these:</p>
+        <div className="pixel" style={{ fontSize: 12 }}>ntfy <span className="soft" style={{ fontFamily: "var(--font-mono)" }}>· free, install the ntfy app and subscribe to the same topic</span></div>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+          <Field label="topic"><Input value={ntfy.topic} onChange={(e) => setCh({ ...ch, ntfy: e.target.value ? { ...ntfy, topic: e.target.value } : undefined })} placeholder="orbis-luis-7f3a (pick something unguessable)" /></Field>
+          <Field label="min level">
+            <Select value={ntfy.minLevel ?? "info"} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, minLevel: e.target.value as "info" } })} disabled={!ntfy.topic}>
+              <option value="info">everything</option><option value="warning">warnings+</option><option value="urgent">urgent only</option>
+            </Select>
+          </Field>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+          <Field label="server (optional)"><Input value={ntfy.server ?? ""} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, server: e.target.value || undefined } })} placeholder="https://ntfy.sh" disabled={!ntfy.topic} /></Field>
+          <Field label="token (optional)"><Input type="password" value={ntfy.token ?? ""} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, token: e.target.value || undefined } })} disabled={!ntfy.topic} autoComplete="off" /></Field>
+        </div>
+        <div className="pixel" style={{ fontSize: 12 }}>telegram <span className="soft" style={{ fontFamily: "var(--font-mono)" }}>· create a bot with @BotFather, send it a message, get your chat id from @userinfobot</span></div>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
+          <Field label="bot token"><Input type="password" value={tg.botToken} onChange={(e) => setCh({ ...ch, telegram: e.target.value ? { ...tg, botToken: e.target.value } : undefined })} autoComplete="off" /></Field>
+          <Field label="chat id"><Input value={tg.chatId} onChange={(e) => setCh({ ...ch, telegram: { ...tg, chatId: e.target.value } })} disabled={!tg.botToken} /></Field>
+          <Field label="min level">
+            <Select value={tg.minLevel ?? "info"} onChange={(e) => setCh({ ...ch, telegram: { ...tg, minLevel: e.target.value as "info" } })} disabled={!tg.botToken}>
+              <option value="info">everything</option><option value="warning">warnings+</option><option value="urgent">urgent only</option>
+            </Select>
+          </Field>
+        </div>
+        <Field label="muted modules" hint="their notifications are dropped entirely">
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {(modules.data ?? []).map((mod) => (
+              <label key={mod.id} className="check" style={{ fontSize: 12 }}>
+                <input type="checkbox" checked={muted.includes(mod.id)} onChange={(e) => setMuted(e.target.checked ? [...muted, mod.id] : muted.filter((x) => x !== mod.id))} />
+                <i aria-hidden />
+                <span>{mod.manifest.name}</span>
+              </label>
+            ))}
+          </div>
+        </Field>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+          <Button size="sm" onClick={() => nm.test.mutate(undefined, { onSuccess: () => toast("test sent", "ok"), onError: (e) => toast(e.message, "bad") })} loading={nm.test.isPending}>
+            <Icon name="bell-ring" size={12} /> send a test
+          </Button>
+          <Button variant="primary" onClick={save} loading={patch.isPending}>save</Button>
+        </div>
+        <p className="soft" style={{ fontSize: 11 }}>web push (browser notifications) is not wired yet; ntfy on the phone is the closest thing and takes two minutes.</p>
       </div>
     </Window>
   );

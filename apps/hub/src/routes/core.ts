@@ -27,6 +27,11 @@ const settingsPatch = z
     registries: z.array(z.string().url()),
     location: z.object({ lat: z.number(), lon: z.number(), name: z.string() }).nullable(),
     units: z.enum(["metric", "imperial"]),
+    mutedModules: z.array(z.string()),
+    notifyChannels: z.object({
+      ntfy: z.object({ server: z.string().optional(), topic: z.string().min(1), token: z.string().optional(), minLevel: z.enum(["info", "warning", "urgent"]).optional() }).optional(),
+      telegram: z.object({ botToken: z.string().min(1), chatId: z.string().min(1), minLevel: z.enum(["info", "warning", "urgent"]).optional() }).optional(),
+    }),
   })
   .partial();
 

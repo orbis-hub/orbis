@@ -31,6 +31,8 @@ export type HubEvent =
   | { type: "dashboards:changed"; dashboardId?: string }
   | { type: "settings:changed"; key?: string }
   | { type: "users:changed" }
+  | { type: "notification"; notification: Notification; unread: number }
+  | { type: "notifications:changed"; unread: number }
   | { type: "hello"; hubVersion: string };
 
 export type WidgetInstance = {
@@ -120,4 +122,31 @@ export type EinkDisplay = {
   createdAt: string;
   /** only returned to admins on create / token rotate */
   token?: string;
+};
+
+export type NotificationLevel = "info" | "warning" | "urgent";
+
+export type NotificationInput = {
+  title: string;
+  body?: string;
+  /** where a click should go: an app route like "/m/?id=todo&page=tasks" or an external url */
+  url?: string;
+  level?: NotificationLevel;
+  /** pixel icon name */
+  icon?: string;
+  /** same module + key replaces the previous notification instead of adding one (e.g. "task-due:<id>") */
+  key?: string;
+};
+
+export type Notification = {
+  id: string;
+  module: string;
+  key: string | null;
+  title: string;
+  body: string | null;
+  url: string | null;
+  level: NotificationLevel;
+  icon: string | null;
+  createdAt: string;
+  readAt: string | null;
 };

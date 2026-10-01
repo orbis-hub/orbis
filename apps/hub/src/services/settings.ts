@@ -11,6 +11,12 @@ export type HubSettings = {
   /** Latitude/longitude used as default by location-aware modules. */
   location: { lat: number; lon: number; name: string } | null;
   units: "metric" | "imperial";
+  /** module ids whose notifications are dropped */
+  mutedModules: string[];
+  notifyChannels: {
+    ntfy?: { server?: string; topic: string; token?: string; minLevel?: "info" | "warning" | "urgent" };
+    telegram?: { botToken: string; chatId: string; minLevel?: "info" | "warning" | "urgent" };
+  };
 };
 
 export const defaultSettings: HubSettings = {
@@ -21,6 +27,8 @@ export const defaultSettings: HubSettings = {
   registries: [],
   location: null,
   units: "metric",
+  mutedModules: [],
+  notifyChannels: {},
 };
 
 export function getSetting<K extends keyof HubSettings>(key: K): HubSettings[K] {

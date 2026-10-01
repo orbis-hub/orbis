@@ -128,3 +128,21 @@ migrations.push(
 );
 
 migrations.push(`ALTER TABLE dashboards ADD COLUMN accent TEXT`);
+
+export const notifications = sqliteTable("notifications", {
+  id: text("id").primaryKey(),
+  module: text("module").notNull(),
+  key: text("key"),
+  title: text("title").notNull(),
+  body: text("body"),
+  url: text("url"),
+  level: text("level").notNull().default("info"),
+  icon: text("icon"),
+  createdAt: text("created_at").notNull(),
+  readAt: text("read_at"),
+});
+
+migrations.push(
+  `CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, module TEXT NOT NULL, key TEXT, title TEXT NOT NULL, body TEXT, url TEXT, level TEXT NOT NULL DEFAULT 'info', icon TEXT, created_at TEXT NOT NULL, read_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS notifications_key ON notifications(module, key)`,
+);
