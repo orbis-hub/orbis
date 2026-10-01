@@ -1,7 +1,7 @@
 {
   "id": "calendar",
   "name": "Calendar",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail, Radicale …).",
   "author": "orbis",
   "icon": "calendar",

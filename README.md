@@ -41,6 +41,9 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **bookmarks** | links | a start page with groups, favicons via the hub |
 | **focus timer** | timer | pomodoro on the hub, shared across devices |
 | **birthdays** | upcoming | people and dates, reminders a week before and on the day |
+| **feeds** | headlines | rss / atom, mark read, favicons |
+| **shopping list** | list | quick add with quantities and aisles, suggestions from past buys, store mode |
+| **shelly** | switch, power overview | gen1 + gen2 shellys on the lan, mdns discovery, watts |
 
 plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 
@@ -83,7 +86,8 @@ pnpm web     # http://localhost:3000
 - [x] clock · todo · weather · calendar · media · home assistant
 - [x] notifications (bell, ntfy, telegram), backup & restore, kiosk mode, dashboard accents
 - [x] e-ink: hub renderer, firmware for inkplate / lilygo / waveshare, web flasher
-- [ ] shelly/hue direct, more media providers
+- [x] shelly direct via the device registry
+- [ ] hue direct, more media providers
 - [ ] android apk, ios
 - [ ] worker isolation for third-party modules, npm packages for the sdk
 

@@ -1,7 +1,7 @@
 {
   "id": "bookmarks",
   "name": "Bookmarks",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A start page: links with icons, in groups. Favicons fetched by the hub, no third-party services.",
   "author": "orbis",
   "icon": "bookmark",
