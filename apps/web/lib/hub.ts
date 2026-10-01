@@ -27,8 +27,8 @@ export function getHubUrl(): string | null {
   const saved = ls()?.getItem(KEY_URL);
   if (saved) return saved.replace(/\/+$/, "");
   if (typeof window === "undefined") return null;
-  // dev: Next on :3000, hub on :3001
-  if (window.location.port === "3000") return `${window.location.protocol}//${window.location.hostname}:3001`;
+  // dev: next dev server on any port but the hub's → hub on :3001 of the same host
+  if (window.location.port && window.location.port !== "3001" && /^(localhost|127.0.0.1|192.168.d+.d+)$/.test(window.location.hostname) && process.env.NODE_ENV !== "production") return `${window.location.protocol}//${window.location.hostname}:3001`;
   if (isCapacitor() || window.location.protocol === "file:") return null;
   return window.location.origin;
 }
