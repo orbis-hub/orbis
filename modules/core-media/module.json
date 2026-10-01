@@ -2,7 +2,7 @@
   "id": "media",
   "name": "Media",
   "version": "0.1.6",
-  "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
+  "description": "Spotify (and Home Assistant media players: Sonos, Chromecast, Kodi, …) on your dashboard: now playing, controls, device picker, search. Any browser tab can become a Spotify Connect speaker.",
   "author": "orbis",
   "icon": "music",
   "minHub": "0.1.0",
@@ -123,6 +123,19 @@
         "default": 10,
         "minimum": 5,
         "maximum": 60
+      },
+      "provider": {
+        "type": "string",
+        "title": "Provider",
+        "enum": [
+          "spotify",
+          "ha"
+        ],
+        "enumNames": [
+          "Spotify",
+          "Home Assistant media players"
+        ],
+        "default": "spotify"
       }
     }
   },
