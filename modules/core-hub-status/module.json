@@ -1,0 +1,30 @@
+{
+  "id": "hub-status",
+  "name": "Hub status",
+  "version": "0.1.2",
+  "description": "What the hub itself is doing: cpu, memory, disk, uptime, database size, loaded modules, connected clients.",
+  "author": "orbis",
+  "icon": "server",
+  "minHub": "0.1.0",
+  "entry": { "server": "dist/server.js", "client": "dist/client.js" },
+  "widgets": [
+    {
+      "id": "overview",
+      "name": "Hub overview",
+      "description": "cpu, ram, disk, uptime at a glance.",
+      "defaultSize": { "w": 3, "h": 3 },
+      "minSize": { "w": 2, "h": 2 },
+      "configSchema": { "type": "object", "properties": { "showModules": { "type": "boolean", "title": "Show module count", "default": true } } }
+    },
+    {
+      "id": "gauge",
+      "name": "Single gauge",
+      "description": "One metric, big.",
+      "defaultSize": { "w": 2, "h": 2 },
+      "minSize": { "w": 1, "h": 1 },
+      "configSchema": { "type": "object", "properties": { "metric": { "type": "string", "title": "Metric", "enum": ["cpu", "memory", "disk", "uptime", "temperature", "load"], "enumNames": ["cpu %", "memory %", "disk %", "uptime", "cpu temperature", "load 1m"], "default": "cpu" } } }
+    }
+  ],
+  "pages": [{ "id": "status", "name": "Hub status", "icon": "server" }],
+  "permissions": ["scheduler"]
+}
