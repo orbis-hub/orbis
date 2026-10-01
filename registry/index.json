@@ -256,6 +256,20 @@
       "author": "orbis",
       "icon": "coffee",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/mealplan.tgz"
+    },
+    {
+      "id": "finance",
+      "name": "Finance",
+      "description": "Account balances by hand, recurring costs, and what is left this month. Not a budgeting app.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.6",
+      "tags": [
+        "money",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "wallet",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/finance.tgz"
     }
   ]
 }

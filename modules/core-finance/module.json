@@ -1,0 +1,43 @@
+{
+  "id": "finance",
+  "name": "Finance",
+  "version": "0.1.6",
+  "description": "Not a budgeting app. Account balances you type in, a few recurring costs, and the one number you actually want: what's left this month.",
+  "author": "orbis",
+  "icon": "wallet",
+  "minHub": "0.1.0",
+  "entry": { "server": "dist/server.js", "client": "dist/client.js" },
+  "widgets": [
+    {
+      "id": "overview",
+      "name": "Money left",
+      "description": "Total across accounts and what's left after this month's recurring costs.",
+      "defaultSize": { "w": 2, "h": 2 },
+      "minSize": { "w": 1, "h": 1 },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "mode": { "type": "string", "title": "Big number", "enum": ["left", "total"], "enumNames": ["left this month", "total balance"], "default": "left" },
+          "showUpcoming": { "type": "boolean", "title": "List upcoming costs", "default": true }
+        }
+      }
+    },
+    {
+      "id": "accounts",
+      "name": "Accounts",
+      "description": "Every account with its balance.",
+      "defaultSize": { "w": 2, "h": 3 },
+      "minSize": { "w": 1, "h": 2 }
+    }
+  ],
+  "pages": [{ "id": "finance", "name": "Finance", "icon": "wallet" }],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "currency": { "type": "string", "title": "Currency (ISO code)", "default": "EUR" },
+      "locale": { "type": "string", "title": "Number format locale (empty = browser)" },
+      "hideAmounts": { "type": "boolean", "title": "Blur amounts until hovered (for wall displays)", "default": false }
+    }
+  },
+  "permissions": ["storage"]
+}
