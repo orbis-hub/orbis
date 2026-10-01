@@ -1,11 +1,12 @@
 import { defineModule } from "@orbis/sdk/server";
+import { startMqttBridge, type MqttSettings } from "./mqtt";
 
 /**
  * Home Assistant over its websocket api: one connection, subscribe to state_changed, keep an entity map,
  * push changes to clients, call services on demand. Rest api only for history.
  */
 
-type Settings = { url?: string; token?: string };
+type Settings = { url?: string; token?: string } & MqttSettings;
 
 export type Entity = {
   id: string;
@@ -216,11 +217,27 @@ export default defineModule<Settings>({
       }
     });
 
+    /* ---- mqtt bridge: orbis as a device in HA ---- */
+    let mqttState: { connected: boolean; error: string | null; entities: string[] } = { connected: false, error: null, entities: [] };
+    let stopMqtt: () => void = () => undefined;
+    const startMqtt = () => {
+      stopMqtt();
+      stopMqtt = startMqttBridge(ctx, (st) => {
+        mqttState = st;
+        events.publish("mqtt", st);
+      });
+    };
+    startMqtt();
+    const offSettings = settings.onChange(() => startMqtt());
+    http.get("/mqtt/status", (c) => c.json({ ...mqttState, enabled: !!settings.get().mqttEnabled, url: settings.get().mqttUrl ?? null, prefix: settings.get().mqttPrefix || "orbis" }));
+
     logger.info("home assistant module ready");
     shutdownFn = () => {
       stopped = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       ws?.close();
+      offSettings();
+      stopMqtt();
     };
 
     /* ---- e-ink ---- */

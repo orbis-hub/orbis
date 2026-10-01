@@ -17,5 +17,8 @@
     "react": "^19.0.0",
     "typescript": "^5.9.0",
     "@types/node": "^24.0.0"
+  },
+  "dependencies": {
+    "mqtt": "^5.16.0"
   }
 }
