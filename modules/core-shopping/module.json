@@ -1,0 +1,57 @@
+{
+  "id": "shopping",
+  "name": "Shopping list",
+  "version": "0.1.5",
+  "description": "Shared shopping list: quick add, quantities, aisles, tap to check off in the store, bought items come back next time.",
+  "author": "orbis",
+  "icon": "cart",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "list",
+      "name": "Shopping list",
+      "description": "Open items with big checkboxes and a quick-add field.",
+      "defaultSize": {
+        "w": 3,
+        "h": 5
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "list": {
+            "type": "string",
+            "title": "List name (empty = groceries)"
+          },
+          "groupByAisle": {
+            "type": "boolean",
+            "title": "Group by aisle",
+            "default": true
+          },
+          "quickAdd": {
+            "type": "boolean",
+            "title": "Quick add field",
+            "default": true
+          }
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "shopping",
+      "name": "Shopping",
+      "icon": "cart"
+    }
+  ],
+  "permissions": [
+    "storage"
+  ]
+}

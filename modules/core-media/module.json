@@ -1,7 +1,7 @@
 {
   "id": "media",
   "name": "Media",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
   "author": "orbis",
   "icon": "music",

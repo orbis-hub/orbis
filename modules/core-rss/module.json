@@ -1,0 +1,85 @@
+{
+  "id": "rss",
+  "name": "Feeds",
+  "version": "0.1.5",
+  "description": "RSS / Atom headlines next to your weather. A few feeds, a widget with the latest, a page to skim and mark read.",
+  "author": "orbis",
+  "icon": "radio",
+  "minHub": "0.1.0",
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "widgets": [
+    {
+      "id": "headlines",
+      "name": "Headlines",
+      "description": "Latest items across your feeds (or one feed).",
+      "defaultSize": {
+        "w": 4,
+        "h": 4
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "feedId": {
+            "type": "string",
+            "title": "Feed id (empty = all)"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Items",
+            "default": 8,
+            "minimum": 1,
+            "maximum": 50
+          },
+          "unreadOnly": {
+            "type": "boolean",
+            "title": "Unread only",
+            "default": false
+          },
+          "showSource": {
+            "type": "boolean",
+            "title": "Show source",
+            "default": true
+          }
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "feeds",
+      "name": "Feeds",
+      "icon": "radio"
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "refreshMinutes": {
+        "type": "integer",
+        "title": "Refresh every (minutes)",
+        "default": 30,
+        "minimum": 5,
+        "maximum": 720
+      },
+      "keepDays": {
+        "type": "integer",
+        "title": "Keep items for (days)",
+        "default": 14,
+        "minimum": 1,
+        "maximum": 90
+      }
+    }
+  },
+  "permissions": [
+    "network:fetch",
+    "storage",
+    "scheduler"
+  ]
+}

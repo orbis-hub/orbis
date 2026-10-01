@@ -6,7 +6,7 @@
       "name": "Clock",
       "description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "time",
         "builtin"
@@ -20,7 +20,7 @@
       "name": "Todo",
       "description": "Lists and tasks with due dates. A widget per list plus a full page.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "productivity",
         "builtin"
@@ -34,7 +34,7 @@
       "name": "Weather",
       "description": "Current conditions and forecast from Open-Meteo. No API key needed.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "weather",
         "builtin"
@@ -48,7 +48,7 @@
       "name": "Calendar",
       "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail …).",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "calendar",
         "builtin"
@@ -62,7 +62,7 @@
       "name": "Media",
       "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "media",
         "spotify",
@@ -80,7 +80,7 @@
       "name": "Home Assistant",
       "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "smart home",
         "builtin"
@@ -94,7 +94,7 @@
       "name": "Notes",
       "description": "Plain notes with a little markdown. A pinned note on the dashboard, a page to write.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "productivity",
         "builtin"
@@ -108,7 +108,7 @@
       "name": "Countdown",
       "description": "Big number counting down to a date. Client-only, one widget per countdown.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "fun",
         "builtin"
@@ -122,7 +122,7 @@
       "name": "Hub status",
       "description": "cpu, memory, disk, uptime, database size, loaded modules.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "system",
         "builtin"
@@ -136,7 +136,7 @@
       "name": "Habits",
       "description": "Daily habits with streaks and a contribution-style grid.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "productivity",
         "builtin"
@@ -150,7 +150,7 @@
       "name": "Bookmarks",
       "description": "A start page: links with icons in groups, favicons fetched by the hub.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "productivity",
         "builtin"
@@ -164,7 +164,7 @@
       "name": "Focus timer",
       "description": "Pomodoro-style timer, state on the hub so it runs across devices.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "productivity",
         "builtin"
@@ -178,7 +178,7 @@
       "name": "Birthdays",
       "description": "People and their dates: who is next, how old they turn, reminders.",
       "repo": "github:orbis-hub/orbis",
-      "latest": "0.1.4",
+      "latest": "0.1.5",
       "tags": [
         "people",
         "builtin"
@@ -186,6 +186,48 @@
       "author": "orbis",
       "icon": "cake",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/birthdays.tgz"
+    },
+    {
+      "id": "rss",
+      "name": "Feeds",
+      "description": "RSS / Atom headlines: a few feeds, a widget with the latest, a page to skim and mark read.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.5",
+      "tags": [
+        "news",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "radio",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/rss.tgz"
+    },
+    {
+      "id": "shopping",
+      "name": "Shopping list",
+      "description": "Shared shopping list with quick add, quantities, aisles and suggestions from past purchases.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.5",
+      "tags": [
+        "home",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "cart",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/shopping.tgz"
+    },
+    {
+      "id": "shelly",
+      "name": "Shelly",
+      "description": "Shelly relays and plugs over the local network, gen1 and gen2, with power draw.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.5",
+      "tags": [
+        "smart home",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "plug",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/shelly.tgz"
     }
   ]
 }

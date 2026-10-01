@@ -1,0 +1,21 @@
+{
+  "name": "@orbis/module-shelly",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "orbis-module build",
+    "watch": "orbis-module watch --dev=../../apps/hub/data",
+    "typecheck": "tsc --noEmit",
+    "pack:module": "orbis-module pack"
+  },
+  "devDependencies": {
+    "@orbis/module-tools": "workspace:*",
+    "@orbis/sdk": "workspace:*",
+    "@orbis/ui": "workspace:*",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "typescript": "^5.9.0",
+    "@types/node": "^24.0.0"
+  }
+}
