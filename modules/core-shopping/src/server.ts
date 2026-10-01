@@ -98,6 +98,17 @@ export default defineModule({
     if (!einkRender) throw new Error("not ready");
     return einkRender(req);
   },
+  /** tap a row on the e-ink list → item is bought (rows are 20px, same as the render) */
+  einkTap(ctx, req) {
+    const cfg = req.config as { list?: string };
+    const list = ctx.storage.sql<ShopItem>(`SELECT * FROM {{t:items}} WHERE list = ? AND done = 0 ORDER BY done, aisle IS NULL, aisle, sort, created_at`, [cfg.list || "groceries"]);
+    const idx = Math.floor(Math.max(0, req.y) / 20);
+    const item = list[idx];
+    if (!item) return { refresh: false };
+    ctx.storage.run(`UPDATE {{t:items}} SET done = 1, done_at = ? WHERE id = ?`, [new Date().toISOString(), item.id]);
+    ctx.events.publish("changed");
+    return { refresh: true, toast: `${item.name} ✓` };
+  },
 });
 
 let einkRender: ((req: import("@orbis/sdk/server").EinkRequest) => import("@orbis/sdk/server").EinkTree) | null = null;

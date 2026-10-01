@@ -65,10 +65,11 @@ export const einkDeviceRoutes = new Hono()
   .use(async (c, next) => {
     const auth = c.req.header("authorization");
     const token = auth?.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : c.req.query("token");
-    const id = c.req.param("id") ?? c.req.path.split("/").pop()?.replace(/\.(bin|png|bmp|svg)$/, "");
     if (!token) return c.json({ error: "token required" }, 401);
     const d = eink.findByToken(token);
-    if (!d || (id && d.id !== id && !id.startsWith(d.id))) return c.json({ error: "unknown display or token" }, 401);
+    // the token must belong to the display named in the path (/<id>.bin, /<id>/config, /<id>/tap)
+    const segs = c.req.path.split("/").filter(Boolean);
+    if (!d || !segs.some((p) => p === d.id || p.startsWith(`${d.id}.`))) return c.json({ error: "unknown display or token" }, 401);
     c.set("display" as never, d as never);
     const battery = c.req.header("x-orbis-battery");
     eink.touchDisplay(d.id, { battery: battery !== undefined ? Number(battery) : undefined, board: c.req.header("x-orbis-board") ?? undefined });
@@ -84,8 +85,8 @@ export const einkDeviceRoutes = new Hono()
     if (!d) return c.json({ error: "not found" }, 404);
     const body = z.object({ x: z.number(), y: z.number() }).safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: "invalid input" }, 400);
-    // widget-level tap handling is the next step; for now a tap means "show me something fresh"
-    return c.json({ ok: true, refresh: true });
+    const r = await eink.handleTap(d, body.data.x, body.data.y);
+    return c.json({ ok: true, ...r });
   })
   .get("/:file", async (c) => {
     const d = c.get("display" as never) as ReturnType<typeof eink.getDisplay>;

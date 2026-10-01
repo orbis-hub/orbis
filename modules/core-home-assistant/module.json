@@ -1,7 +1,7 @@
 {
   "id": "home-assistant",
   "name": "Home Assistant",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket. Also publishes orbis itself to HA over MQTT (next event, open tasks, focus switch).",
   "author": "orbis",
   "icon": "home",

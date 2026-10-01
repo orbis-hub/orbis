@@ -1,7 +1,7 @@
 {
   "id": "hub-status",
   "name": "Hub status",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "What the hub itself is doing: cpu, memory, disk, uptime, database size, loaded modules, connected clients.",
   "author": "orbis",
   "icon": "server",

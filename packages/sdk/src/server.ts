@@ -105,7 +105,16 @@ export type ModuleServer<TSettings = Record<string, unknown>> = {
    * Reserved for a later phase; typed now so modules can opt in early.
    */
   eink?(ctx: ModuleServerContext<TSettings>, req: EinkRequest): Promise<EinkTree> | EinkTree;
+  /**
+   * Optional: a touch display was tapped inside this widget. `x`/`y` are pixels inside the widget's
+   * content area (same box `eink()` rendered into). Return `{ refresh: true }` to redraw right away.
+   * Without this hook a tap just refreshes the display.
+   */
+  einkTap?(ctx: ModuleServerContext<TSettings>, req: EinkTapRequest): Promise<EinkTapResult | void> | EinkTapResult | void;
 };
+
+export type EinkTapRequest = EinkRequest & { x: number; y: number };
+export type EinkTapResult = { refresh?: boolean; toast?: string };
 
 export type EinkRequest = {
   displayId: string;

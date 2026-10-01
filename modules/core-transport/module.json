@@ -1,7 +1,7 @@
 {
   "id": "transport",
   "name": "Departures",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Next departures from a stop near you. Germany first (DB / HAFAS via transport.rest, no key); other providers can be added.",
   "author": "orbis",
   "icon": "bus",

@@ -121,6 +121,12 @@ export default defineModule({
     if (!einkRender) throw new Error("not ready");
     return einkRender(req);
   },
+  /** tap on the e-ink widget toggles the timer */
+  async einkTap(ctx) {
+    const running = ctx.storage.get<TimerState>("state")?.running;
+    await ctx.http.fetch(new Request(`http://m/${running ? "pause" : "start"}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }));
+    return { refresh: true, toast: running ? "paused" : "focus started" };
+  },
 });
 
 let einkRender: ((req: import("@orbis/sdk/server").EinkRequest) => import("@orbis/sdk/server").EinkTree) | null = null;

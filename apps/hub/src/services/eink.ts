@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { deflateSync } from "node:zlib";
 import { Resvg } from "@resvg/resvg-js";
 import type { EinkDisplay } from "@orbis/sdk";
-import type { EinkRequest, EinkTree } from "@orbis/sdk/server";
+import type { EinkRequest, EinkTapResult, EinkTree } from "@orbis/sdk/server";
 import { ICONS } from "@orbis/ui/icons";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -278,29 +278,59 @@ function weatherPaths(name: string): P[] {
 
 /* ---------- compose a display ---------- */
 
-type Cell = { x: number; y: number; w: number; h: number; title: string; tree: EinkTree | null; error?: string };
+type Cell = { x: number; y: number; w: number; h: number; title: string; tree: EinkTree | null; error?: string; module?: string; widget?: string; config?: Record<string, unknown> };
 
-export async function renderDisplay(display: EinkDisplay, opts: { format: "png" | "bin" | "bmp" | "svg" }): Promise<{ body: Buffer; contentType: string }> {
+/** frame size + widget boxes for a display, shared by render and tap */
+function frameGeometry(display: EinkDisplay) {
   const landscape = display.rotate === 0 || display.rotate === 180;
   const W = landscape ? display.width : display.height;
   const H = landscape ? display.height : display.width;
-  const settings = getAllSettings();
-  monochrome = display.grayscale <= 1;
-  const dash = display.dashboardId ? getDashboard(display.dashboardId) : null;
   const pad = 8;
   const gap = 8;
-
-  const cells: Cell[] = [];
+  const dash = display.dashboardId ? getDashboard(display.dashboardId) : null;
+  const boxes: Array<{ x: number; y: number; w: number; h: number; module: string; widget: string; config: Record<string, unknown> }> = [];
   if (dash) {
     const cols = 12;
     const rows = Math.max(1, ...dash.widgets.map((w) => w.y + w.h));
     const cw = (W - pad * 2 - gap * (cols - 1)) / cols;
     const rh = (H - pad * 2 - gap * (rows - 1)) / rows;
-    for (const w of dash.widgets) {
-      const x = pad + w.x * (cw + gap);
-      const y = pad + w.y * (rh + gap);
-      const width = w.w * cw + (w.w - 1) * gap;
-      const height = w.h * rh + (w.h - 1) * gap;
+    for (const w of dash.widgets) boxes.push({ x: pad + w.x * (cw + gap), y: pad + w.y * (rh + gap), w: w.w * cw + (w.w - 1) * gap, h: w.h * rh + (w.h - 1) * gap, module: w.module, widget: w.widget, config: w.config });
+  }
+  return { W, H, pad, gap, dash, boxes };
+}
+
+/**
+ * A touch display reported a tap. Coordinates are in frame space (what the display shows, after rotation).
+ * Finds the widget, forwards to its einkTap hook if it has one; otherwise a tap just means "refresh".
+ */
+export async function handleTap(display: EinkDisplay, x: number, y: number): Promise<EinkTapResult & { widget?: string; module?: string }> {
+  const { boxes } = frameGeometry(display);
+  const box = boxes.find((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+  if (!box) return { refresh: true };
+  const mod = runtime.get(box.module);
+  if (!mod?.loaded || !mod.server?.einkTap || !mod.built) return { refresh: true, widget: box.widget, module: box.module };
+  const settings = getAllSettings();
+  // content area: inside the 1.5px frame and below the ~24px title bar, matching the box eink() rendered into
+  const req = { displayId: display.id, width: Math.floor(box.w) - 12, height: Math.floor(box.h) - 30, grayLevelsBits: display.grayscale, widget: box.widget, config: box.config, locale: settings.locale, timezone: settings.timezone, now: new Date(), x: Math.round(x - box.x - 6), y: Math.round(y - box.y - 24) };
+  try {
+    const r = (await mod.server.einkTap(mod.built.ctx, req)) ?? {};
+    return { refresh: r.refresh ?? true, toast: r.toast, widget: box.widget, module: box.module };
+  } catch (err) {
+    log.warn({ err, module: box.module }, "einkTap failed");
+    return { refresh: true, widget: box.widget, module: box.module };
+  }
+}
+
+export async function renderDisplay(display: EinkDisplay, opts: { format: "png" | "bin" | "bmp" | "svg" }): Promise<{ body: Buffer; contentType: string }> {
+  const settings = getAllSettings();
+  monochrome = display.grayscale <= 1;
+  const { W, H, pad, dash, boxes } = frameGeometry(display);
+
+  const cells: Cell[] = [];
+  if (dash) {
+    for (const b of boxes) {
+      const w = { module: b.module, widget: b.widget, config: b.config };
+      const { x, y, w: width, h: height } = b;
       const mod = runtime.get(w.module);
       const def = mod?.manifest.widgets.find((d) => d.id === w.widget);
       const cell: Cell = { x, y, w: width, h: height, title: String(w.config.title ?? def?.name ?? w.widget), tree: null };

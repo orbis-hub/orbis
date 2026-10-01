@@ -11,6 +11,7 @@ import { removeWidgetsOfModule } from "../services/dashboards";
 import { releaseAllOfModule } from "../services/devices";
 import { broadcast } from "../ws";
 import { buildContext, type BuiltContext } from "./context";
+import { shouldIsolate, startWorkerServer } from "./worker/host";
 import { type DiscoveredModule, discoverBuiltin, discoverDev, discoverInstalled, installFromUrl, type ModuleSource, removeInstalledFiles } from "./installer";
 
 const log = childLog("modules");
@@ -31,6 +32,8 @@ export type ModuleState = {
   status: ModuleStatus | null;
   server?: ModuleServer;
   built?: BuiltContext;
+  /** server code runs in a worker_thread (store modules) */
+  isolated?: boolean;
 };
 
 const states = new Map<string, ModuleState>();
@@ -105,7 +108,7 @@ export function get(id: string) {
 }
 
 export function toPublic(s: ModuleState): InstalledModule {
-  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: s.manifest, error: s.error, installedAt: s.installedAt, loadedAt: s.loadedAt, status: s.status };
+  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: s.manifest, error: s.error, installedAt: s.installedAt, loadedAt: s.loadedAt, status: s.status, isolated: !!s.isolated };
 }
 
 /* ---------- persistence ---------- */
@@ -193,9 +196,6 @@ export async function load(id: string): Promise<ModuleState> {
   }
   const file = join(s.dir, s.manifest.entry.server);
   try {
-    const mod = await importFresh(file);
-    const server: ModuleServer = mod.default ?? mod;
-    if (typeof server?.setup !== "function") throw new Error("server entry has no default export with setup()");
     const built = buildContext(
       s.manifest,
       s.dir,
@@ -207,9 +207,18 @@ export async function load(id: string): Promise<ModuleState> {
       },
       modulesApiFor(id),
     );
-    await server.setup(built.ctx);
+    let server: ModuleServer;
+    if (shouldIsolate(s.source)) {
+      server = await startWorkerServer(s.manifest, file, built.ctx);
+    } else {
+      const mod = await importFresh(file);
+      server = mod.default ?? mod;
+      if (typeof server?.setup !== "function") throw new Error("server entry has no default export with setup()");
+      await server.setup(built.ctx);
+    }
     s.server = server;
     s.built = built;
+    s.isolated = shouldIsolate(s.source);
     s.loaded = true;
     s.loadedAt = now();
     s.error = null;
@@ -310,6 +319,12 @@ export async function uninstall(id: string) {
   getDb().delete(schema.installedModules).where(eq(schema.installedModules.id, id)).run();
   getDb().delete(schema.moduleKv).where(eq(schema.moduleKv.module, id)).run();
   states.delete(id);
+  // a store copy may have shadowed a built-in module of the same id: bring the built-in back
+  const builtin = discoverBuiltin().find((d) => d.manifest.id === id);
+  if (builtin) {
+    upsertFromDisk(builtin);
+    await load(id);
+  }
   broadcast({ type: "modules:changed" });
 }
 

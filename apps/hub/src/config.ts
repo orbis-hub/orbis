@@ -10,7 +10,7 @@ const repoRoot = resolve(hubRoot, "../..");
 const env = (k: string, d?: string) => process.env[k] ?? d;
 
 export const config = {
-  version: "0.1.0",
+  version: "0.1.1",
   port: Number(env("PORT", "3001")),
   host: env("HOST", "0.0.0.0")!,
   dev: env("NODE_ENV") !== "production",
@@ -31,6 +31,8 @@ export const config = {
     .map((s) => s.trim())
     .filter(Boolean),
   sessionDays: Number(env("ORBIS_SESSION_DAYS", "90")),
+  /** Run module server code in worker_threads: "store" (everything that is not builtin/dev, default), "all", "off". */
+  isolate: (env("ORBIS_ISOLATE", "store") as "store" | "all" | "off"),
   logLevel: env("LOG_LEVEL", env("NODE_ENV") === "production" ? "info" : "debug")!,
   get dbPath() {
     return resolve(this.dataDir, "orbis.sqlite");

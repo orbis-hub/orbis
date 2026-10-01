@@ -1,36 +1,73 @@
 {
   "id": "mealplan",
   "name": "Meal plan",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Week grid for lunch and dinner, a recipe box with url import (schema.org json-ld, covers most food blogs), and 'put this week's ingredients on the shopping list'.",
   "author": "orbis",
   "icon": "coffee",
   "minHub": "0.1.0",
-  "entry": { "server": "dist/server.js", "client": "dist/client.js" },
-  "softDeps": ["shopping"],
+  "entry": {
+    "server": "dist/server.js",
+    "client": "dist/client.js"
+  },
+  "softDeps": [
+    "shopping"
+  ],
   "widgets": [
     {
       "id": "meals",
       "name": "Today's meals",
       "description": "What's for lunch and dinner today and tomorrow.",
-      "defaultSize": { "w": 3, "h": 3 },
-      "minSize": { "w": 2, "h": 2 },
+      "defaultSize": {
+        "w": 3,
+        "h": 3
+      },
+      "minSize": {
+        "w": 2,
+        "h": 2
+      },
       "configSchema": {
         "type": "object",
         "properties": {
-          "days": { "type": "integer", "title": "Days to show", "default": 2, "minimum": 1, "maximum": 7 },
-          "showImages": { "type": "boolean", "title": "Show recipe images", "default": true }
+          "days": {
+            "type": "integer",
+            "title": "Days to show",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 7
+          },
+          "showImages": {
+            "type": "boolean",
+            "title": "Show recipe images",
+            "default": true
+          }
         }
       }
     }
   ],
-  "pages": [{ "id": "plan", "name": "Meal plan", "icon": "coffee" }],
+  "pages": [
+    {
+      "id": "plan",
+      "name": "Meal plan",
+      "icon": "coffee"
+    }
+  ],
   "settingsSchema": {
     "type": "object",
     "properties": {
-      "slots": { "type": "string", "title": "Slots per day (comma separated)", "default": "lunch, dinner" },
-      "shoppingList": { "type": "string", "title": "Shopping list name for 'add ingredients' (empty = groceries)" }
+      "slots": {
+        "type": "string",
+        "title": "Slots per day (comma separated)",
+        "default": "lunch, dinner"
+      },
+      "shoppingList": {
+        "type": "string",
+        "title": "Shopping list name for 'add ingredients' (empty = groceries)"
+      }
     }
   },
-  "permissions": ["network:fetch", "storage"]
+  "permissions": [
+    "network:fetch",
+    "storage"
+  ]
 }
