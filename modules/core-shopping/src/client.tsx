@@ -120,7 +120,7 @@ function ShoppingPage(_p: PageProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <QuickAdd list={list} onAdded={() => { open.refetch(); all.refetch(); }} big />
           <div className="soft" style={{ fontSize: 11 }}>tip: <code>2x milk @dairy</code> sets quantity and aisle. things you bought before come back from the suggestions with their aisle.</div>
-          {(open.data ?? []).length === 0 ? <Empty icon="cart" title="nothing to buy" /> : null}
+          {(open.data ?? []).length === 0 ? <Empty icon="shopping-bag" title="nothing to buy" /> : null}
           {groupByAisle(open.data ?? []).map(([aisle, rows]) => (
             <div key={aisle || "_"}>
               {aisle ? <div className="pixel soft" style={{ fontSize: 11, marginTop: 6 }}>{aisle}</div> : null}
