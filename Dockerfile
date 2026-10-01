@@ -9,6 +9,7 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json tsconfig.base.json turbo.json ./
 COPY apps/hub/package.json apps/hub/
 COPY apps/web/package.json apps/web/
+COPY apps/mobile/package.json apps/mobile/
 COPY packages/sdk/package.json packages/sdk/
 COPY packages/ui/package.json packages/ui/
 COPY packages/module-tools/package.json packages/module-tools/
