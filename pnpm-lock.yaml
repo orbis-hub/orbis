@@ -388,9 +388,6 @@ importers:
 
   packages/module-tools:
     dependencies:
-      '@orbis/sdk':
-        specifier: workspace:*
-        version: link:../sdk
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
