@@ -88,6 +88,48 @@
       "author": "orbis",
       "icon": "home",
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/home-assistant.tgz"
+    },
+    {
+      "id": "notes",
+      "name": "Notes",
+      "description": "Plain notes with a little markdown. A pinned note on the dashboard, a page to write.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.2",
+      "tags": [
+        "productivity",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "note",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/notes.tgz"
+    },
+    {
+      "id": "countdown",
+      "name": "Countdown",
+      "description": "Big number counting down to a date. Client-only, one widget per countdown.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.2",
+      "tags": [
+        "fun",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "hourglass",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/countdown.tgz"
+    },
+    {
+      "id": "hub-status",
+      "name": "Hub status",
+      "description": "cpu, memory, disk, uptime, database size, loaded modules.",
+      "repo": "github:orbis-hub/orbis",
+      "latest": "0.1.2",
+      "tags": [
+        "system",
+        "builtin"
+      ],
+      "author": "orbis",
+      "icon": "server",
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/hub-status.tgz"
     }
   ]
 }

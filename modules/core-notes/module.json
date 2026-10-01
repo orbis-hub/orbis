@@ -1,0 +1,30 @@
+{
+  "id": "notes",
+  "name": "Notes",
+  "version": "0.1.2",
+  "description": "Plain notes with a little markdown. A pinned note on the dashboard, a page to write.",
+  "author": "orbis",
+  "icon": "note",
+  "minHub": "0.1.0",
+  "entry": { "server": "dist/server.js", "client": "dist/client.js" },
+  "widgets": [
+    {
+      "id": "note",
+      "name": "Note",
+      "description": "One note, rendered. Click to edit on the notes page.",
+      "defaultSize": { "w": 3, "h": 4 },
+      "minSize": { "w": 2, "h": 2 },
+      "configSchema": { "type": "object", "properties": { "noteId": { "type": "string", "title": "Note id (empty = pinned note)" }, "showTitle": { "type": "boolean", "title": "Show note title", "default": true } } }
+    },
+    {
+      "id": "scratch",
+      "name": "Scratchpad",
+      "description": "Type straight into the widget. Saved as you go.",
+      "defaultSize": { "w": 3, "h": 3 },
+      "minSize": { "w": 2, "h": 2 },
+      "configSchema": { "type": "object", "properties": { "noteId": { "type": "string", "title": "Note id (empty = a note called scratchpad)" } } }
+    }
+  ],
+  "pages": [{ "id": "notes", "name": "Notes", "icon": "note" }],
+  "permissions": ["storage"]
+}

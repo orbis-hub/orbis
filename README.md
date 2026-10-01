@@ -34,6 +34,9 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **calendar** | agenda, month, next up | ics feeds + caldav (google, icloud, nextcloud, fastmail …) |
 | **media** | now playing, playback devices | spotify: search, playlists, queue, pick the device it plays on |
 | **home assistant** | switch/light, sensor + sparkline, climate, scenes, entity list | all your ha entities, live over its websocket |
+| **notes** | note, scratchpad | markdown-ish notes with checkboxes, autosave |
+| **countdown** | countdown | days / weeks / hours to a date, yearly for birthdays |
+| **hub status** | overview, single gauge | cpu, memory, disk, uptime, 30 min history |
 
 plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 
