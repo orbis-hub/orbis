@@ -1,0 +1,65 @@
+name: firmware
+
+# tag `fw-v0.1.0` → builds every platformio env and attaches merged, flash-at-0x0 binaries to a release.
+# the web flasher (orbis-hub/flash) points at these assets.
+on:
+  push:
+    tags: ["fw-v*"]
+    paths-ignore: ["**.md"]
+  pull_request:
+    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [inkplate6, inkplate6plus, inkplate10, inkplate6color, lilygo-t5-47, lilygo-t5-47-s3, waveshare-75, waveshare-42, waveshare-29]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio
+          key: pio-${{ matrix.env }}-${{ hashFiles('firmware/platformio.ini') }}
+      - run: pip install platformio esptool
+      - name: build
+        working-directory: firmware
+        run: pio run -e ${{ matrix.env }}
+      - name: merge into one flashable image
+        working-directory: firmware
+        run: |
+          set -e
+          D=.pio/build/${{ matrix.env }}
+          CHIP=$(grep -q "esp32-s3" <<<"${{ matrix.env }}" && echo esp32s3 || echo esp32)
+          BOOT_ADDR=$([ "$CHIP" = esp32s3 ] && echo 0x0 || echo 0x1000)
+          python -m esptool --chip $CHIP merge_bin -o orbis-${{ matrix.env }}.bin \
+            $BOOT_ADDR $D/bootloader.bin 0x8000 $D/partitions.bin 0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 $D/firmware.bin
+          echo "{\"env\":\"${{ matrix.env }}\",\"chip\":\"$CHIP\",\"version\":\"${GITHUB_REF_NAME#fw-v}\"}" > orbis-${{ matrix.env }}.json
+          ls -la orbis-*.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbis-${{ matrix.env }}
+          path: |
+            firmware/orbis-${{ matrix.env }}.bin
+            firmware/orbis-${{ matrix.env }}.json
+
+  release:
+    if: startsWith(github.ref_name, 'fw-v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          generate_release_notes: true
