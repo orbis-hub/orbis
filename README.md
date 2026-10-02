@@ -2,18 +2,15 @@
 
 <p align="center"><b>your life, one dashboard.</b></p>
 
-<p align="center">
-  <a href="https://github.com/orbis-hub/orbis/wiki/Getting-Started">getting started</a> ·
-  <a href="https://github.com/orbis-hub/orbis/wiki/Install">install</a> ·
-  <a href="https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide">build a module</a> ·
-  <a href="https://github.com/orbis-hub/orbis/wiki">wiki</a> ·
-  <a href="https://github.com/orbis-hub/registry">registry</a> ·
-  <a href="https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22">module ideas</a>
-</p>
+<div align="center">
 
----
+<!-- cozy:repo -->
 
-orbis is a self-hosted, modular life manager. one **hub** you run yourself (a pi is plenty), **dashboards** you lay out with drag and drop, and **modules** for everything on them: todos, calendar, weather, music, smart home, whatever someone writes next. web, android/ios and (soon) e-ink displays all talk to the same hub. no cloud, no account with us, your data stays in one sqlite file at home.
+<!-- cozy:nav-start --><!-- cozy:nav-install --><!-- cozy:nav-modules --><!-- cozy:nav-wiki --><!-- cozy:nav-registry -->
+
+</div>
+
+orbis is a self-hosted, modular life manager. one **hub** you run yourself (a pi is plenty), **dashboards** you lay out with drag and drop, and **modules** for everything on them: todos, calendar, weather, music, smart home, whatever someone writes next. web, android/ios and e-ink displays all talk to the same hub. no cloud, no account with us, your data stays in one sqlite file at home.
 
 ## install
 
@@ -32,8 +29,8 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **todo** | list, due today | lists & tasks with due dates |
 | **weather** | current, forecast | hours and 7 days, open-meteo, no api key |
 | **calendar** | agenda, month, next up | ics feeds + caldav (google, icloud, nextcloud, fastmail …) |
-| **media** | now playing, playback devices | spotify: search, playlists, queue, pick the device it plays on |
-| **home assistant** | switch/light, sensor + sparkline, climate, scenes, entity list | all your ha entities, live over its websocket |
+| **media** | now playing, playback devices | spotify or home assistant media players: search, playlists, queue, device picker, play in this browser |
+| **home assistant** | switch/light, sensor + sparkline, climate, scenes, entity list | all your ha entities live over its websocket, and orbis as a device in ha via mqtt |
 | **notes** | note, scratchpad | markdown-ish notes with checkboxes, autosave |
 | **countdown** | countdown | days / weeks / hours to a date, yearly for birthdays |
 | **hub status** | overview, single gauge | cpu, memory, disk, uptime, 30 min history |
@@ -84,15 +81,28 @@ pnpm web     # http://localhost:3000
 
 [development setup](https://github.com/orbis-hub/orbis/wiki/Development-Setup) · [architecture](https://github.com/orbis-hub/orbis/wiki/Architecture) · [hub api](https://github.com/orbis-hub/orbis/wiki/Hub-API) · [contributing](https://github.com/orbis-hub/orbis/wiki/Contributing)
 
+## activity
+
+<div align="center">
+
+<!-- cozy:commits -->
+
+<!-- cozy:releases -->
+
+<!-- cozy:contributors -->
+
+</div>
+
 ## roadmap
 
 - [x] hub, web, sdk, module store, device scanner, accounts, installer
-- [x] clock · todo · weather · calendar · media · home assistant
+- [x] 20 first-party modules, from clock to finance
 - [x] notifications (bell, ntfy, telegram), backup & restore, kiosk mode, dashboard accents
-- [x] e-ink: hub renderer, firmware for inkplate / lilygo / waveshare, web flasher
-- [x] shelly direct via the device registry
-- [ ] hue direct, more media providers
+- [x] e-ink: hub renderer, firmware for inkplate / lilygo / waveshare, web flasher, taps reach widgets
+- [x] shelly direct via the device registry, orbis as a device in home assistant (mqtt)
+- [x] store modules run isolated in worker threads with enforced permissions
+- [ ] npm packages for the sdk ([#12](https://github.com/orbis-hub/orbis/issues/12))
+- [ ] sonos / mpd / jellyfin in the media module ([#28](https://github.com/orbis-hub/orbis/issues/28)), hue direct
 - [ ] android apk, ios
-- [ ] worker isolation for third-party modules, npm packages for the sdk
 
 mit licensed. made by [vensin](https://vensin.dev).
