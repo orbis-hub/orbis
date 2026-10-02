@@ -12,39 +12,16 @@
 </div>
 <!-- /cozy:repo -->
 
-<!-- cozy:nav-start -->
-<div align="center">
-
-<a href="https://github.com/orbis-hub/orbis/wiki/Getting-Started"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-start-dark.svg?v=0209a3b959"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-start-light.svg?v=0209a3b959" width="147" alt="getting started →"></picture></a>
-
 </div>
-<!-- /cozy:nav-start --><!-- cozy:nav-install -->
-<div align="center">
 
-<a href="https://github.com/orbis-hub/orbis/wiki/Install"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-install-dark.svg?v=56b34595aa"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-install-light.svg?v=56b34595aa" width="76" alt="install"></picture></a>
-
-</div>
-<!-- /cozy:nav-install --><!-- cozy:nav-modules -->
-<div align="center">
-
-<a href="https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-modules-dark.svg?v=67b4eca7b3"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-modules-light.svg?v=67b4eca7b3" width="121" alt="build a module"></picture></a>
-
-</div>
-<!-- /cozy:nav-modules --><!-- cozy:nav-wiki -->
-<div align="center">
-
-<a href="https://github.com/orbis-hub/orbis/wiki"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-wiki-dark.svg?v=83a768af83"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-wiki-light.svg?v=83a768af83" width="56" alt="wiki"></picture></a>
-
-</div>
-<!-- /cozy:nav-wiki --><!-- cozy:nav-registry -->
-<div align="center">
-
-<a href="https://github.com/orbis-hub/registry"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-registry-dark.svg?v=c10017e298"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-registry-light.svg?v=c10017e298" width="82" alt="registry"></picture></a>
-
-</div>
-<!-- /cozy:nav-registry -->
-
-</div>
+<p align="center">
+  <a href="https://github.com/orbis-hub/orbis/wiki/Getting-Started">getting started</a> ·
+  <a href="https://github.com/orbis-hub/orbis/wiki/Install">install</a> ·
+  <a href="https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide">build a module</a> ·
+  <a href="https://github.com/orbis-hub/orbis/wiki">wiki</a> ·
+  <a href="https://github.com/orbis-hub/registry">registry</a> ·
+  <a href="https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22">module ideas</a>
+</p>
 
 orbis is a self-hosted, modular life manager. one **hub** you run yourself (a pi is plenty), **dashboards** you lay out with drag and drop, and **modules** for everything on them: todos, calendar, weather, music, smart home, whatever someone writes next. web, android/ios and e-ink displays all talk to the same hub. no cloud, no account with us, your data stays in one sqlite file at home.
 
