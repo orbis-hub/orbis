@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hub",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@orbis/hub", "dev"],
+      "port": 3001
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@orbis/web", "exec", "next", "dev", "-p", "3002"],
+      "port": 3002
+    }
+  ]
+}
