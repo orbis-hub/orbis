@@ -95,4 +95,4 @@ pnpm web     # http://localhost:3000
 - [ ] android apk, ios
 - [ ] worker isolation for third-party modules, npm packages for the sdk
 
-mit licensed. made in würzburg by [vensin](https://vensin.dev).
+mit licensed. made by [vensin](https://vensin.dev).
