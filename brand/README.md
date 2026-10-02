@@ -14,3 +14,7 @@ pixel art on a 16×16 grid, like the rest of the app. regenerate everything with
 colours: pink `#e2789b` (dark `#ff8fb4`), lavender `#8b7fd6` (dark `#b0a4ff`), ink `#3b2c3a` (dark `#f1e7f0`), paper dark `#1f1826`, bg dark `#17121c`.
 
 the mark is an orbit: ring (pink), core (lavender), one satellite (lavender) outside the ring. keep it on the grid – no anti-aliasing, no rounded corners.
+
+## favicons
+
+`node brand/favicons.mjs` writes `favicon.ico` (16/32/48), `favicon-32.png`, `apple-touch-icon.png` and the manifest pngs (192, 512, maskable) into `apps/web/public/` from `logo-tile.svg` and the small pixel mark in `apps/web/public/icon.svg`. the web app references them in `app/layout.tsx` and `manifest.webmanifest`.
