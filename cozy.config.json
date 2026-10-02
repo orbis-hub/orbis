@@ -2,14 +2,29 @@
   "theme": "spring",
   "repo": "orbis-hub/orbis",
   "cards": [
-    { "type": "repo", "link": "https://github.com/orbis-hub/orbis", "boxes": ["stars", "commits", "issues", "contributors"] },
-    { "type": "button", "id": "nav-start", "label": "getting started →", "link": "https://github.com/orbis-hub/orbis/wiki/Getting-Started" },
-    { "type": "button", "id": "nav-install", "label": "install", "link": "https://github.com/orbis-hub/orbis/wiki/Install" },
-    { "type": "button", "id": "nav-modules", "label": "build a module", "link": "https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide" },
-    { "type": "button", "id": "nav-wiki", "label": "wiki", "link": "https://github.com/orbis-hub/orbis/wiki" },
-    { "type": "button", "id": "nav-registry", "label": "registry", "link": "https://github.com/orbis-hub/registry" },
-    { "type": "commits", "link": "https://github.com/orbis-hub/orbis/commits", "count": 8 },
-    { "type": "releases", "link": "https://github.com/orbis-hub/orbis/releases", "count": 4 },
-    { "type": "contributors", "link": "https://github.com/orbis-hub/orbis/graphs/contributors" }
+    {
+      "type": "repo",
+      "link": "https://github.com/orbis-hub/orbis",
+      "boxes": [
+        "stars",
+        "commits",
+        "issues",
+        "contributors"
+      ]
+    },
+    {
+      "type": "commits",
+      "link": "https://github.com/orbis-hub/orbis/commits",
+      "count": 8
+    },
+    {
+      "type": "releases",
+      "link": "https://github.com/orbis-hub/orbis/releases",
+      "count": 4
+    },
+    {
+      "type": "contributors",
+      "link": "https://github.com/orbis-hub/orbis/graphs/contributors"
+    }
   ]
 }
