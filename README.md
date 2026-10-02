@@ -5,8 +5,44 @@
 <div align="center">
 
 <!-- cozy:repo -->
+<div align="center">
 
-<!-- cozy:nav-start --><!-- cozy:nav-install --><!-- cozy:nav-modules --><!-- cozy:nav-wiki --><!-- cozy:nav-registry -->
+<a href="https://github.com/orbis-hub/orbis"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-dark.svg?v=8bf859005c"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-light.svg?v=8bf859005c" width="840" alt="orbis-hub/orbis: your life, one dashboard. self-hosted modular life manager: hub, web app, mobile wrapper, sdk and core modules"></picture></a>
+
+</div>
+<!-- /cozy:repo -->
+
+<!-- cozy:nav-start -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/orbis/wiki/Getting-Started"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-start-dark.svg?v=0209a3b959"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-start-light.svg?v=0209a3b959" width="147" alt="getting started →"></picture></a>
+
+</div>
+<!-- /cozy:nav-start --><!-- cozy:nav-install -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/orbis/wiki/Install"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-install-dark.svg?v=56b34595aa"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-install-light.svg?v=56b34595aa" width="76" alt="install"></picture></a>
+
+</div>
+<!-- /cozy:nav-install --><!-- cozy:nav-modules -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-modules-dark.svg?v=67b4eca7b3"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-modules-light.svg?v=67b4eca7b3" width="121" alt="build a module"></picture></a>
+
+</div>
+<!-- /cozy:nav-modules --><!-- cozy:nav-wiki -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/orbis/wiki"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-wiki-dark.svg?v=83a768af83"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-wiki-light.svg?v=83a768af83" width="56" alt="wiki"></picture></a>
+
+</div>
+<!-- /cozy:nav-wiki --><!-- cozy:nav-registry -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/registry"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-registry-dark.svg?v=c10017e298"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/nav-registry-light.svg?v=c10017e298" width="82" alt="registry"></picture></a>
+
+</div>
+<!-- /cozy:nav-registry -->
 
 </div>
 
@@ -86,10 +122,28 @@ pnpm web     # http://localhost:3000
 <div align="center">
 
 <!-- cozy:commits -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/orbis/commits"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-dark.svg?v=063b502bfc"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-light.svg?v=063b502bfc" width="840" alt="latest commits of orbis-hub/orbis"></picture></a>
+
+</div>
+<!-- /cozy:commits -->
 
 <!-- cozy:releases -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/orbis/releases"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-dark.svg?v=f2e894d704"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-light.svg?v=f2e894d704" width="840" alt="releases: v0.1.2, v0.1.1, modules-v0.1.7, modules-v0.1.6"></picture></a>
+
+</div>
+<!-- /cozy:releases -->
 
 <!-- cozy:contributors -->
+<div align="center">
+
+<a href="https://github.com/orbis-hub/orbis/graphs/contributors"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/contributors-dark.svg?v=a1a2707c1f"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/contributors-light.svg?v=a1a2707c1f" width="840" alt="contributors: vxnsin"></picture></a>
+
+</div>
+<!-- /cozy:contributors -->
 
 </div>
 
