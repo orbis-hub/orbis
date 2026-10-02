@@ -1,0 +1,26 @@
+name: cozy-readme
+
+# renders the svg cards in the readme (repo overview, commits, releases, contributors) → output branch
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["cozy.config.json"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cozy-readme
+  cancel-in-progress: true
+
+jobs:
+  cozy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: vxnsin/cozy-readme@v1
+        with:
+          commit_message: "readme cards"
