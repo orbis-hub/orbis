@@ -7,7 +7,7 @@
 <!-- cozy:repo -->
 <div align="center">
 
-<a href="https://github.com/orbis-hub/orbis"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-dark.svg?v=17b3a044b0"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-light.svg?v=17b3a044b0" width="840" alt="orbis-hub/orbis: your life, one dashboard. self-hosted modular life manager: hub, web app, mobile wrapper, sdk and core modules"></picture></a>
+<a href="https://github.com/orbis-hub/orbis"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-dark.svg?v=9d3111ae0e"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-light.svg?v=9d3111ae0e" width="840" alt="orbis-hub/orbis: your life, one dashboard. self-hosted modular life manager: hub, web app, mobile wrapper, sdk and core modules"></picture></a>
 
 </div>
 <!-- /cozy:repo -->
@@ -101,7 +101,7 @@ pnpm web     # http://localhost:3000
 <!-- cozy:commits -->
 <div align="center">
 
-<a href="https://github.com/orbis-hub/orbis/commits"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-dark.svg?v=b4728bc536"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-light.svg?v=b4728bc536" width="840" alt="latest commits of orbis-hub/orbis"></picture></a>
+<a href="https://github.com/orbis-hub/orbis/commits"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-dark.svg?v=ea7ed81627"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-light.svg?v=ea7ed81627" width="840" alt="latest commits of orbis-hub/orbis"></picture></a>
 
 </div>
 <!-- /cozy:commits -->
@@ -109,7 +109,7 @@ pnpm web     # http://localhost:3000
 <!-- cozy:releases -->
 <div align="center">
 
-<a href="https://github.com/orbis-hub/orbis/releases"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-dark.svg?v=f2e894d704"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-light.svg?v=f2e894d704" width="840" alt="releases: v0.1.2, v0.1.1, modules-v0.1.7, modules-v0.1.6"></picture></a>
+<a href="https://github.com/orbis-hub/orbis/releases"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-dark.svg?v=d261e062a2"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-light.svg?v=d261e062a2" width="840" alt="releases: v0.1.2, v0.1.1, modules-v0.1.7, modules-v0.1.6"></picture></a>
 
 </div>
 <!-- /cozy:releases -->
@@ -117,7 +117,7 @@ pnpm web     # http://localhost:3000
 <!-- cozy:contributors -->
 <div align="center">
 
-<a href="https://github.com/orbis-hub/orbis/graphs/contributors"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/contributors-dark.svg?v=a1a2707c1f"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/contributors-light.svg?v=a1a2707c1f" width="840" alt="contributors: vxnsin"></picture></a>
+<a href="https://github.com/orbis-hub/orbis/graphs/contributors"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/contributors-dark.svg?v=e10fa03ede"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/contributors-light.svg?v=e10fa03ede" width="840" alt="contributors: vxnsin"></picture></a>
 
 </div>
 <!-- /cozy:contributors -->
