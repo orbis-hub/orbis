@@ -13,3 +13,7 @@ apps/mobile/android/
 apps/mobile/ios/
 *.log
 .DS_Store
+
+# never commit a restore copy or a stray tmpdir
+data-before-restore/
+undefined/

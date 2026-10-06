@@ -1,0 +1,51 @@
+{
+  "manifest.name": "Shopping list",
+  "manifest.description": "Shared shopping list: quick add, quantities, aisles, tap to check off in the store, bought items come back next time.",
+  "widget.list.name": "Shopping list",
+  "widget.list.description": "Open items with big checkboxes and a quick-add field.",
+  "page.shopping.name": "Shopping",
+
+  "aisle.fruit": "fruit",
+  "aisle.vegetables": "vegetables",
+  "aisle.bakery": "bakery",
+  "aisle.pantry": "pantry",
+  "aisle.fridge": "fridge",
+  "aisle.frozen": "frozen",
+  "aisle.sweets": "sweets",
+  "aisle.drinks": "drinks",
+  "aisle.household": "household",
+  "aisle.hygiene": "hygiene",
+  "aisle.pets": "pets",
+  "aisle.other": "other",
+
+  "quickadd.placeholder": "2x milk @fridge",
+  "quickadd.add": "add",
+
+  "list.loading": "loading…",
+  "list.empty": "list is empty",
+  "list.nothing": "nothing to buy",
+  "list.toBuy": { "one": "{count} to buy", "other": "{count} to buy" },
+  "list.more": "+{count} more",
+  "list.new": "new list name",
+  "list.tidy": "tidy",
+
+  "tip.prefix": "tip:",
+  "tip.example": "2x milk @fridge",
+  "tip.text": "sets quantity and aisle. type @ for the aisle templates; most items find their aisle on their own, and things you bought before come back from the suggestions with their aisle.",
+
+  "item.aisle": "set aisle",
+  "item.remove": "remove",
+
+  "picker.title": "aisle for {name}",
+  "picker.none": "no aisle",
+  "picker.custom": "custom aisle",
+  "picker.save": "save",
+
+  "bought.title": "bought recently",
+  "bought.empty": "nothing yet",
+  "bought.again": "add again",
+  "bought.hint": "tap to put it back on the list.",
+
+  "eink.bought": "{name} ✓",
+  "error.nameRequired": "name required"
+}

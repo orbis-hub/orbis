@@ -65,17 +65,19 @@ export default defineModule({
     ctx.scheduler.every("remind", 60 * 60_000, () => {
       const h = new Date().getHours();
       if (h < 8 || h > 9) return;
+      const t = ctx.i18n.t;
       for (const p of all()) {
-        if (p.daysUntil === 0) ctx.notify({ key: `bday:${p.id}:${p.next}`, title: `🎂 ${p.name} has a birthday today${p.turns ? ` – turns ${p.turns}` : ""}`, body: p.note ?? undefined, level: "info", icon: "cake", url: "/m/?id=birthdays&page=people" });
-        else if (p.daysUntil === 7) ctx.notify({ key: `bday7:${p.id}:${p.next}`, title: `${p.name}'s birthday in a week`, body: p.note ? `note: ${p.note}` : "time to get a present", level: "info", icon: "gift", url: "/m/?id=birthdays&page=people" });
+        if (p.daysUntil === 0) ctx.notify({ key: `bday:${p.id}:${p.next}`, title: p.turns ? t("notify.today.titleTurns", { name: p.name, age: p.turns }) : t("notify.today.title", { name: p.name }), body: p.note ?? undefined, level: "info", icon: "cake", url: "/m/?id=birthdays&page=people" });
+        else if (p.daysUntil === 7) ctx.notify({ key: `bday7:${p.id}:${p.next}`, title: t("notify.week.title", { name: p.name }), body: p.note ? t("notify.week.note", { note: p.note }) : t("notify.week.body"), level: "info", icon: "gift", url: "/m/?id=birthdays&page=people" });
       }
     });
 
     einkRender = (req) => {
       const cfg = req.config as { count?: number; showAge?: boolean };
       const list = all().slice(0, cfg.count ?? 5);
-      if (!list.length) return { type: "text", text: "no birthdays yet", size: 12, gray: 0.5 };
-      return { type: "col", grow: 1, gap: 4, children: list.map((p) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "text" as const, text: p.daysUntil === 0 ? "today" : p.daysUntil === 1 ? "tomorrow" : `in ${p.daysUntil}d`, size: 12, pixel: false, gray: 0.5, wrap: false }, { type: "text" as const, text: p.name, size: 13, pixel: false, grow: 1, wrap: false, bold: p.daysUntil === 0 }, ...(cfg.showAge !== false && p.turns ? [{ type: "text" as const, text: `${p.turns}`, size: 12, pixel: false, gray: 0.5 }] : [])] })) };
+      const t = ctx.i18n.t;
+      if (!list.length) return { type: "text", text: t("eink.empty"), size: 12, gray: 0.5 };
+      return { type: "col", grow: 1, gap: 4, children: list.map((p) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "text" as const, text: p.daysUntil === 0 ? t("eink.today") : p.daysUntil === 1 ? t("eink.tomorrow") : t("eink.inDays", { count: p.daysUntil }), size: 12, pixel: false, gray: 0.5, wrap: false }, { type: "text" as const, text: p.name, size: 13, pixel: false, grow: 1, wrap: false, bold: p.daysUntil === 0 }, ...(cfg.showAge !== false && p.turns ? [{ type: "text" as const, text: `${p.turns}`, size: 12, pixel: false, gray: 0.5 }] : [])] })) };
     };
     ctx.logger.info("birthdays ready");
   },

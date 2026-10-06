@@ -1,0 +1,7 @@
+{
+  "manifest.name": "Uhr",
+  "manifest.description": "Digitale Uhr und Datum. Das einfachste Orbis-Modul – nimm es als Vorlage.",
+  "widget.digital.name": "Digitaluhr",
+
+  "error.badTimezone": "ungültige zeitzone"
+}

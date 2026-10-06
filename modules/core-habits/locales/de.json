@@ -1,0 +1,42 @@
+{
+  "manifest.name": "Gewohnheiten",
+  "manifest.description": "Tägliche Gewohnheiten mit Serien. Hak heute im Widget ab, sieh dir auf der Seite das Monatsraster pro Gewohnheit an.",
+  "widget.today.name": "Gewohnheiten heute",
+  "widget.today.description": "Alle Gewohnheiten als Checkboxen für heute, mit der aktuellen Serie.",
+  "widget.grid.name": "Gewohnheits-Raster",
+  "widget.grid.description": "Eine Gewohnheit, die letzten Wochen als Raster im Contribution-Stil.",
+  "page.habits.name": "Gewohnheiten",
+
+  "common.loading": "lädt…",
+  "common.cancel": "abbrechen",
+  "common.add": "hinzufügen",
+  "common.delete": "löschen",
+  "common.streakShort": "{count}t",
+
+  "widget.today.empty": "noch keine gewohnheiten",
+  "widget.today.emptyHint": "leg welche auf der gewohnheiten-seite an.",
+  "widget.today.progress": "{done}/{total} heute",
+
+  "widget.grid.none": "keine gewohnheit",
+  "widget.grid.stats": "{streak}t serie · {last30}/30",
+
+  "page.habits.add": "gewohnheit",
+  "page.habits.hint": "klick auf ein kästchen, um einen vergangenen tag umzuschalten.",
+  "page.habits.empty": "noch keine gewohnheiten",
+  "page.habits.emptyHint": "fang klein an: eine oder zwei.",
+  "page.habits.streak": "{count}t serie",
+  "page.habits.last30": "{count}/30 tage",
+  "page.habits.target": "ziel {count}/woche",
+  "page.habits.confirmDelete": "\"{name}\" samt verlauf löschen?",
+  "page.habits.doneToday": "heute erledigt",
+  "page.habits.markToday": "heute abhaken",
+  "page.habits.newTitle": "neue gewohnheit",
+  "page.habits.fieldName": "name",
+  "page.habits.namePlaceholder": "wasser trinken, 10 seiten lesen, spazieren gehen",
+  "page.habits.fieldColor": "farbe",
+  "page.habits.fieldTarget": "ziel pro woche",
+  "page.habits.targetHint": "7 = jeden tag",
+
+  "notify.open": { "one": "{count} gewohnheit heute noch offen", "other": "{count} gewohnheiten heute noch offen" },
+  "eink.empty": "noch keine gewohnheiten"
+}

@@ -1,7 +1,7 @@
 import { existsSync, statSync, watch, type FSWatcher } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { InstalledModule, ModuleManifest, ModuleStatus } from "@orbis/sdk";
+import { localizeManifest, type InstalledModule, type ModuleManifest, type ModuleStatus } from "@orbis/sdk";
 import type { ModuleServer } from "@orbis/sdk/server";
 import { eq } from "drizzle-orm";
 import { config } from "../config";
@@ -11,6 +11,7 @@ import { removeWidgetsOfModule } from "../services/dashboards";
 import { releaseAllOfModule } from "../services/devices";
 import { broadcast } from "../ws";
 import { buildContext, type BuiltContext } from "./context";
+import { evictLocales, translatorFor } from "./locales";
 import { shouldIsolate, startWorkerServer } from "./worker/host";
 import { type DiscoveredModule, discoverBuiltin, discoverDev, discoverInstalled, installFromUrl, type ModuleSource, removeInstalledFiles } from "./installer";
 
@@ -103,12 +104,17 @@ export function list(): ModuleState[] {
   return [...states.values()].sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
 }
 
+/** manifest with name/description/widget/page names in the hub's language (keys `manifest.*`, `widget.<id>.*`, `page.<id>.*` in the module's locales) */
+export function localizedManifest(s: ModuleState): ModuleManifest {
+  return localizeManifest(s.manifest, translatorFor(s.dir));
+}
+
 export function get(id: string) {
   return states.get(id) ?? null;
 }
 
 export function toPublic(s: ModuleState): InstalledModule {
-  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: s.manifest, error: s.error, installedAt: s.installedAt, loadedAt: s.loadedAt, status: s.status, isolated: !!s.isolated };
+  return { id: s.id, version: s.version, enabled: s.enabled, source: s.source, manifest: localizedManifest(s), error: s.error, installedAt: s.installedAt, loadedAt: s.loadedAt, status: s.status, isolated: !!s.isolated };
 }
 
 /* ---------- persistence ---------- */
@@ -254,6 +260,7 @@ export async function unload(id: string) {
     log.warn({ id, err }, "teardown failed");
   }
   s.built?.dispose();
+  evictLocales(s.dir);
   s.server = undefined;
   s.built = undefined;
   s.loaded = false;

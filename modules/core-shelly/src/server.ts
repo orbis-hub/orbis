@@ -84,14 +84,17 @@ export default defineModule({
       reportStatus();
     }
     const reportStatus = () => {
+      const t = ctx.i18n.t;
       const all = [...state.values()];
-      if (!targets().length) ctx.status.set({ state: "needs-setup", message: devices.suggested().length ? `${devices.suggested().length} shelly device(s) found on your network – assign them` : "no shellys yet: scan the network under devices or add one by ip", action: { label: "shelly", page: "shelly" } });
-      else if (all.some((d) => !d.online)) ctx.status.set({ state: "warning", message: `${all.filter((d) => !d.online).length} device(s) offline`, action: { label: "shelly", page: "shelly" } });
+      const found = devices.suggested().length;
+      if (!targets().length) ctx.status.set({ state: "needs-setup", message: found ? t("status.found", { count: found }) : t("status.none"), action: { label: t("status.action"), page: "shelly" } });
+      else if (all.some((d) => !d.online)) ctx.status.set({ state: "warning", message: t("status.offline", { count: all.filter((d) => !d.online).length }), action: { label: t("status.action"), page: "shelly" } });
       else ctx.status.set({ state: "ok" });
     };
 
     ctx.scheduler.every("poll", 5000, pollAll, { immediate: true });
     devices.onChange(() => void pollAll());
+    ctx.i18n.onChange(reportStatus);
 
     async function setSwitch(d: ShellyDevice, channel: number, on: boolean) {
       if (d.gen === 2) await get(d.ip, `/rpc/Switch.Set?id=${channel}&on=${on}`);
@@ -105,7 +108,7 @@ export default defineModule({
     http.post("/claim", async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { deviceId?: string };
       const d = b.deviceId ? devices.claim(b.deviceId) : null;
-      if (!d) return c.json({ error: "cannot claim that device" }, 400);
+      if (!d) return c.json({ error: ctx.i18n.t("error.cannot_claim") }, 400);
       await pollAll();
       return c.json(state.get(d.id) ?? { ok: true });
     });
@@ -119,17 +122,17 @@ export default defineModule({
     http.post("/add-ip", async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { ip?: string };
       const target = (b.ip ?? "").trim();
-      if (!/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(target) && !/^[a-z0-9][a-z0-9.-]*(:\d+)?$/i.test(target)) return c.json({ error: "ip or host[:port] required" }, 400);
+      if (!/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(target) && !/^[a-z0-9][a-z0-9.-]*(:\d+)?$/i.test(target)) return c.json({ error: ctx.i18n.t("error.ip_required") }, 400);
       b.ip = target;
       storage.set("manualIps", [...new Set([...manual(), b.ip])]);
       await pollAll();
       const d = state.get(`ip:${b.ip}`);
-      return d?.online ? c.json(d, 201) : c.json({ error: d?.error ?? "no shelly answered at that ip" }, 400);
+      return d?.online ? c.json(d, 201) : c.json({ error: d?.error ?? ctx.i18n.t("error.no_answer") }, 400);
     });
     http.post("/switch", async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { device?: string; channel?: number; on?: boolean };
       const d = b.device ? state.get(b.device) : null;
-      if (!d) return c.json({ error: "unknown device" }, 404);
+      if (!d) return c.json({ error: ctx.i18n.t("error.unknown_device") }, 404);
       const ch = b.channel ?? 0;
       const on = b.on ?? !d.channels.find((x) => x.id === ch)?.on;
       try {
@@ -141,15 +144,16 @@ export default defineModule({
     });
 
     einkRender = (req) => {
+      const t = ctx.i18n.t;
       const cfg = req.config as { device?: string; channel?: number; name?: string };
       if (req.widget === "power") {
         const list = [...state.values()];
-        return { type: "col", grow: 1, gap: 4, children: list.map((d) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "text" as const, text: d.name, size: 13, pixel: false, grow: 1, wrap: false }, { type: "text" as const, text: d.online ? `${Math.round(d.channels.reduce((a, c) => a + (c.power ?? 0), 0))} W` : "offline", size: 13, pixel: false, gray: d.online ? 1 : 0.5 }] })) };
+        return { type: "col", grow: 1, gap: 4, children: list.map((d) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "text" as const, text: d.name, size: 13, pixel: false, grow: 1, wrap: false }, { type: "text" as const, text: d.online ? `${Math.round(d.channels.reduce((a, c) => a + (c.power ?? 0), 0))} W` : t("eink.offline"), size: 13, pixel: false, gray: d.online ? 1 : 0.5 }] })) };
       }
       const d = cfg.device ? state.get(cfg.device) : null;
       const ch = d?.channels.find((x) => x.id === (cfg.channel ?? 0));
-      if (!d || !ch) return { type: "text", text: "no device", size: 12, gray: 0.5 };
-      return { type: "col", grow: 1, align: "center", justify: "center", gap: 4, children: [{ type: "text", text: cfg.name ?? d.name, size: 12, gray: 0.5 }, { type: "text", text: ch.on ? "ON" : "OFF", size: 28, bold: true }, ...(ch.power != null ? [{ type: "text" as const, text: `${Math.round(ch.power)} W`, size: 12, pixel: false, gray: 0.5 }] : [])] };
+      if (!d || !ch) return { type: "text", text: t("eink.no_device"), size: 12, gray: 0.5 };
+      return { type: "col", grow: 1, align: "center", justify: "center", gap: 4, children: [{ type: "text", text: cfg.name ?? d.name, size: 12, gray: 0.5 }, { type: "text", text: t(ch.on ? "eink.on" : "eink.off"), size: 28, bold: true }, ...(ch.power != null ? [{ type: "text" as const, text: `${Math.round(ch.power)} W`, size: 12, pixel: false, gray: 0.5 }] : [])] };
     };
     logger.info("shelly ready");
   },

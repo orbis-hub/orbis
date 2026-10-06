@@ -4,8 +4,10 @@ import type { InstalledModule, WidgetDef } from "@orbis/sdk";
 import { Button, Empty, Icon, Input, Modal } from "@orbis/ui";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 export function AddWidgetModal({ open, onClose, modules, onPick }: { open: boolean; onClose: () => void; modules: InstalledModule[]; onPick: (mod: InstalledModule, widget: WidgetDef) => void }) {
+  const t = useT();
   const [q, setQ] = useState("");
   const items = useMemo(
     () =>
@@ -16,17 +18,17 @@ export function AddWidgetModal({ open, onClose, modules, onPick }: { open: boole
     [modules, q],
   );
   return (
-    <Modal open={open} onClose={onClose} title="add widget" width={560}>
+    <Modal open={open} onClose={onClose} title={t("dashboard.addWidget")} width={560}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Input placeholder="search widgets…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        <Input placeholder={t("dashboard.searchWidgets")} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
         {items.length === 0 ? (
-          <Empty icon="blocks" title="no widgets">
+          <Empty icon="blocks" title={t("dashboard.noWidgetsFound")}>
             {modules.length === 0 ? (
               <>
-                install a module first in <Link href="/modules/">modules</Link>.
+                {t("dashboard.installFirst.before")} <Link href="/modules/">{t("common.modules")}</Link>{t("dashboard.installFirst.after")}
               </>
             ) : (
-              "nothing matches."
+              t("dashboard.nothingMatches")
             )}
           </Empty>
         ) : (
@@ -59,7 +61,7 @@ export function AddWidgetModal({ open, onClose, modules, onPick }: { open: boole
           </div>
         )}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>cancel</Button>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
         </div>
       </div>
     </Modal>

@@ -4,9 +4,11 @@ import { Button, Chip, Empty, Field, Icon, Input, Menu, Modal, Select, Switch, u
 import { useState, type FormEvent } from "react";
 import { Shell } from "@/components/Shell";
 import { setToken } from "@/lib/hub";
+import { useT } from "@/lib/i18n";
 import { isAdminRole, useAuthStatus, useUserMutations, useUsers, type PublicUser, type Role } from "@/lib/queries";
 
 export default function AccountsPage() {
+  const t = useT();
   const status = useAuthStatus();
   const me = status.data?.user;
   const admin = isAdminRole(me?.role);
@@ -14,7 +16,7 @@ export default function AccountsPage() {
     <Shell
       title={
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon name="users" size={16} style={{ color: "var(--accent)" }} /> accounts
+          <Icon name="users" size={16} style={{ color: "var(--accent)" }} /> {t("accounts.title")}
         </span>
       }
     >
@@ -30,6 +32,7 @@ export default function AccountsPage() {
 /* ---------- own profile ---------- */
 
 function Profile() {
+  const t = useT();
   const status = useAuthStatus();
   const m = useUserMutations();
   const toast = useToast();
@@ -41,12 +44,12 @@ function Profile() {
 
   async function changePw(e: FormEvent) {
     e.preventDefault();
-    if (pw !== pw2) return toast("passwords do not match", "bad");
+    if (pw !== pw2) return toast(t("accounts.pwMismatch"), "bad");
     m.changePassword.mutate(
       { current: cur, password: pw },
       {
         onSuccess: () => {
-          toast("password changed, please sign in again", "ok");
+          toast(t("accounts.pwChanged"), "ok");
           setToken(null);
           setTimeout(() => (window.location.href = "/login/"), 800);
         },
@@ -57,7 +60,7 @@ function Profile() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <Window title="you">
+      <Window title={t("accounts.you")}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <Icon name="avatar-circle" size={28} style={{ color: "var(--accent)" }} />
@@ -69,33 +72,33 @@ function Profile() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (name && name !== me?.name) m.updateMe.mutate({ name }, { onSuccess: () => toast("name changed", "ok"), onError: (err) => toast(err.message, "bad") });
+              if (name && name !== me?.name) m.updateMe.mutate({ name }, { onSuccess: () => toast(t("accounts.nameChanged"), "ok"), onError: (err) => toast(err.message, "bad") });
             }}
             style={{ display: "flex", gap: 6, alignItems: "flex-end" }}
           >
-            <Field label="display name" className="flex-1" htmlFor="me-name">
+            <Field label={t("accounts.displayName")} className="flex-1" htmlFor="me-name">
               <Input id="me-name" value={name ?? me?.name ?? ""} onChange={(e) => setName(e.target.value)} maxLength={64} />
             </Field>
             <Button type="submit" size="sm" loading={m.updateMe.isPending} disabled={!name || name === me?.name}>
-              save
+              {t("common.save")}
             </Button>
           </form>
         </div>
       </Window>
-      <Window title="change password">
+      <Window title={t("accounts.changePassword")}>
         <form onSubmit={changePw} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <Field label="current password">
+          <Field label={t("accounts.currentPassword")}>
             <Input type="password" value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" required />
           </Field>
-          <Field label="new password" hint="at least 6 characters · you'll be signed out everywhere">
+          <Field label={t("accounts.newPassword")} hint={t("accounts.newPasswordHint")}>
             <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" required minLength={6} />
           </Field>
-          <Field label="repeat new password">
+          <Field label={t("accounts.repeatPassword")}>
             <Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" required minLength={6} />
           </Field>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button type="submit" variant="primary" loading={m.changePassword.isPending}>
-              change
+              {t("accounts.change")}
             </Button>
           </div>
         </form>
@@ -107,10 +110,12 @@ function Profile() {
 /* ---------- admin: manage users ---------- */
 
 function RoleChip({ role }: { role: Role | undefined }) {
-  return <Chip tone={role === "owner" ? "accent" : role === "admin" ? "ok" : undefined} style={{ fontSize: 10 }}>{role ?? "?"}</Chip>;
+  const t = useT();
+  return <Chip tone={role === "owner" ? "accent" : role === "admin" ? "ok" : undefined} style={{ fontSize: 10 }}>{role ? t(`accounts.role.${role}`) : "?"}</Chip>;
 }
 
 function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
+  const t = useT();
   const users = useUsers();
   const m = useUserMutations();
   const toast = useToast();
@@ -122,24 +127,24 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Window
-        title={<span>users <Chip style={{ fontSize: 10 }}>{users.data?.length ?? 0}</Chip></span>}
+        title={<span>{t("accounts.users")} <Chip style={{ fontSize: 10 }}>{users.data?.length ?? 0}</Chip></span>}
         right={
           <Button size="sm" onClick={() => setCreating(true)}>
-            <Icon name="user-plus" size={12} /> new user
+            <Icon name="user-plus" size={12} /> {t("accounts.newUser")}
           </Button>
         }
         tight
       >
         {users.isPending ? null : !users.data?.length ? (
-          <Empty icon="users" title="no users" />
+          <Empty icon="users" title={t("accounts.noUsers")} />
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr className="pixel" style={{ fontSize: 11, color: "var(--ink-soft)", textAlign: "left" }}>
-                <th style={th}>user</th>
-                <th style={th}>role</th>
-                <th style={th}>active</th>
-                <th style={th}>sessions</th>
+                <th style={th}>{t("accounts.col.user")}</th>
+                <th style={th}>{t("accounts.col.role")}</th>
+                <th style={th}>{t("accounts.col.active")}</th>
+                <th style={th}>{t("accounts.col.sessions")}</th>
                 <th style={th}></th>
               </tr>
             </thead>
@@ -153,8 +158,8 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <Icon name="avatar-circle" size={18} style={{ color: u.role === "owner" ? "var(--accent)" : "var(--ink-soft)" }} />
                         <div>
-                          <div>{u.name}{isMe ? <span className="soft"> (you)</span> : null}</div>
-                          <div className="soft" style={{ fontSize: 10 }}>since {new Date(u.createdAt).toLocaleDateString()}</div>
+                          <div>{u.name}{isMe ? <span className="soft"> {t("common.you")}</span> : null}</div>
+                          <div className="soft" style={{ fontSize: 10 }}>{t("accounts.since", { date: new Date(u.createdAt).toLocaleDateString() })}</div>
                         </div>
                       </div>
                     </td>
@@ -163,24 +168,24 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
                         <RoleChip role="owner" />
                       ) : (
                         <Select value={u.role} disabled={locked || (isMe && !isOwner)} onChange={(e) => m.update.mutate({ id: u.id, role: e.target.value as Role }, { onError: err })} style={{ padding: "2px 24px 2px 6px", fontSize: 11, minWidth: 100 }}>
-                          <option value="member">member</option>
-                          <option value="admin" disabled={!isOwner}>admin</option>
+                          <option value="member">{t("accounts.role.member")}</option>
+                          <option value="admin" disabled={!isOwner}>{t("accounts.role.admin")}</option>
                         </Select>
                       )}
                     </td>
                     <td style={td}>
-                      <Switch checked={!u.disabled} disabled={locked || isMe} onChange={(e) => m.update.mutate({ id: u.id, disabled: !e.target.checked }, { onError: err })} aria-label="active" />
+                      <Switch checked={!u.disabled} disabled={locked || isMe} onChange={(e) => m.update.mutate({ id: u.id, disabled: !e.target.checked }, { onError: err })} aria-label={t("accounts.col.active")} />
                     </td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.sessions}</td>
                     <td style={{ ...td, width: 30 }}>
                       <Menu
-                        trigger={<Button icon size="sm" variant="ghost" aria-label="user menu"><Icon name="more-vertical" size={12} /></Button>}
+                        trigger={<Button icon size="sm" variant="ghost" aria-label={t("accounts.userMenu")}><Icon name="more-vertical" size={12} /></Button>}
                         items={[
-                          { label: "rename", icon: "edit", disabled: locked && !isMe, onSelect: () => { const name = prompt("new name", u.name); if (name && name !== u.name) m.update.mutate({ id: u.id, name }, { onError: err }); } },
-                          { label: "reset password", icon: "key", disabled: (u.role === "owner" && !isOwner) || (u.role === "admin" && !isOwner && !isMe), onSelect: () => setResetFor(u) },
-                          { label: "sign out everywhere", icon: "power", disabled: u.sessions === 0, onSelect: () => m.logoutAll.mutate(u.id, { onSuccess: () => toast(`${u.name} signed out`, "ok"), onError: err }) },
+                          { label: t("common.rename"), icon: "edit", disabled: locked && !isMe, onSelect: () => { const name = prompt(t("accounts.newNamePrompt"), u.name); if (name && name !== u.name) m.update.mutate({ id: u.id, name }, { onError: err }); } },
+                          { label: t("accounts.resetPassword"), icon: "key", disabled: (u.role === "owner" && !isOwner) || (u.role === "admin" && !isOwner && !isMe), onSelect: () => setResetFor(u) },
+                          { label: t("accounts.signOutEverywhere"), icon: "power", disabled: u.sessions === 0, onSelect: () => m.logoutAll.mutate(u.id, { onSuccess: () => toast(t("accounts.signedOut", { name: u.name }), "ok"), onError: err }) },
                           { sep: true, label: "" },
-                          { label: "delete user", icon: "trash", danger: true, disabled: u.role === "owner" || isMe || locked, onSelect: () => { if (confirm(`delete ${u.name}? private dashboards are removed, shared ones go to the owner.`)) m.remove.mutate(u.id, { onError: err }); } },
+                          { label: t("accounts.deleteUser"), icon: "trash", danger: true, disabled: u.role === "owner" || isMe || locked, onSelect: () => { if (confirm(t("accounts.deleteConfirm", { name: u.name }))) m.remove.mutate(u.id, { onError: err }); } },
                         ]}
                       />
                     </td>
@@ -192,8 +197,8 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
         )}
       </Window>
       <div className="soft" style={{ fontSize: 11, lineHeight: 1.7 }}>
-        <b className="pixel">roles</b> · <b>owner</b>: created at setup, exactly one, can do everything incl. managing admins · <b>admin</b>: manage users, modules, devices, hub settings, all dashboards ·{" "}
-        <b>member</b>: own dashboards, shared dashboards and module pages.
+        <b className="pixel">{t("accounts.roles.title")}</b> · <b>{t("accounts.role.owner")}</b>: {t("accounts.roles.owner")} · <b>{t("accounts.role.admin")}</b>: {t("accounts.roles.admin")} ·{" "}
+        <b>{t("accounts.role.member")}</b>: {t("accounts.roles.member")}
       </div>
 
       <CreateUserModal open={creating} onClose={() => setCreating(false)} isOwner={isOwner} />
@@ -206,13 +211,14 @@ const th: React.CSSProperties = { padding: "6px 10px", borderBottom: "1.5px soli
 const td: React.CSSProperties = { padding: "6px 10px", borderBottom: "1px dashed var(--line)", verticalAlign: "middle" };
 
 function CreateUserModal({ open, onClose, isOwner }: { open: boolean; onClose: () => void; isOwner: boolean }) {
+  const t = useT();
   const m = useUserMutations();
   const toast = useToast();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("member");
   return (
-    <Modal open={open} onClose={onClose} title="new user">
+    <Modal open={open} onClose={onClose} title={t("accounts.newUser")}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -220,7 +226,7 @@ function CreateUserModal({ open, onClose, isOwner }: { open: boolean; onClose: (
             { name: name.trim(), password, role },
             {
               onSuccess: (u) => {
-                toast(`${u.name} created`, "ok");
+                toast(t("accounts.created", { name: u.name }), "ok");
                 setName("");
                 setPassword("");
                 setRole("member");
@@ -232,21 +238,21 @@ function CreateUserModal({ open, onClose, isOwner }: { open: boolean; onClose: (
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <Field label="name">
+        <Field label={t("common.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} required maxLength={64} autoFocus autoComplete="off" />
         </Field>
-        <Field label="initial password" hint="tell them to change it under accounts → change password">
+        <Field label={t("accounts.initialPassword")} hint={t("accounts.initialPasswordHint")}>
           <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="off" />
         </Field>
-        <Field label="role">
+        <Field label={t("accounts.col.role")}>
           <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            <option value="member">member</option>
-            <option value="admin" disabled={!isOwner}>admin{!isOwner ? " (owner only)" : ""}</option>
+            <option value="member">{t("accounts.role.member")}</option>
+            <option value="admin" disabled={!isOwner}>{t("accounts.role.admin")}{!isOwner ? ` ${t("accounts.ownerOnly")}` : ""}</option>
           </Select>
         </Field>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button onClick={onClose}>cancel</Button>
-          <Button type="submit" variant="primary" loading={m.create.isPending}>create</Button>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          <Button type="submit" variant="primary" loading={m.create.isPending}>{t("common.create")}</Button>
         </div>
       </form>
     </Modal>
@@ -254,25 +260,26 @@ function CreateUserModal({ open, onClose, isOwner }: { open: boolean; onClose: (
 }
 
 function ResetPasswordModal({ user, onClose }: { user: PublicUser | null; onClose: () => void }) {
+  const t = useT();
   const m = useUserMutations();
   const toast = useToast();
   const [password, setPassword] = useState("");
   if (!user) return null;
   return (
-    <Modal open onClose={onClose} title={`reset password · ${user.name}`}>
+    <Modal open onClose={onClose} title={t("accounts.resetTitle", { name: user.name })}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          m.resetPassword.mutate({ id: user.id, password }, { onSuccess: () => { toast("password reset, all their sessions ended", "ok"); setPassword(""); onClose(); }, onError: (err) => toast(err.message, "bad") });
+          m.resetPassword.mutate({ id: user.id, password }, { onSuccess: () => { toast(t("accounts.resetDone"), "ok"); setPassword(""); onClose(); }, onError: (err) => toast(err.message, "bad") });
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <Field label="new password" hint="min 6 characters">
+        <Field label={t("accounts.newPassword")} hint={t("accounts.min6")}>
           <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoFocus autoComplete="off" />
         </Field>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button onClick={onClose}>cancel</Button>
-          <Button type="submit" variant="primary" loading={m.resetPassword.isPending}>reset</Button>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          <Button type="submit" variant="primary" loading={m.resetPassword.isPending}>{t("accounts.reset")}</Button>
         </div>
       </form>
     </Modal>

@@ -149,5 +149,6 @@
   ],
   "softDeps": [
     "home-assistant"
-  ]
+  ],
+  "languages": ["en", "de"]
 }

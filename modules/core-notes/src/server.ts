@@ -32,7 +32,7 @@ export default defineModule({
     http.post("/notes", async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { title?: string; body?: string };
       const id = uid();
-      db.run(`INSERT INTO {{t:notes}} (id, title, body, pinned, updated_at, created_at) VALUES (?, ?, ?, 0, ?, ?)`, [id, b.title?.trim() || "untitled", b.body ?? "", now(), now()]);
+      db.run(`INSERT INTO {{t:notes}} (id, title, body, pinned, updated_at, created_at) VALUES (?, ?, ?, 0, ?, ?)`, [id, b.title?.trim() || ctx.i18n.t("untitled"), b.body ?? "", now(), now()]);
       changed();
       return c.json(one(id), 201);
     });
@@ -40,7 +40,7 @@ export default defineModule({
       const id = c.req.param("id");
       if (!one(id)) return c.json({ error: "not found" }, 404);
       const b = (await c.req.json().catch(() => ({}))) as { title?: string; body?: string; pinned?: boolean };
-      if (b.title !== undefined) db.run(`UPDATE {{t:notes}} SET title = ?, updated_at = ? WHERE id = ?`, [b.title.trim() || "untitled", now(), id]);
+      if (b.title !== undefined) db.run(`UPDATE {{t:notes}} SET title = ?, updated_at = ? WHERE id = ?`, [b.title.trim() || ctx.i18n.t("untitled"), now(), id]);
       if (b.body !== undefined) db.run(`UPDATE {{t:notes}} SET body = ?, updated_at = ? WHERE id = ?`, [b.body, now(), id]);
       if (b.pinned !== undefined) {
         if (b.pinned) db.run(`UPDATE {{t:notes}} SET pinned = 0`);
@@ -58,7 +58,7 @@ export default defineModule({
     einkRender = (req) => {
       const cfg = req.config as { noteId?: string; showTitle?: boolean };
       const n = (cfg.noteId && one(cfg.noteId)) || all().find((x) => x.pinned) || all()[0];
-      if (!n) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: "no notes", size: 14, gray: 0.5 }] };
+      if (!n) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: ctx.i18n.t("eink.empty"), size: 14, gray: 0.5 }] };
       const lines = n.body
         .split("\n")
         .map((l) => l.replace(/^#+\s*/, "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/^[-*]\s+/, "• ").replace(/^\[([ x])\]\s*/i, (m, c) => (c.trim() ? "☑ " : "☐ ")))

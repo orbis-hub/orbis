@@ -1,0 +1,52 @@
+{
+  "manifest.name": "Weather",
+  "manifest.description": "Current conditions and forecast from Open-Meteo. No API key needed.",
+  "widget.current.name": "Current weather",
+  "widget.current.description": "Temperature, condition and a few details for a location.",
+  "widget.forecast.name": "Forecast",
+  "widget.forecast.description": "Next days at a glance.",
+  "page.weather.name": "Weather",
+
+  "common.refresh": "refresh",
+  "common.remove": "remove",
+  "common.today": "today",
+
+  "status.fetching": "fetching weather",
+
+  "condition.clear": "clear sky",
+  "condition.mostly_clear": "mostly clear",
+  "condition.partly_cloudy": "partly cloudy",
+  "condition.overcast": "overcast",
+  "condition.fog": "foggy",
+  "condition.drizzle": "drizzle",
+  "condition.rain": "rain",
+  "condition.snow": "snow",
+  "condition.rain_showers": "rain showers",
+  "condition.snow_showers": "snow showers",
+  "condition.thunderstorm": "thunderstorm",
+  "condition.cloudy": "cloudy",
+
+  "current.feels": "feels {temp}°",
+  "current.humidity": "{value}% rh",
+
+  "page.updated": "updated {time}",
+  "page.now": "now · {name}",
+  "page.next_hours": "next hours",
+  "page.hour": "{hour}h",
+  "page.seven_days": "7 days",
+  "page.source": "data: open-meteo.com",
+
+  "settings.locations": "locations",
+  "settings.locations_hint": "first one is the default. widgets can pick another by id.",
+  "settings.locations_empty": "none yet – search below",
+  "settings.add_place": "add a place",
+  "settings.city_placeholder": "city name",
+  "settings.units": "units",
+  "settings.units_metric": "metric",
+  "settings.units_imperial": "imperial",
+  "settings.refresh": "refresh (min)",
+  "settings.no_location": "without a location the hub's default (Würzburg) is used.",
+
+  "eink.feels": "{name} · feels {temp}°",
+  "eink.details": "{min}° / {max}° · {wind} {unit} · {humidity}% rh"
+}

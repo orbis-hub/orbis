@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { defineClient, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModule, useT, type WidgetProps } from "@orbis/sdk/client";
 import { Empty, Icon } from "@orbis/ui";
 
 type Config = { title?: string; date?: string; time?: string; yearly?: boolean; icon?: string; showUnits?: "auto" | "days" | "weeks" | "hours" };
@@ -18,13 +18,15 @@ function target(cfg: Config, now: Date): Date | null {
 }
 
 function CountdownWidget({ config, size }: WidgetProps<Config>) {
+  const tr = useT();
+  const { locale } = useModule();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
   const t = target(config, now);
-  if (!t) return <Empty icon="hourglass" title="set a date">⋯ → configure</Empty>;
+  if (!t) return <Empty icon="hourglass" title={tr("widget.countdown.empty")}>{tr("widget.countdown.emptyHint")}</Empty>;
   const ms = t.getTime() - now.getTime();
   const past = ms < 0;
   const abs = Math.abs(ms);
@@ -34,14 +36,15 @@ function CountdownWidget({ config, size }: WidgetProps<Config>) {
   const mode = config.showUnits === "auto" || !config.showUnits ? (days === 0 ? "hours" : days > 21 ? "weeks" : "days") : config.showUnits;
   let big: string, unit: string;
   if (mode === "hours") {
-    big = String(days * 24 + hours);
-    unit = "hours";
+    const h = days * 24 + hours;
+    big = String(h);
+    unit = tr("unit.hours", { count: h });
   } else if (mode === "weeks") {
-    big = `${weeks}w ${days % 7}d`;
+    big = tr("unit.weeksDays", { weeks, days: days % 7 });
     unit = "";
   } else {
     big = String(days);
-    unit = days === 1 ? "day" : "days";
+    unit = tr("unit.days", { count: days });
   }
   const today = days === 0 && !past && t.toDateString() === now.toDateString();
   const px = Math.max(22, Math.min(size.height * 0.45, size.width / Math.max(3, big.length * 0.9)));
@@ -49,16 +52,16 @@ function CountdownWidget({ config, size }: WidgetProps<Config>) {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, textAlign: "center" }}>
       <div className="soft" style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}>
-        <Icon name={config.icon || "hourglass"} size={12} style={{ color: "var(--accent)" }} /> {config.title || "countdown"}
+        <Icon name={config.icon || "hourglass"} size={12} style={{ color: "var(--accent)" }} /> {config.title || tr("defaultTitle")}
       </div>
       {today ? (
-        <div className="pixel" style={{ fontSize: px * 0.8, lineHeight: 1, color: "var(--accent)" }}>today!</div>
+        <div className="pixel" style={{ fontSize: px * 0.8, lineHeight: 1, color: "var(--accent)" }}>{tr("today")}</div>
       ) : (
         <>
           <div className="pixel" style={{ fontSize: px, lineHeight: 1, fontVariantNumeric: "tabular-nums", color: past ? "var(--ink-soft)" : undefined }}>{big}</div>
           <div className="soft" style={{ fontSize: 11 }}>
-            {unit ? `${unit} ` : ""}{past ? "ago" : "to go"} · {t.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(config.yearly ? {} : { year: "numeric" }) })}
-            {years !== null && years > 0 ? ` · turns ${years}` : ""}
+            {unit ? `${unit} ` : ""}{past ? tr("ago") : tr("toGo")} · {t.toLocaleDateString(locale, { day: "numeric", month: "short", ...(config.yearly ? {} : { year: "numeric" }) })}
+            {years !== null && years > 0 ? ` · ${tr("turns", { count: years })}` : ""}
           </div>
         </>
       )}

@@ -1,0 +1,44 @@
+{
+  "manifest.name": "Hub-Status",
+  "manifest.description": "Was der Hub selbst gerade macht: CPU, RAM, Festplatte, Laufzeit, Datenbankgröße, geladene Module, verbundene Clients.",
+  "widget.overview.name": "Hub-Überblick",
+  "widget.overview.description": "cpu, ram, festplatte, laufzeit auf einen blick.",
+  "widget.gauge.name": "Einzelne Anzeige",
+  "widget.gauge.description": "Ein Wert, groß.",
+  "page.status.name": "Hub-Status",
+
+  "common.loading": "lädt…",
+  "common.na": "k. a.",
+
+  "unit.gb": "{value} gb",
+  "unit.mb": "{value} mb",
+  "time.dh": "{d}t {h}h",
+  "time.hm": "{h}h {m}m",
+  "time.m": "{m}m",
+
+  "metric.cpu": "cpu",
+  "metric.memory": "ram",
+  "metric.disk": "festplatte",
+  "metric.diskDataDir": "festplatte (datenordner)",
+  "metric.uptime": "laufzeit",
+  "metric.cpuTemp": "cpu-temperatur",
+  "metric.load1m": "last 1m",
+
+  "sub.cores": { "one": "{count} kern", "other": "{count} kerne" },
+  "sub.load": "last {load}",
+  "sub.of": "{used} von {total}",
+  "sub.hub": "hub {size}",
+  "sub.hubProcess": "hub-prozess {size}",
+  "sub.up": "läuft seit {uptime}",
+  "sub.modules": { "one": "{count} modul", "other": "{count} module" },
+  "sub.db": "db {size}",
+
+  "page.status.thisHub": "dieser hub",
+  "page.status.systemUp": "system läuft seit {system} · hub seit {hub}",
+  "page.status.modulesLoaded": { "one": "{count} modul geladen", "other": "{count} module geladen" },
+  "page.status.database": "datenbank {size}",
+  "page.status.last30": "letzte 30 minuten",
+  "page.status.sampled": "alle 5 s gemessen",
+
+  "eink.noData": "noch keine daten"
+}

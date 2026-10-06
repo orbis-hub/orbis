@@ -1,0 +1,40 @@
+{
+  "manifest.name": "Feeds",
+  "manifest.description": "RSS / Atom headlines next to your weather. A few feeds, a widget with the latest, a page to skim and mark read.",
+  "widget.headlines.name": "Headlines",
+  "widget.headlines.description": "Latest items across your feeds (or one feed).",
+  "page.feeds.name": "Feeds",
+
+  "common.loading": "loading…",
+  "common.add": "add",
+  "common.refresh": "refresh",
+
+  "ago.minutes": "{count}m",
+  "ago.hours": "{count}h",
+  "ago.days": "{count}d",
+
+  "widget.empty.title": "nothing here",
+  "widget.empty.body": "add feeds on the feeds page.",
+
+  "page.feeds": "feeds",
+  "page.all": "all",
+  "page.add_feed": "add feed",
+  "page.url_placeholder": "feed or site url",
+  "page.remove_confirm": "remove this feed?",
+  "page.remove_selected": "remove selected",
+  "page.feed": "feed",
+  "page.all_feeds": "all feeds",
+  "page.unread_only": "unread only",
+  "page.mark_all_read": "mark all read",
+  "page.all_read": "all read",
+  "page.nothing": "nothing",
+
+  "status.needs_feeds": "add a feed or two",
+  "status.failing": { "one": "{count} feed failing", "other": "{count} feeds failing" },
+  "status.action": "feeds",
+
+  "error.url_required": "url required",
+  "error.already_added": "feed already added",
+
+  "eink.empty": "no items yet"
+}

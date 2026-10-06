@@ -1,5 +1,19 @@
 import type { Hono } from "hono";
 import type { Device, ModuleManifest, ModuleStatus, Notification, NotificationInput } from "./index";
+import type { Translator } from "./i18n";
+
+export type { Messages, Translator, TranslateVars } from "./i18n";
+export { createTranslator, localizeManifest, languageChain, pickLanguage } from "./i18n";
+
+/** Translations for the hub's current language (see `locales/<lang>.json` and `manifest.languages`). */
+export type ModuleI18n = {
+  /** the hub's ui language, e.g. "de" */
+  readonly language: string;
+  /** translate a key from the module's locale files; falls back to english, then to the key itself */
+  t: Translator;
+  /** fires when the hub language changes */
+  onChange(cb: (language: string) => void): () => void;
+};
 
 export type Logger = {
   debug: (msg: string, ...args: unknown[]) => void;
@@ -94,6 +108,8 @@ export type ModuleServerContext<TSettings = Record<string, unknown>> = {
    */
   http: Hono;
   fetch: typeof fetch;
+  /** `ctx.i18n.t("notify.due", { title })` for notifications and e-ink text in the user's language. */
+  i18n: ModuleI18n;
 };
 
 export type ModuleServer<TSettings = Record<string, unknown>> = {
@@ -127,6 +143,8 @@ export type EinkRequest = {
   config: Record<string, unknown>;
   locale: string;
   timezone: string;
+  /** ui language of the hub, e.g. "de" (same as ctx.i18n.language) */
+  language?: string;
   now: Date;
 };
 

@@ -19,11 +19,14 @@ export default defineModule({
       db.run(`INSERT INTO {{t:lists}} (id, name, color, sort) VALUES ('inbox', 'Inbox', NULL, 0)`);
     }
 
-    const changedRef = { fn: () => events.publish("changed") };
-    const changed = () => changedRef.fn();
     const lists = () => db.sql<List>(`SELECT * FROM {{t:lists}} ORDER BY sort, name`);
     const tasks = (where = "", params: unknown[] = []) =>
       db.sql<Task>(`SELECT * FROM {{t:tasks}} ${where} ORDER BY done, CASE WHEN due IS NULL THEN 1 ELSE 0 END, due, sort, created_at`, params);
+    // broadcast a change and drop reminders of tasks that got done meanwhile
+    const changed = () => {
+      events.publish("changed");
+      for (const t of tasks(`WHERE done = 1`)) ctx.dismissNotification(`due:${t.id}`);
+    };
 
     http.get("/lists", (c) => {
       const counts = Object.fromEntries(db.sql<{ list_id: string; n: number }>(`SELECT list_id, COUNT(*) AS n FROM {{t:tasks}} WHERE done = 0 GROUP BY list_id`).map((r) => [r.list_id, r.n]));
@@ -114,20 +117,13 @@ export default defineModule({
       const due = tasks(`WHERE done = 0 AND due IS NOT NULL AND due <= ?`, [today.toISOString()]);
       for (const t of due) {
         const overdue = new Date(t.due!).getTime() < Date.now() - 86400_000;
-        ctx.notify({ key: `due:${t.id}`, title: overdue ? `overdue: ${t.title}` : `due today: ${t.title}`, level: overdue ? "warning" : "info", icon: "checkbox", url: "/m/?id=todo&page=tasks" });
+        ctx.notify({ key: `due:${t.id}`, title: ctx.i18n.t(overdue ? "notify.overdue" : "notify.due_today", { title: t.title }), level: overdue ? "warning" : "info", icon: "checkbox", url: "/m/?id=todo&page=tasks" });
       }
     };
     ctx.scheduler.every("remind", 60 * 60_000, () => {
       const h = new Date().getHours();
       if (h >= 8 && h <= 9) remind();
     });
-    const origChanged = changed;
-    const changedAndDismiss = () => {
-      origChanged();
-      for (const t of tasks(`WHERE done = 1`)) ctx.dismissNotification(`due:${t.id}`);
-    };
-    // swap the broadcaster used by the routes above
-    (changedRef as { fn: () => void }).fn = changedAndDismiss;
     ctx.logger.info("todo ready");
 
     einkRender = (req) => {
@@ -142,7 +138,8 @@ export default defineModule({
       } else {
         list = tasks(`WHERE list_id = ?${cfg.showDone ? "" : " AND done = 0"}`, [cfg.listId || "inbox"]);
       }
-      if (list.length === 0) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: req.widget === "today" ? "nothing due today" : "all clear ✓", size: 16, gray: 0.5 }] };
+      const tr = ctx.i18n.t;
+      if (list.length === 0) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: tr(req.widget === "today" ? "eink.today_empty" : "eink.list_empty"), size: 16, gray: 0.5 }] };
       const rows = list.slice(0, max).map((t) => {
         const due = t.due ? new Date(t.due) : null;
         const overdue = due && due.getTime() < req.now.getTime() - 86400_000;
@@ -153,11 +150,11 @@ export default defineModule({
           children: [
             { type: "dots" as const, count: 1, filled: t.done ? 1 : 0, size: 12 },
             { type: "text" as const, text: t.title, size: 14, pixel: false, grow: 1, wrap: false, gray: t.done ? 0.5 : 1 },
-            ...(due ? [{ type: "text" as const, text: overdue ? "overdue" : due.toLocaleDateString(req.locale, { day: "numeric", month: "short" }), size: 11, pixel: false, gray: 0.5, bold: !!overdue }] : []),
+            ...(due ? [{ type: "text" as const, text: overdue ? tr("eink.overdue") : due.toLocaleDateString(req.locale, { day: "numeric", month: "short" }), size: 11, pixel: false, gray: 0.5, bold: !!overdue }] : []),
           ],
         };
       });
-      if (list.length > max) rows.push({ type: "row", gap: 0, align: "center", children: [{ type: "text", text: `+${list.length - max} more`, size: 11, pixel: false, gray: 0.5, grow: 1, wrap: false }] });
+      if (list.length > max) rows.push({ type: "row", gap: 0, align: "center", children: [{ type: "text", text: tr("eink.more", { count: list.length - max }), size: 11, pixel: false, gray: 0.5, grow: 1, wrap: false }] });
       return { type: "col", grow: 1, gap: 4, children: rows };
     };
   },

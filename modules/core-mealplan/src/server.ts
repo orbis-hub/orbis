@@ -130,7 +130,7 @@ export default defineModule<Settings>({
         if (!res.ok) return c.json({ error: `HTTP ${res.status}` }, 502);
         const html = (await res.text()).slice(0, 3_000_000);
         const r = extractRecipe(html, url);
-        if (!r) return c.json({ error: "no recipe found on that page" }, 422);
+        if (!r) return c.json({ error: ctx.i18n.t("error.noRecipe") }, 422);
         if (b.preview) return c.json(r);
         const id = uid();
         db.run(`INSERT INTO {{t:recipes}} (id, title, url, image, servings, ingredients, steps, tags, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [id, r.title, r.url, r.image, r.servings, JSON.stringify(r.ingredients), JSON.stringify(r.steps), JSON.stringify(r.tags), now()]);
@@ -197,7 +197,7 @@ export default defineModule<Settings>({
       for (let i = 0; i < days; i++) {
         const d = new Date(d0);
         d.setDate(d.getDate() + i);
-        const label = i === 0 ? "today" : i === 1 ? "tomorrow" : d.toLocaleDateString("en-GB", { weekday: "long" }).toLowerCase();
+        const label = i === 0 ? ctx.i18n.t("common.today") : i === 1 ? ctx.i18n.t("common.tomorrow") : d.toLocaleDateString(req.locale, { weekday: "long" }).toLowerCase();
         children.push({ type: "text", text: label, size: 11, gray: 0.5 });
         for (const s of slots) {
           const e = entries.find((x) => x.day === iso(d) && x.slot === s);

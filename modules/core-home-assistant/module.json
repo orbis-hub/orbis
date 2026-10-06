@@ -224,5 +224,6 @@
       "_home-assistant._tcp"
     ],
     "hostname": "homeassistant"
-  }
+  },
+  "languages": ["en", "de"]
 }

@@ -1,0 +1,27 @@
+{
+  "manifest.name": "Focus timer",
+  "manifest.description": "Pomodoro-style focus timer. State lives on the hub, so it keeps running across devices and reloads.",
+  "widget.timer.name": "Focus timer",
+
+  "common.loading": "loading…",
+
+  "widget.timer.focus": "focus",
+  "widget.timer.break": "break",
+  "widget.timer.longBreak": "long break",
+  "widget.timer.rounds": "{done} of {total} rounds",
+  "widget.timer.pause": "pause",
+  "widget.timer.start": "start",
+  "widget.timer.resume": "resume",
+  "widget.timer.skipBlock": "skip block",
+  "widget.timer.skip": "skip",
+  "widget.timer.reset": "reset",
+  "widget.timer.labelPlaceholder": "what are you working on?",
+  "widget.timer.focusedToday": "{count} min focused today",
+
+  "notify.blockDoneLong": "focus block done – long break",
+  "notify.blockDoneShort": "focus block done – short break",
+  "notify.breakOver": "break over – back to it",
+
+  "eink.paused": "paused",
+  "eink.started": "focus started"
+}

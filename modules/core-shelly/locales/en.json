@@ -1,0 +1,53 @@
+{
+  "manifest.name": "Shelly",
+  "manifest.description": "Shelly relays and plugs straight over the local network, no cloud, no Home Assistant. Gen2+ RPC (Plus / Pro / Mini), Gen1 basic.",
+  "widget.switch.name": "Shelly switch",
+  "widget.switch.description": "One relay with power draw.",
+  "widget.power.name": "Power overview",
+  "widget.power.description": "All shellys with their current watts.",
+  "page.shelly.name": "Shelly",
+
+  "common.loading": "loading…",
+  "common.add": "add",
+  "common.remove": "remove",
+  "common.on": "on",
+  "common.off": "off",
+  "common.offline": "offline",
+
+  "widget.switch.pick.title": "pick a device",
+  "widget.switch.pick.body": "⋯ → configure, ids are on the shelly page.",
+  "widget.switch.unknown": "unknown device",
+  "widget.switch.offline": "{name} offline",
+  "widget.switch.no_channel": "no such channel",
+
+  "widget.power.empty.title": "no shellys",
+  "widget.power.empty.body": "assign devices on the shelly page.",
+  "widget.power.total": "total",
+
+  "page.found": "found on your network",
+  "page.use_it": "use it",
+  "page.shellys": "shellys ({count})",
+  "page.empty.title": "no shellys yet",
+  "page.empty.body": "scan the network under {devices} (they announce themselves via mdns) or add one by ip below.",
+  "page.empty.devices": "devices",
+  "page.gen": "gen {gen}",
+  "page.id": "id: {id}",
+  "page.copied": "copied ✓",
+  "page.channel": "channel {id}",
+  "page.add_by_ip": "add by ip",
+
+  "status.found": { "one": "{count} shelly device found on your network – assign it", "other": "{count} shelly devices found on your network – assign them" },
+  "status.none": "no shellys yet: scan the network under devices or add one by ip",
+  "status.offline": { "one": "{count} device offline", "other": "{count} devices offline" },
+  "status.action": "shelly",
+
+  "error.cannot_claim": "cannot claim that device",
+  "error.ip_required": "ip or host[:port] required",
+  "error.no_answer": "no shelly answered at that ip",
+  "error.unknown_device": "unknown device",
+
+  "eink.offline": "offline",
+  "eink.no_device": "no device",
+  "eink.on": "ON",
+  "eink.off": "OFF"
+}

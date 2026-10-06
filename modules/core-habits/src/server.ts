@@ -75,14 +75,14 @@ export default defineModule({
       const now = new Date();
       if (now.getHours() !== 20 || now.getMinutes() >= 30) return;
       const open = habits().map((h) => stats(h, 1)).filter((h) => !h.doneToday);
-      if (open.length) ctx.notify({ key: `open:${dayKey()}`, title: `${open.length} habit${open.length > 1 ? "s" : ""} still open today`, body: open.map((h) => h.name).join(", "), icon: "check-double", url: "/m/?id=habits&page=habits" });
+      if (open.length) ctx.notify({ key: `open:${dayKey()}`, title: ctx.i18n.t("notify.open", { count: open.length }), body: open.map((h) => h.name).join(", "), icon: "check-double", url: "/m/?id=habits&page=habits" });
       else ctx.dismissNotification(`open:${dayKey()}`);
     });
 
     einkRender = (req) => {
       const list = habits().map((h) => stats(h, 1));
-      if (!list.length) return { type: "text", text: "no habits yet", size: 12, gray: 0.5 };
-      return { type: "col", grow: 1, gap: 4, children: list.map((h) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "dots" as const, count: 1, filled: h.doneToday ? 1 : 0, size: 12 }, { type: "text" as const, text: h.name, size: 13, pixel: false, grow: 1, wrap: false }, { type: "text" as const, text: `${h.streak}🔥`.replace("🔥", "d"), size: 11, pixel: false, gray: 0.5 }] })) };
+      if (!list.length) return { type: "text", text: ctx.i18n.t("eink.empty"), size: 12, gray: 0.5 };
+      return { type: "col", grow: 1, gap: 4, children: list.map((h) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "dots" as const, count: 1, filled: h.doneToday ? 1 : 0, size: 12 }, { type: "text" as const, text: h.name, size: 13, pixel: false, grow: 1, wrap: false }, { type: "text" as const, text: ctx.i18n.t("common.streakShort", { count: h.streak }), size: 11, pixel: false, gray: 0.5 }] })) };
     };
     ctx.logger.info("habits ready");
   },

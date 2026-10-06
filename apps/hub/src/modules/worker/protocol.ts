@@ -5,7 +5,7 @@
  *    storage/devices/settings calls, so the module keeps the synchronous sdk api it already has.
  */
 import type { EinkRequest, EinkTapRequest } from "@orbis/sdk/server";
-import type { ModuleManifest } from "@orbis/sdk";
+import type { Messages, ModuleManifest } from "@orbis/sdk";
 
 export type WorkerData = {
   moduleId: string;
@@ -15,6 +15,9 @@ export type WorkerData = {
   dataDir: string;
   hubVersion: string;
   settings: Record<string, unknown>;
+  /** hub ui language + the module's locale bundles, so ctx.i18n works without a round trip */
+  language: string;
+  locales: Record<string, Messages>;
   syncPort: import("node:worker_threads").MessagePort;
   syncBuffer: SharedArrayBuffer;
 };
@@ -31,6 +34,7 @@ export type ToWorker =
   | { t: "einkTap"; id: number; req: Omit<EinkTapRequest, "now"> & { now: string } }
   | { t: "tick"; name: string }
   | { t: "settings"; settings: Record<string, unknown> }
+  | { t: "language"; language: string }
   | { t: "devices" }
   | { t: "modules"; loaded: string[] }
   | { t: "result"; id: number; ok: boolean; value?: unknown; error?: string };

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { clearSessionCookie, createSession, createUser, findUserByName, hasUsers, requireAuth, resolveToken, revokeSession, setSessionCookie, tokenFromRequest, verifyPassword } from "../auth";
 import { config } from "../config";
+import { getLanguage, getSetting } from "../services/settings";
 
 const credentials = z.object({ name: z.string().trim().min(1).max(64), password: z.string().min(6).max(256), remember: z.boolean().optional() });
 
@@ -9,7 +10,8 @@ export const authRoutes = new Hono()
   .get("/status", (c) => {
     const token = tokenFromRequest(c);
     const user = token ? resolveToken(token) : null;
-    return c.json({ setup: hasUsers(), authenticated: !!user, user, hubVersion: config.version });
+    // language + locale are public so the login screen can already speak the hub's language
+    return c.json({ setup: hasUsers(), authenticated: !!user, user, hubVersion: config.version, language: getLanguage(), locale: getSetting("locale") });
   })
   .post("/setup", async (c) => {
     if (hasUsers()) return c.json({ error: "already set up" }, 409);

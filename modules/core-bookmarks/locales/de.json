@@ -1,0 +1,34 @@
+{
+  "manifest.name": "Lesezeichen",
+  "manifest.description": "Eine Startseite: Links mit Icons, in Gruppen. Favicons holt der Hub, keine Drittanbieter.",
+  "widget.links.name": "Links",
+  "widget.links.description": "Ein Raster aus Link-Kacheln einer Gruppe (oder aller).",
+  "page.bookmarks.name": "Lesezeichen",
+
+  "loading": "lädt…",
+  "widget.links.empty": "noch keine links",
+  "widget.links.emptyHint": "leg welche auf der lesezeichen-seite an.",
+
+  "page.addLink": "link",
+  "page.faviconHint": "favicons holt der hub einmal, dein browser rührt eine seite erst an, wenn du klickst.",
+  "page.empty": "leere startseite",
+  "page.emptyHint": "leg die fünf seiten an, die du jeden tag öffnest.",
+  "group.default": "links",
+  "group.none": "(keine gruppe)",
+  "group.new": "+ neue gruppe…",
+
+  "action.edit": "bearbeiten",
+  "action.delete": "löschen",
+  "action.cancel": "abbrechen",
+  "action.save": "speichern",
+
+  "modal.edit": "link bearbeiten",
+  "modal.new": "neuer link",
+  "field.url": "url",
+  "field.title": "titel",
+  "field.titleHint": "leer = hostname",
+  "field.group": "gruppe",
+  "field.groupPlaceholder": "arbeit, zuhause, dev…",
+  "field.icon": "ersatz-icon",
+  "field.iconHint": "wird genutzt, wenn die seite kein favicon hat"
+}

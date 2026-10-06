@@ -1,0 +1,48 @@
+{
+  "manifest.name": "Geburtstage",
+  "manifest.description": "Leute und ihre Daten. Wer als nächstes dran ist, wie alt sie werden, eine Notiz, damit du den Lieblingstee nicht vergisst.",
+  "widget.upcoming.name": "Nächste Geburtstage",
+  "page.people.name": "Geburtstage",
+
+  "loading": "lädt…",
+  "when.today": "heute 🎂",
+  "when.tomorrow": "morgen",
+  "when.days": { "one": "in {count} tag", "other": "in {count} tagen" },
+  "when.weeks": { "one": "in {count} woche", "other": "in {count} wochen" },
+  "when.months": { "one": "in {count} monat", "other": "in {count} monaten" },
+  "turns": "wird {age}",
+  "chip.today": "heute",
+
+  "widget.upcoming.empty": "noch niemand",
+  "widget.upcoming.emptyHint": "leg leute auf der geburtstage-seite an.",
+
+  "page.addPerson": "person",
+  "page.nudgeHint": "du bekommst eine woche vorher und am tag selbst einen stups (glocke / deine kanäle).",
+  "page.empty": "noch niemand",
+  "action.edit": "bearbeiten",
+  "action.remove": "entfernen",
+  "action.cancel": "abbrechen",
+  "action.save": "speichern",
+  "confirm.remove": "{name} entfernen?",
+
+  "modal.edit": "bearbeiten",
+  "modal.new": "neue person",
+  "field.name": "name",
+  "field.knowYear": "ich kenne das geburtsjahr",
+  "field.birthday": "geburtstag",
+  "field.dayMonth": "tag und monat",
+  "field.dayMonthHint": "MM-TT, z. b. 03-14",
+  "field.note": "notiz",
+  "field.noteHint": "geschenkideen, allergien, der lieblingstee",
+
+  "notify.today.title": "🎂 {name} hat heute geburtstag",
+  "notify.today.titleTurns": "🎂 {name} hat heute geburtstag – wird {age}",
+  "notify.week.title": "{name} hat in einer woche geburtstag",
+  "notify.week.note": "notiz: {note}",
+  "notify.week.body": "zeit, ein geschenk zu besorgen",
+
+  "eink.empty": "noch keine geburtstage",
+  "eink.today": "heute",
+  "eink.tomorrow": "morgen",
+  "eink.inDays": "in {count}t"
+}

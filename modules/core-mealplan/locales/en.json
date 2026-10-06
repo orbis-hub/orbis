@@ -1,0 +1,52 @@
+{
+  "manifest.name": "Meal plan",
+  "manifest.description": "Week grid for lunch and dinner, a recipe box with url import (schema.org json-ld, covers most food blogs), and 'put this week's ingredients on the shopping list'.",
+  "widget.meals.name": "Today's meals",
+  "widget.meals.description": "What's for lunch and dinner today and tomorrow.",
+  "page.plan.name": "Meal plan",
+
+  "common.loading": "loading…",
+  "common.today": "today",
+  "common.tomorrow": "tomorrow",
+  "common.cancel": "cancel",
+  "common.delete": "delete",
+
+  "widget.meals.empty": "nothing planned",
+  "widget.meals.emptyHint": "open the meal plan page and fill the week.",
+
+  "picker.searchRecipes": "search recipes…",
+  "picker.noRecipes": "no recipes yet, import one below the grid.",
+  "picker.notePlaceholder": "or just a note: leftovers, eating out…",
+  "picker.set": "set",
+  "picker.clearSlot": "clear slot",
+
+  "recipe.addedToast": { "one": "{count} ingredient → {list}", "other": "{count} ingredients → {list}" },
+  "recipe.source": "source",
+  "recipe.ingredients": "ingredients",
+  "recipe.steps": "steps",
+  "recipe.toShopping": "add ingredients to shopping list",
+  "recipe.ingredientsCount": { "one": "{count} ingredient", "other": "{count} ingredients" },
+  "recipe.open": "open recipe",
+
+  "new.importedToast": { "one": "imported \"{title}\" ({count} ingredient)", "other": "imported \"{title}\" ({count} ingredients)" },
+  "new.importedNoneToast": "imported \"{title}\", no ingredients found",
+  "new.urlPlaceholder": "paste a recipe url (most food blogs work)",
+  "new.import": "import",
+  "new.byHand": "by hand",
+  "new.titlePlaceholder": "title",
+  "new.ingredientsPlaceholder": "one ingredient per line\n200 g pasta\n1 onion",
+  "new.save": "save recipe",
+
+  "page.plan.nothingToAdd": "nothing to add (no recipes with ingredients planned)",
+  "page.plan.weekOf": "week of {date}",
+  "page.plan.prevWeek": "previous week",
+  "page.plan.nextWeek": "next week",
+  "page.plan.thisWeek": "this week",
+  "page.plan.weekToShoppingTitle": "add all ingredients of this week to the shopping list",
+  "page.plan.toShopping": "to shopping",
+  "page.plan.recipes": "recipes ({count})",
+  "page.plan.filter": "filter",
+  "page.plan.noRecipes": "no recipes yet.",
+
+  "error.noRecipe": "no recipe found on that page"
+}

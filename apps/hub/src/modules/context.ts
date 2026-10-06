@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ModuleManifest, ModuleStatus } from "@orbis/sdk";
-import type { Logger, ModuleDevices, ModuleEvents, ModuleModules, ModuleScheduler, ModuleServerContext, ModuleSettings, ModuleStorage } from "@orbis/sdk/server";
+import type { Logger, ModuleDevices, ModuleEvents, ModuleI18n, ModuleModules, ModuleScheduler, ModuleServerContext, ModuleSettings, ModuleStorage } from "@orbis/sdk/server";
 import { and, eq, like } from "drizzle-orm";
 import { Hono } from "hono";
 import { config } from "../config";
@@ -10,6 +10,8 @@ import { childLog } from "../log";
 import * as devices from "../services/devices";
 import { broadcast } from "../ws";
 import * as notifications from "../services/notifications";
+import { getLanguage, onSettingChange } from "../services/settings";
+import { translatorFor } from "./locales";
 
 export type BuiltContext = {
   ctx: ModuleServerContext;
@@ -160,6 +162,33 @@ export function buildContext(
 
   const http = new Hono();
 
+  // translations: re-resolved whenever the hub language changes
+  let translator = translatorFor(dir);
+  const languageListeners = new Set<(language: string) => void>();
+  disposers.push(
+    onSettingChange((key) => {
+      if (key !== "language") return;
+      translator = translatorFor(dir);
+      for (const cb of languageListeners) {
+        try {
+          cb(translator.language);
+        } catch (err) {
+          log.error({ err }, "language listener failed");
+        }
+      }
+    }),
+  );
+  const i18n: ModuleI18n = {
+    get language() {
+      return getLanguage();
+    },
+    t: (key, vars) => translator(key, vars),
+    onChange(cb) {
+      languageListeners.add(cb);
+      return () => languageListeners.delete(cb);
+    },
+  };
+
   let currentStatus: ModuleStatus | null = null;
   const statusApi = {
     set(s: ModuleStatus | null) {
@@ -188,6 +217,7 @@ export function buildContext(
     modules: modulesApi ?? { list: () => [], has: () => false, call: async () => { throw new Error("modules api unavailable"); }, onChange: () => () => {} },
     http,
     fetch: globalThis.fetch.bind(globalThis),
+    i18n,
   };
 
   return {
@@ -201,6 +231,7 @@ export function buildContext(
         }
       }
       settingsListeners.clear();
+      languageListeners.clear();
     },
     emitSettings(s) {
       for (const cb of settingsListeners) {

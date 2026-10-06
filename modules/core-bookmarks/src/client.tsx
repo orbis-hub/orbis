@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { defineClient, useModuleApi, useModuleQuery, type PageProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModuleApi, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
 import { Button, Empty, Field, Icon, Input, Modal, Select, Window, iconNames } from "@orbis/ui";
 import type { Link } from "./server";
 
@@ -17,10 +17,11 @@ function Tile({ l, size, label }: { l: Link; size: number; label: boolean }) {
 }
 
 function LinksWidget({ config }: WidgetProps<{ group?: string; size?: "small" | "medium" | "large"; labels?: boolean }>) {
+  const t = useT();
   const q = useLinks(config.group || undefined);
   const list = q.data ?? [];
-  if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
-  if (!list.length) return <Empty icon="bookmark" title="no links yet">add some on the bookmarks page.</Empty>;
+  if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("loading")}</span>;
+  if (!list.length) return <Empty icon="bookmark" title={t("widget.links.empty")}>{t("widget.links.emptyHint")}</Empty>;
   const size = config.size === "small" ? 56 : config.size === "large" ? 96 : 72;
   return (
     <div className="scroll-y" style={{ height: "100%", display: "flex", flexWrap: "wrap", gap: 8, alignContent: "flex-start" }}>
@@ -31,6 +32,7 @@ function LinksWidget({ config }: WidgetProps<{ group?: string; size?: "small" | 
 }
 
 function BookmarksPage(_p: PageProps) {
+  const t = useT();
   const api = useModuleApi();
   const q = useLinks();
   const [editing, setEditing] = useState<Partial<Link> | null>(null);
@@ -44,12 +46,12 @@ function BookmarksPage(_p: PageProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <Button onClick={() => setEditing({ group: groups[0] ?? "" })}><Icon name="plus" size={12} /> link</Button>
-        <span className="soft" style={{ fontSize: 11 }}>favicons are fetched by the hub once, your browser never touches a site until you click.</span>
+        <Button onClick={() => setEditing({ group: groups[0] ?? "" })}><Icon name="plus" size={12} /> {t("page.addLink")}</Button>
+        <span className="soft" style={{ fontSize: 11 }}>{t("page.faviconHint")}</span>
       </div>
-      {(q.data ?? []).length === 0 ? <Empty icon="bookmark" title="empty start page">add the five sites you open every day.</Empty> : null}
+      {(q.data ?? []).length === 0 ? <Empty icon="bookmark" title={t("page.empty")}>{t("page.emptyHint")}</Empty> : null}
       {groups.map((g) => (
-        <Window key={g || "_"} title={g || "links"} right={<span className="soft" style={{ fontSize: 10 }}>{(q.data ?? []).filter((l) => l.group === g).length}</span>}>
+        <Window key={g || "_"} title={g || t("group.default")} right={<span className="soft" style={{ fontSize: 10 }}>{(q.data ?? []).filter((l) => l.group === g).length}</span>}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {(q.data ?? []).filter((l) => l.group === g).map((l) => (
               <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderBottom: "1px dashed var(--line)", fontSize: 12 }}>
@@ -58,8 +60,8 @@ function BookmarksPage(_p: PageProps) {
                 </div>
                 <a href={l.url} target="_blank" rel="noreferrer" style={{ flex: "0 1 auto", color: "var(--ink)", textDecoration: "none" }}>{l.title}</a>
                 <span className="soft" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11 }}>{l.url.replace(/^https?:\/\//, "")}</span>
-                <Button icon size="sm" variant="ghost" onClick={() => setEditing(l)} aria-label="edit"><Icon name="edit" size={12} /></Button>
-                <Button icon size="sm" variant="ghost" onClick={() => api(`/links/${l.id}`, { method: "DELETE" }).then(() => q.refetch())} aria-label="delete"><Icon name="trash" size={12} /></Button>
+                <Button icon size="sm" variant="ghost" onClick={() => setEditing(l)} aria-label={t("action.edit")}><Icon name="edit" size={12} /></Button>
+                <Button icon size="sm" variant="ghost" onClick={() => api(`/links/${l.id}`, { method: "DELETE" }).then(() => q.refetch())} aria-label={t("action.delete")}><Icon name="trash" size={12} /></Button>
               </div>
             ))}
           </div>
@@ -71,25 +73,26 @@ function BookmarksPage(_p: PageProps) {
 }
 
 function EditModal({ link, groups, onClose, onSave }: { link: Partial<Link>; groups: string[]; onClose: () => void; onSave: (l: Partial<Link>) => Promise<void> }) {
+  const t = useT();
   const [l, setL] = useState<Partial<Link>>(link);
   const [customGroup, setCustomGroup] = useState(false);
   const icons = iconNames();
   return (
-    <Modal open onClose={onClose} title={link.id ? "edit link" : "new link"}>
+    <Modal open onClose={onClose} title={link.id ? t("modal.edit") : t("modal.new")}>
       <form onSubmit={(e) => { e.preventDefault(); void onSave(l); }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Field label="url"><Input value={l.url ?? ""} onChange={(e) => setL({ ...l, url: e.target.value })} required autoFocus placeholder="https://…" inputMode="url" /></Field>
-        <Field label="title" hint="empty = hostname"><Input value={l.title ?? ""} onChange={(e) => setL({ ...l, title: e.target.value })} /></Field>
-        <Field label="group">
+        <Field label={t("field.url")}><Input value={l.url ?? ""} onChange={(e) => setL({ ...l, url: e.target.value })} required autoFocus placeholder="https://…" inputMode="url" /></Field>
+        <Field label={t("field.title")} hint={t("field.titleHint")}><Input value={l.title ?? ""} onChange={(e) => setL({ ...l, title: e.target.value })} /></Field>
+        <Field label={t("field.group")}>
           {customGroup || groups.length === 0 ? (
-            <Input value={l.group ?? ""} onChange={(e) => setL({ ...l, group: e.target.value })} placeholder="work, home, dev…" />
+            <Input value={l.group ?? ""} onChange={(e) => setL({ ...l, group: e.target.value })} placeholder={t("field.groupPlaceholder")} />
           ) : (
             <Select value={l.group ?? ""} onChange={(e) => (e.target.value === "__new" ? setCustomGroup(true) : setL({ ...l, group: e.target.value }))}>
-              {groups.map((g) => <option key={g} value={g}>{g || "(no group)"}</option>)}
-              <option value="__new">+ new group…</option>
+              {groups.map((g) => <option key={g} value={g}>{g || t("group.none")}</option>)}
+              <option value="__new">{t("group.new")}</option>
             </Select>
           )}
         </Field>
-        <Field label="fallback icon" hint="used when the site has no favicon">
+        <Field label={t("field.icon")} hint={t("field.iconHint")}>
           <div className="scroll-y" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 28px)", gap: 3, maxHeight: 110 }}>
             {icons.slice(0, 160).map((n) => (
               <button key={n} type="button" title={n} className="btn btn-icon btn-sm" style={{ boxShadow: "none", borderColor: l.icon === n ? "var(--accent)" : undefined }} onClick={() => setL({ ...l, icon: n })}><Icon name={n} size={13} /></button>
@@ -97,8 +100,8 @@ function EditModal({ link, groups, onClose, onSave }: { link: Partial<Link>; gro
           </div>
         </Field>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button onClick={onClose}>cancel</Button>
-          <Button type="submit" variant="primary">save</Button>
+          <Button onClick={onClose}>{t("action.cancel")}</Button>
+          <Button type="submit" variant="primary">{t("action.save")}</Button>
         </div>
       </form>
     </Modal>

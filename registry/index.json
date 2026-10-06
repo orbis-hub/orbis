@@ -13,7 +13,11 @@
       ],
       "author": "orbis",
       "icon": "clock",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/clock.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/clock.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "todo",
@@ -27,7 +31,11 @@
       ],
       "author": "orbis",
       "icon": "checkbox-on",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/todo.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/todo.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "weather",
@@ -41,12 +49,16 @@
       ],
       "author": "orbis",
       "icon": "cloud-sun",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/weather.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/weather.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "calendar",
       "name": "Calendar",
-      "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail …).",
+      "description": "Your calendars in one place: ICS feeds and CalDAV accounts (Google, iCloud, Nextcloud, Fastmail, Radicale …).",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -55,12 +67,16 @@
       ],
       "author": "orbis",
       "icon": "calendar",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/calendar.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/calendar.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "media",
       "name": "Media",
-      "description": "Now playing, playback controls and device picker. Spotify today, more providers later.",
+      "description": "Spotify (and Home Assistant media players: Sonos, Chromecast, Kodi, …) on your dashboard: now playing, controls, device picker, search. Any browser tab can become a Spotify Connect speaker.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -73,12 +89,16 @@
       "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/media.tgz",
       "softDeps": [
         "home-assistant"
+      ],
+      "languages": [
+        "en",
+        "de"
       ]
     },
     {
       "id": "home-assistant",
       "name": "Home Assistant",
-      "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket.",
+      "description": "Your Home Assistant entities as widgets: switches, lights, sensors, climate, scenes. Live over the HA websocket. Also publishes orbis itself to HA over MQTT (next event, open tasks, focus switch).",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -87,7 +107,11 @@
       ],
       "author": "orbis",
       "icon": "home",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/home-assistant.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/home-assistant.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "notes",
@@ -101,12 +125,16 @@
       ],
       "author": "orbis",
       "icon": "note",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/notes.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/notes.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "countdown",
       "name": "Countdown",
-      "description": "Big number counting down to a date. Client-only, one widget per countdown.",
+      "description": "Big number counting down to a date: vacation, birthday, deadline. Client-only, one widget per countdown.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -115,12 +143,16 @@
       ],
       "author": "orbis",
       "icon": "hourglass",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/countdown.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/countdown.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "hub-status",
       "name": "Hub status",
-      "description": "cpu, memory, disk, uptime, database size, loaded modules.",
+      "description": "What the hub itself is doing: cpu, memory, disk, uptime, database size, loaded modules, connected clients.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -129,12 +161,16 @@
       ],
       "author": "orbis",
       "icon": "server",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/hub-status.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/hub-status.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "habits",
       "name": "Habits",
-      "description": "Daily habits with streaks and a contribution-style grid.",
+      "description": "Daily habits with streaks. Tick today in the widget, see the month grid per habit on the page.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -143,12 +179,16 @@
       ],
       "author": "orbis",
       "icon": "check-double",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/habits.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/habits.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "bookmarks",
       "name": "Bookmarks",
-      "description": "A start page: links with icons in groups, favicons fetched by the hub.",
+      "description": "A start page: links with icons, in groups. Favicons fetched by the hub, no third-party services.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -157,12 +197,16 @@
       ],
       "author": "orbis",
       "icon": "bookmark",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/bookmarks.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/bookmarks.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "pomodoro",
       "name": "Focus timer",
-      "description": "Pomodoro-style timer, state on the hub so it runs across devices.",
+      "description": "Pomodoro-style focus timer. State lives on the hub, so it keeps running across devices and reloads.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -171,12 +215,16 @@
       ],
       "author": "orbis",
       "icon": "alarm-clock",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/pomodoro.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/pomodoro.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "birthdays",
       "name": "Birthdays",
-      "description": "People and their dates: who is next, how old they turn, reminders.",
+      "description": "People and their dates. Who is up next, how old they turn, a note so you remember the tea they like.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -185,12 +233,16 @@
       ],
       "author": "orbis",
       "icon": "cake",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/birthdays.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/birthdays.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "rss",
       "name": "Feeds",
-      "description": "RSS / Atom headlines: a few feeds, a widget with the latest, a page to skim and mark read.",
+      "description": "RSS / Atom headlines next to your weather. A few feeds, a widget with the latest, a page to skim and mark read.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -199,12 +251,16 @@
       ],
       "author": "orbis",
       "icon": "radio",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/rss.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/rss.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "shopping",
       "name": "Shopping list",
-      "description": "Shared shopping list with quick add, quantities, aisles and suggestions from past purchases.",
+      "description": "Shared shopping list: quick add, quantities, aisles, tap to check off in the store, bought items come back next time.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -213,12 +269,16 @@
       ],
       "author": "orbis",
       "icon": "cart",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/shopping.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/shopping.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "shelly",
       "name": "Shelly",
-      "description": "Shelly relays and plugs over the local network, gen1 and gen2, with power draw.",
+      "description": "Shelly relays and plugs straight over the local network, no cloud, no Home Assistant. Gen2+ RPC (Plus / Pro / Mini), Gen1 basic.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -227,12 +287,16 @@
       ],
       "author": "orbis",
       "icon": "plug",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/shelly.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/shelly.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "transport",
       "name": "Departures",
-      "description": "Next departures with delays for a stop near you. Germany-wide via DB, plus VBB/BVG/ÖBB (transport.rest, no key).",
+      "description": "Next departures from a stop near you. Germany first (DB / HAFAS via transport.rest, no key); other providers can be added.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -241,12 +305,16 @@
       ],
       "author": "orbis",
       "icon": "bus",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/transport.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/transport.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "mealplan",
       "name": "Meal plan",
-      "description": "Week grid for lunch and dinner, recipe box with url import, ingredients straight onto the shopping list.",
+      "description": "Week grid for lunch and dinner, a recipe box with url import (schema.org json-ld, covers most food blogs), and 'put this week's ingredients on the shopping list'.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -255,12 +323,19 @@
       ],
       "author": "orbis",
       "icon": "coffee",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/mealplan.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/mealplan.tgz",
+      "languages": [
+        "en",
+        "de"
+      ],
+      "softDeps": [
+        "shopping"
+      ]
     },
     {
       "id": "finance",
       "name": "Finance",
-      "description": "Account balances by hand, recurring costs, and what is left this month. Not a budgeting app.",
+      "description": "Not a budgeting app. Account balances you type in, a few recurring costs, and the one number you actually want: what's left this month.",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -269,12 +344,16 @@
       ],
       "author": "orbis",
       "icon": "wallet",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/finance.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/finance.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     },
     {
       "id": "fitness",
       "name": "Fitness",
-      "description": "Last workouts and weekly distance from Strava or anything that can POST json (Apple Health shortcut, scripts).",
+      "description": "Last workouts and weekly distance. Pulls from Strava, or takes anything you post to it (Apple Health via a Shortcut, Garmin exports, a curl from your watch script).",
       "repo": "github:orbis-hub/orbis",
       "latest": "0.1.7",
       "tags": [
@@ -283,7 +362,11 @@
       ],
       "author": "orbis",
       "icon": "heart",
-      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/fitness.tgz"
+      "tarball": "https://github.com/orbis-hub/orbis/releases/download/modules-v{version}/fitness.tgz",
+      "languages": [
+        "en",
+        "de"
+      ]
     }
   ]
 }

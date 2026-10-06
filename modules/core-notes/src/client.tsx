@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { defineClient, useModuleApi, useModuleQuery, type PageProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModule, useModuleApi, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
 import { Button, Empty, Icon, Input, Window, cx } from "@orbis/ui";
 import type { Note } from "./server";
 
@@ -94,10 +94,11 @@ function useAutosave(note: Note | null | undefined, refetch: () => void) {
 
 function NoteWidget({ config }: WidgetProps<{ noteId?: string; showTitle?: boolean }>) {
   const api = useModuleApi();
+  const t = useT();
   const q = useModuleQuery<Note | null>(config.noteId ? `/notes/${config.noteId}` : "/notes/pinned", { refetchOn: ["changed"] });
   const n = q.data;
-  if (q.loading && !n) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
-  if (!n) return <Empty icon="note" title="no note">write one on the notes page and pin it.</Empty>;
+  if (q.loading && !n) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
+  if (!n) return <Empty icon="note" title={t("widget.note.empty")}>{t("widget.note.emptyHint")}</Empty>;
   return (
     <div className="scroll-y" style={{ height: "100%" }}>
       {config.showTitle !== false ? <div className="pixel" style={{ fontSize: 14, marginBottom: 4 }}>{n.title}</div> : null}
@@ -107,13 +108,14 @@ function NoteWidget({ config }: WidgetProps<{ noteId?: string; showTitle?: boole
 }
 
 function ScratchWidget({ config }: WidgetProps<{ noteId?: string }>) {
+  const t = useT();
   const q = useModuleQuery<Note>(config.noteId ? `/notes/${config.noteId}` : "/notes/by-title/scratchpad", { refetchOn: ["changed"] });
   const ed = useAutosave(q.data, q.refetch);
-  if (!q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
+  if (!q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
-      <textarea className="input" value={ed.body} onChange={(e) => ed.setBody(e.target.value)} placeholder="type here, it saves itself…" style={{ flex: 1, resize: "none", minHeight: 0, fontSize: 12, lineHeight: 1.5 }} />
-      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{ed.saving ? "saving…" : "saved"}</div>
+      <textarea className="input" value={ed.body} onChange={(e) => ed.setBody(e.target.value)} placeholder={t("widget.scratch.placeholder")} style={{ flex: 1, resize: "none", minHeight: 0, fontSize: 12, lineHeight: 1.5 }} />
+      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{ed.saving ? t("common.saving") : t("common.saved")}</div>
     </div>
   );
 }
@@ -122,6 +124,8 @@ function ScratchWidget({ config }: WidgetProps<{ noteId?: string }>) {
 
 function NotesPage(_p: PageProps) {
   const api = useModuleApi();
+  const t = useT();
+  const { locale } = useModule();
   const list = useModuleQuery<Array<Note & { length: number }>>("/notes", { refetchOn: ["changed"] });
   const [sel, setSel] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
@@ -131,36 +135,36 @@ function NotesPage(_p: PageProps) {
     if (!sel && list.data?.length) setSel(list.data[0]!.id);
   }, [list.data, sel]);
   const create = async () => {
-    const n = await api<Note>("/notes", { method: "POST", json: { title: "new note", body: "" } });
+    const n = await api<Note>("/notes", { method: "POST", json: { title: t("page.notes.newNote"), body: "" } });
     setSel(n.id);
     setPreview(false);
   };
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 240px) minmax(0, 1fr)", gap: 14, alignItems: "start" }} className="notes-page">
       <style>{`@media (max-width: 760px) { .notes-page { grid-template-columns: minmax(0,1fr) !important; } }`}</style>
-      <Window title="notes" right={<Button icon size="sm" variant="ghost" onClick={create} aria-label="new note"><Icon name="plus" size={12} /></Button>} tight>
+      <Window title={t("page.notes.title")} right={<Button icon size="sm" variant="ghost" onClick={create} aria-label={t("page.notes.newNote")}><Icon name="plus" size={12} /></Button>} tight>
         <div style={{ display: "flex", flexDirection: "column", padding: 6 }}>
-          {(list.data ?? []).length === 0 ? <div className="soft" style={{ fontSize: 12, padding: 6 }}>no notes yet</div> : null}
+          {(list.data ?? []).length === 0 ? <div className="soft" style={{ fontSize: 12, padding: 6 }}>{t("page.notes.empty")}</div> : null}
           {(list.data ?? []).map((n) => (
             <button key={n.id} type="button" className="nav-item" aria-current={n.id === sel ? "page" : undefined} onClick={() => setSel(n.id)} style={{ flexDirection: "column", alignItems: "flex-start", gap: 0 }}>
               <span style={{ display: "flex", gap: 6, alignItems: "center", width: "100%" }}>
                 {n.pinned ? <Icon name="pin" size={11} style={{ color: "var(--accent)" }} /> : null}
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
               </span>
-              <span className="soft" style={{ fontSize: 10, fontFamily: "var(--font-mono)" }}>{new Date(n.updated_at).toLocaleDateString()} · {n.length} chars</span>
+              <span className="soft" style={{ fontSize: 10, fontFamily: "var(--font-mono)" }}>{new Date(n.updated_at).toLocaleDateString(locale)} · {t("page.notes.chars", { count: n.length })}</span>
             </button>
           ))}
         </div>
       </Window>
       {current.data ? (
         <Window
-          title={<input className="input" value={ed.title} onChange={(e) => ed.setTitle(e.target.value)} style={{ padding: "0 4px", fontFamily: "var(--font-pixel)", fontSize: 13, background: "transparent", border: 0, width: "100%" }} aria-label="title" />}
+          title={<input className="input" value={ed.title} onChange={(e) => ed.setTitle(e.target.value)} style={{ padding: "0 4px", fontFamily: "var(--font-pixel)", fontSize: 13, background: "transparent", border: 0, width: "100%" }} aria-label={t("page.notes.titleField")} />}
           right={
             <>
-              <span className="soft" style={{ fontSize: 10 }}>{ed.saving ? "saving…" : "saved"}</span>
-              <Button size="sm" variant="ghost" aria-pressed={preview} onClick={() => setPreview((v) => !v)} title="preview"><Icon name="eye" size={12} /></Button>
-              <Button size="sm" variant="ghost" aria-pressed={!!current.data.pinned} onClick={() => api(`/notes/${current.data!.id}`, { method: "PATCH", json: { pinned: !current.data!.pinned } }).then(() => list.refetch())} title="pin to dashboard widget"><Icon name="pin" size={12} /></Button>
-              <Button size="sm" variant="ghost" onClick={() => { if (confirm(`delete "${current.data!.title}"?`)) api(`/notes/${current.data!.id}`, { method: "DELETE" }).then(() => { setSel(null); list.refetch(); }); }} aria-label="delete"><Icon name="trash" size={12} /></Button>
+              <span className="soft" style={{ fontSize: 10 }}>{ed.saving ? t("common.saving") : t("common.saved")}</span>
+              <Button size="sm" variant="ghost" aria-pressed={preview} onClick={() => setPreview((v) => !v)} title={t("page.notes.preview")}><Icon name="eye" size={12} /></Button>
+              <Button size="sm" variant="ghost" aria-pressed={!!current.data.pinned} onClick={() => api(`/notes/${current.data!.id}`, { method: "PATCH", json: { pinned: !current.data!.pinned } }).then(() => list.refetch())} title={t("page.notes.pin")}><Icon name="pin" size={12} /></Button>
+              <Button size="sm" variant="ghost" onClick={() => { if (confirm(t("page.notes.confirmDelete", { title: current.data!.title }))) api(`/notes/${current.data!.id}`, { method: "DELETE" }).then(() => { setSel(null); list.refetch(); }); }} aria-label={t("common.delete")}><Icon name="trash" size={12} /></Button>
             </>
           }
         >
@@ -169,11 +173,11 @@ function NotesPage(_p: PageProps) {
               <Markdown text={ed.body} onToggle={(i, c) => ed.setBody(toggleLine(ed.body, i, c))} />
             </div>
           ) : (
-            <textarea className={cx("input")} value={ed.body} onChange={(e) => ed.setBody(e.target.value)} style={{ minHeight: 360, width: "100%", resize: "vertical", fontSize: 13, lineHeight: 1.55 }} placeholder={"# heading\n- list\n- [ ] checkbox\n**bold** *italic* `code` [link](https://…)"} />
+            <textarea className={cx("input")} value={ed.body} onChange={(e) => ed.setBody(e.target.value)} style={{ minHeight: 360, width: "100%", resize: "vertical", fontSize: 13, lineHeight: 1.55 }} placeholder={t("page.notes.bodyPlaceholder")} />
           )}
         </Window>
       ) : (
-        <Empty icon="note" title="pick or create a note" />
+        <Empty icon="note" title={t("page.notes.pick")} />
       )}
     </div>
   );

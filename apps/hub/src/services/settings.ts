@@ -4,6 +4,8 @@ import { broadcast } from "../ws";
 
 export type HubSettings = {
   hubName: string;
+  /** ui language (bcp-47, e.g. "en", "de"); separate from `locale`, which only drives date/number formatting */
+  language: string;
   locale: string;
   timezone: string;
   theme: "system" | "light" | "dark";
@@ -21,6 +23,7 @@ export type HubSettings = {
 
 export const defaultSettings: HubSettings = {
   hubName: "Orbis",
+  language: "en",
   locale: "de-DE",
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "Europe/Berlin",
   theme: "system",
@@ -54,13 +57,36 @@ export function getAllSettings(): HubSettings {
   return out as HubSettings;
 }
 
+const listeners = new Set<(key: keyof HubSettings, value: unknown) => void>();
+
+/** in-process hook for hub code that wants to react to a setting (module contexts use it for the language) */
+export function onSettingChange(cb: (key: keyof HubSettings, value: unknown) => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+let languageCache: string | null = null;
+/** current ui language, cached (read on every translation call) */
+export function getLanguage(): string {
+  if (languageCache === null) languageCache = getSetting("language") || defaultSettings.language;
+  return languageCache;
+}
+
 export function setSetting<K extends keyof HubSettings>(key: K, value: HubSettings[K]) {
+  if (key === "language") languageCache = (value as string) || defaultSettings.language;
   getDb()
     .insert(schema.settings)
     .values({ key, value: JSON.stringify(value), updatedAt: now() })
     .onConflictDoUpdate({ target: schema.settings.key, set: { value: JSON.stringify(value), updatedAt: now() } })
     .run();
   broadcast({ type: "settings:changed", key });
+  for (const cb of listeners) {
+    try {
+      cb(key, value);
+    } catch {
+      /* listener errors must not break the request */
+    }
+  }
 }
 
 export function patchSettings(patch: Partial<HubSettings>) {

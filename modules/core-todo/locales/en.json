@@ -1,0 +1,69 @@
+{
+  "manifest.name": "Todo",
+  "manifest.description": "Lists and tasks with due dates. A widget per list plus a full page.",
+  "widget.list.name": "Todo list",
+  "widget.list.description": "Tasks of one list, quick add included.",
+  "widget.today.name": "Due today",
+  "widget.today.description": "Everything due today or overdue, across lists.",
+  "page.tasks.name": "Tasks",
+
+  "common.loading": "loading…",
+  "common.add": "add",
+  "common.cancel": "cancel",
+  "common.save": "save",
+  "common.create": "create",
+  "common.delete": "delete",
+  "common.edit": "edit",
+
+  "due.yesterday": "yesterday",
+  "due.overdue": { "one": "{count}d overdue", "other": "{count}d overdue" },
+  "due.today": "today",
+  "due.tomorrow": "tomorrow",
+
+  "task.done": "done: {title}",
+  "task.toggle_failed": "could not update task",
+
+  "quickadd.placeholder": "add a task…",
+  "quickadd.placeholder_tip": "add a task… (tip: end with !today or !tomorrow)",
+  "quickadd.failed": "could not add task: {error}",
+
+  "widget.list.empty": "all clear ✓",
+  "widget.list.open": { "one": "{count} open", "other": "{count} open" },
+  "widget.today.empty": "nothing due today",
+  "widget.today.enjoy": "enjoy ☕",
+
+  "page.lists": "lists",
+  "page.new_list": "new list",
+  "page.tasks": "tasks",
+  "page.show_done": "show done",
+  "page.list_menu": "list menu",
+  "page.empty.title": "nothing here",
+  "page.empty.body": "add a task above.",
+
+  "menu.clear_completed": "clear completed",
+  "menu.rename": "rename list",
+  "menu.rename_prompt": "list name",
+  "menu.delete": "delete list",
+  "menu.delete_confirm": "delete \"{name}\" and all its tasks?",
+
+  "modal.edit_task": "edit task",
+  "modal.new_list": "new list",
+  "modal.save_failed": "saving failed: {error}",
+  "modal.delete_failed": "deleting failed: {error}",
+  "modal.create_failed": "could not create list: {error}",
+
+  "field.title": "title",
+  "field.notes": "notes",
+  "field.due": "due",
+  "field.list": "list",
+  "field.name": "name",
+  "field.color": "color",
+
+  "notify.overdue": "overdue: {title}",
+  "notify.due_today": "due today: {title}",
+
+  "eink.today_empty": "nothing due today",
+  "eink.list_empty": "all clear ✓",
+  "eink.overdue": "overdue",
+  "eink.more": { "one": "+{count} more", "other": "+{count} more" }
+}

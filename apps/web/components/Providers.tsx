@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { connectWs, disconnectWs, getHubUrl, HubError, setHubUrl } from "@/lib/hub";
+import { useT } from "@/lib/i18n";
 import { installHostBridge } from "@/lib/module-host";
 import { useAuthStatus, useHubEventsSync } from "@/lib/queries";
 import { applyTheme, useShell } from "@/lib/store";
@@ -47,6 +48,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => setHubUrlState(getHubUrl()), []);
   const status = useAuthStatus(hubUrl !== undefined && hubUrl !== null);
   const onLogin = pathname?.startsWith("/login");
+  const t = useT();
   useHubEventsSync();
 
   const authed = !!status.data?.authenticated;
@@ -72,7 +74,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     return (
       <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
         <div className="pixel soft fade-in" style={{ fontSize: 13 }}>
-          connecting to hub<span className="blink">…</span>
+          {t("shell.connecting")}<span className="blink">…</span>
         </div>
       </div>
     );
@@ -82,6 +84,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 }
 
 function Unreachable({ hubUrl, error, onRetry }: { hubUrl: string; error: string; onRetry: () => void }) {
+  const t = useT();
   return (
     <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 16 }}>
       <section className="win fade-in" style={{ maxWidth: 440, width: "100%" }}>
@@ -91,22 +94,22 @@ function Unreachable({ hubUrl, error, onRetry }: { hubUrl: string; error: string
             <i />
             <i />
           </span>
-          <span className="title">hub unreachable</span>
+          <span className="title">{t("shell.unreachable.title")}</span>
         </div>
         <div className="win-body" style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
-          <div className="pixel" style={{ fontSize: 15 }}>cannot talk to your hub</div>
+          <div className="pixel" style={{ fontSize: 15 }}>{t("shell.unreachable.headline")}</div>
           <div>
-            tried <code style={{ overflowWrap: "anywhere" }}>{hubUrl}</code>
+            {t("shell.unreachable.tried")} <code style={{ overflowWrap: "anywhere" }}>{hubUrl}</code>
           </div>
           <div className="soft">{error}</div>
           <ul className="soft" style={{ margin: 0, paddingLeft: 16 }}>
-            <li>is the hub running? open <code>{hubUrl}/api/health</code> in a tab.</li>
-            <li>same network / vpn as the hub?</li>
-            <li>https page but http hub? browsers block that.</li>
+            <li>{t("shell.unreachable.hint1", { url: `${hubUrl}/api/health` })}</li>
+            <li>{t("shell.unreachable.hint2")}</li>
+            <li>{t("shell.unreachable.hint3")}</li>
           </ul>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button type="button" className="btn btn-primary" onClick={onRetry}>
-              retry
+              {t("shell.unreachable.retry")}
             </button>
             <button
               type="button"
@@ -116,7 +119,7 @@ function Unreachable({ hubUrl, error, onRetry }: { hubUrl: string; error: string
                 window.location.href = "/login/";
               }}
             >
-              change hub url
+              {t("shell.unreachable.changeHub")}
             </button>
           </div>
         </div>

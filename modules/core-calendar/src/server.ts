@@ -1,4 +1,4 @@
-import { defineModule, type ModuleServerContext } from "@orbis/sdk/server";
+import { defineModule, type ModuleServerContext, type Translator } from "@orbis/sdk/server";
 import ical, { type VEvent } from "node-ical";
 import { createDAVClient, type DAVCalendar } from "tsdav";
 
@@ -54,7 +54,7 @@ export function normalizeCaldavUrl(input: string, username?: string): string {
   return u.replace(/\/+$/, "");
 }
 
-function explainCaldavError(err: Error, serverUrl: string): string {
+function explainCaldavError(t: Translator, err: Error, serverUrl: string): string {
   const m = err.message ?? String(err);
   const host = (() => {
     try {
@@ -64,19 +64,19 @@ function explainCaldavError(err: Error, serverUrl: string): string {
     }
   })();
   if (/401|Unauthorized|Invalid credentials/i.test(m)) {
-    if (host.includes("icloud.com")) return "icloud rejected the login (401). use an app-specific password from appleid.apple.com → sign-in and security → app-specific passwords (two-factor auth must be on), and your full apple id e-mail as username.";
-    if (host.includes("fastmail.com")) return "fastmail rejected the login (401). create an app password with calendar access under settings → privacy & security → integrations.";
-    return `${host} rejected the login (401). most servers want an app password instead of your account password; check username (often the full e-mail) and password.`;
+    if (host.includes("icloud.com")) return t("error.401.icloud");
+    if (host.includes("fastmail.com")) return t("error.401.fastmail");
+    return t("error.401", { host });
   }
-  if (/principalUrl|principal/i.test(m)) return `could not find a caldav account at ${host}. check the server url (for nextcloud the base url is enough, for others try the full caldav url your provider documents).`;
-  if (/ENOTFOUND|ECONNREFUSED|fetch failed|getaddrinfo/i.test(m)) return `cannot reach ${host} from the hub (${m}).`;
-  if (/403|Forbidden/i.test(m)) return `${host} answered 403 forbidden: the account is valid but may not allow caldav access or this app password lacks calendar rights.`;
+  if (/principalUrl|principal/i.test(m)) return t("error.principal", { host });
+  if (/ENOTFOUND|ECONNREFUSED|fetch failed|getaddrinfo/i.test(m)) return t("error.unreachable", { host, message: m });
+  if (/403|Forbidden/i.test(m)) return t("error.403", { host });
   return m;
 }
 
 /* ---------- ics parsing (shared by feeds and caldav objects) ---------- */
 
-function parseIcs(text: string, cal: Calendar, from: Date, to: Date): CalEvent[] {
+function parseIcs(text: string, cal: Calendar, from: Date, to: Date, untitled = "(untitled)"): CalEvent[] {
   const data = ical.sync.parseICS(text);
   const out: CalEvent[] = [];
   for (const item of Object.values(data)) {
@@ -97,7 +97,7 @@ function parseIcs(text: string, cal: Calendar, from: Date, to: Date): CalEvent[]
         calendarId: cal.id,
         calendarName: cal.name,
         color: cal.color,
-        title: String(ev.summary ?? "(untitled)"),
+        title: String(ev.summary ?? untitled),
         start: start.toISOString(),
         end: end.toISOString(),
         allDay,
@@ -136,6 +136,7 @@ function parseIcs(text: string, cal: Calendar, from: Date, to: Date): CalEvent[]
 export default defineModule<{ refreshMinutes?: number }>({
   setup(ctx) {
     const { http, storage, events, logger } = ctx;
+    const t: Translator = (key, vars) => ctx.i18n.t(key, vars);
     let state: State = storage.get<State>("state") ?? { calendars: [], events: [], fetchedAt: "", errors: {} };
     const accounts = (): Account[] => storage.get<Account[]>("accounts") ?? [];
     const saveAccounts = (a: Account[]) => storage.set("accounts", a);
@@ -160,14 +161,14 @@ export default defineModule<{ refreshMinutes?: number }>({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const cal: Calendar = { id: acc.id, accountId: acc.id, name: acc.name, color: acc.color, url, writable: false };
       const { from, to } = range();
-      return { calendars: [cal], events: parseIcs(await res.text(), cal, from, to) };
+      return { calendars: [cal], events: parseIcs(await res.text(), cal, from, to, t("event.untitled")) };
     }
 
     async function fetchCaldav(acc: Account): Promise<{ calendars: Calendar[]; events: CalEvent[] }> {
-      if (!acc.username || !acc.password) throw new Error("username and password required");
+      if (!acc.username || !acc.password) throw new Error(t("error.credentials"));
       const serverUrl = normalizeCaldavUrl(acc.url, acc.username);
       if (serverUrl.includes("googleusercontent.com") || serverUrl.includes("google.com")) {
-        throw new Error("google calendar only allows oauth on caldav, app passwords are rejected. use the calendar's 'secret address in ical format' (google calendar → settings → your calendar → integrate calendar) as an ics feed instead.");
+        throw new Error(t("error.google"));
       }
       // probe the credentials ourselves first: tsdav hides a 401 behind "cannot find principalUrl"
       {
@@ -178,10 +179,10 @@ export default defineModule<{ refreshMinutes?: number }>({
             probe = await ctx.fetch(u, { method: "PROPFIND", headers: { authorization: auth, depth: "0", "content-type": "application/xml" }, body: `<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>`, redirect: "follow", signal: AbortSignal.timeout(15_000) });
             if (probe.status !== 404 && probe.status !== 405) break;
           } catch (err) {
-            throw new Error(explainCaldavError(err as Error, serverUrl));
+            throw new Error(explainCaldavError(t, err as Error, serverUrl));
           }
         }
-        if (probe && (probe.status === 401 || probe.status === 403)) throw new Error(explainCaldavError(new Error(`HTTP ${probe.status} Unauthorized`), serverUrl));
+        if (probe && (probe.status === 401 || probe.status === 403)) throw new Error(explainCaldavError(t, new Error(`HTTP ${probe.status} Unauthorized`), serverUrl));
       }
       let client: Awaited<ReturnType<typeof createDAVClient>>;
       try {
@@ -192,13 +193,13 @@ export default defineModule<{ refreshMinutes?: number }>({
           defaultAccountType: "caldav",
         });
       } catch (err) {
-        throw new Error(explainCaldavError(err as Error, serverUrl));
+        throw new Error(explainCaldavError(t, err as Error, serverUrl));
       }
       let cals: DAVCalendar[];
       try {
         cals = (await client.fetchCalendars()) as DAVCalendar[];
       } catch (err) {
-        throw new Error(explainCaldavError(err as Error, serverUrl));
+        throw new Error(explainCaldavError(t, err as Error, serverUrl));
       }
       const { from, to } = range();
       const calendars: Calendar[] = [];
@@ -219,7 +220,7 @@ export default defineModule<{ refreshMinutes?: number }>({
         if (acc.hiddenCalendars?.includes(c.url)) continue;
         try {
           const objects = await client.fetchCalendarObjects({ calendar: c, timeRange: { start: from.toISOString(), end: to.toISOString() }, expand: false });
-          for (const o of objects) if (o.data) evs.push(...parseIcs(String(o.data), cal, from, to));
+          for (const o of objects) if (o.data) evs.push(...parseIcs(String(o.data), cal, from, to, t("event.untitled")));
         } catch (err) {
           logger.warn(`calendar ${cal.name}: ${(err as Error).message}`);
         }
@@ -258,13 +259,18 @@ export default defineModule<{ refreshMinutes?: number }>({
     const schedule = () => ctx.scheduler.every("refresh", (ctx.settings.get().refreshMinutes ?? 10) * 60_000, refresh, { immediate: true });
     const reportStatus = () => {
       const list = accounts();
-      if (list.length === 0) ctx.status.set({ state: "needs-setup", message: "no calendar accounts yet", action: { label: "add account", page: "calendar" } });
-      else if (Object.keys(state.errors).length) ctx.status.set({ state: "warning", message: `${Object.keys(state.errors).length} account(s) failing: ${Object.values(state.errors)[0]}`, action: { label: "open calendar", page: "calendar" } });
+      if (list.length === 0) ctx.status.set({ state: "needs-setup", message: t("status.noAccounts"), action: { label: t("status.addAccount"), page: "calendar" } });
+      else if (Object.keys(state.errors).length) ctx.status.set({ state: "warning", message: t("status.failing", { count: Object.keys(state.errors).length, error: Object.values(state.errors)[0] }), action: { label: t("status.openCalendar"), page: "calendar" } });
       else ctx.status.set({ state: "ok" });
     };
     reportStatus();
     schedule();
     ctx.settings.onChange(schedule);
+    // status text and account error messages are language-dependent: re-report / re-fetch when the hub language changes
+    ctx.i18n.onChange(() => {
+      reportStatus();
+      if (Object.keys(state.errors).length) void refresh();
+    });
 
     /* ---- api ---- */
     http.get("/accounts", (c) => c.json(accounts().map(publicAccount)));
@@ -340,7 +346,7 @@ export default defineModule<{ refreshMinutes?: number }>({
         const start = new Date(e.start).getTime();
         const mins = Math.round((start - now) / 60_000);
         if (mins === 15 || mins === 14) {
-          ctx.notify({ key: `soon:${e.id}`, title: `in 15 min: ${e.title}`, body: e.location ?? undefined, level: "info", icon: "calendar", url: "/m/?id=calendar&page=calendar" });
+          ctx.notify({ key: `soon:${e.id}`, title: t("notify.soon", { title: e.title }), body: e.location ?? undefined, level: "info", icon: "calendar", url: "/m/?id=calendar&page=calendar" });
         }
       }
     });
@@ -357,18 +363,18 @@ export default defineModule<{ refreshMinutes?: number }>({
       const dayOf = (e: CalEvent) => (e.allDay ? new Date(e.start.slice(0, 10) + "T12:00:00") : new Date(e.start));
       const label = (d: Date) => {
         const diff = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - from.getTime()) / 86400_000);
-        return diff === 0 ? "today" : diff === 1 ? "tomorrow" : d.toLocaleDateString(req.locale, { weekday: "short", day: "numeric", month: "short" }).toLowerCase();
+        return diff === 0 ? t("day.today") : diff === 1 ? t("day.tomorrow") : d.toLocaleDateString(req.locale, { weekday: "short", day: "numeric", month: "short" }).toLowerCase();
       };
       if (req.widget === "next") {
         const n = evs.find((e) => !e.allDay && new Date(e.end) > req.now) ?? evs[0];
-        if (!n) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: "no upcoming events", size: 14, gray: 0.5 }] };
+        if (!n) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: t("widget.next.empty"), size: 14, gray: 0.5 }] };
         return {
           type: "col",
           grow: 1,
           justify: "center",
           gap: 4,
           children: [
-            { type: "text", text: `${label(dayOf(n))} · ${n.allDay ? "all day" : fmtT(n.start)}`, size: 12, pixel: false, gray: 0.5 },
+            { type: "text", text: `${label(dayOf(n))} · ${n.allDay ? t("event.allDay") : fmtT(n.start)}`, size: 12, pixel: false, gray: 0.5 },
             { type: "text", text: n.title, size: Math.max(16, Math.min(28, req.width / 14)), wrap: true },
             ...(n.location ? [{ type: "text" as const, text: n.location, size: 12, pixel: false, gray: 0.5 }] : []),
           ],
@@ -387,10 +393,10 @@ export default defineModule<{ refreshMinutes?: number }>({
         while (cells.length % 7) cells.push({ type: "spacer", grow: 1 });
         const weeks: import("@orbis/sdk/server").EinkTree[] = [];
         for (let i = 0; i < cells.length; i += 7) weeks.push({ type: "row", grow: 1, children: cells.slice(i, i + 7) });
-        return { type: "col", grow: 1, gap: 2, children: [{ type: "text", text: req.now.toLocaleDateString(req.locale, { month: "long", year: "numeric" }).toLowerCase(), size: 14, align: "center" }, { type: "row", children: ["mo", "tu", "we", "th", "fr", "sa", "su"].map((n) => ({ type: "text" as const, text: n, size: 10, gray: 0.5, grow: 1, align: "center" as const })) }, ...weeks] };
+        return { type: "col", grow: 1, gap: 2, children: [{ type: "text", text: req.now.toLocaleDateString(req.locale, { month: "long", year: "numeric" }).toLowerCase(), size: 14, align: "center" }, { type: "row", children: ["mo", "tu", "we", "th", "fr", "sa", "su"].map((n) => ({ type: "text" as const, text: t(`weekday.${n}`), size: 10, gray: 0.5, grow: 1, align: "center" as const })) }, ...weeks] };
       }
       // agenda
-      if (evs.length === 0) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: "nothing coming up", size: 14, gray: 0.5 }] };
+      if (evs.length === 0) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: t("widget.agenda.empty"), size: 14, gray: 0.5 }] };
       const rowH = 20;
       const max = Math.max(1, Math.floor((req.height - 4) / rowH));
       const rows: import("@orbis/sdk/server").EinkTree[] = [];
@@ -404,7 +410,7 @@ export default defineModule<{ refreshMinutes?: number }>({
           lastDay = l;
           if (rows.length >= max) break;
         }
-        rows.push({ type: "row", gap: 6, align: "center", children: [{ type: "text", text: e.allDay ? "all day" : fmtT(e.start), size: 12, pixel: false, gray: 0.6, wrap: false }, { type: "text", text: e.title, size: 13, pixel: false, grow: 1, wrap: false }] });
+        rows.push({ type: "row", gap: 6, align: "center", children: [{ type: "text", text: e.allDay ? t("event.allDay") : fmtT(e.start), size: 12, pixel: false, gray: 0.6, wrap: false }, { type: "text", text: e.title, size: 13, pixel: false, grow: 1, wrap: false }] });
       }
       return { type: "col", grow: 1, gap: 2, children: rows };
     };

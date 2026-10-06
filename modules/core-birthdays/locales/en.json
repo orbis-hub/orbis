@@ -1,0 +1,48 @@
+{
+  "manifest.name": "Birthdays",
+  "manifest.description": "People and their dates. Who is up next, how old they turn, a note so you remember the tea they like.",
+  "widget.upcoming.name": "Upcoming birthdays",
+  "page.people.name": "Birthdays",
+
+  "loading": "loading…",
+  "when.today": "today 🎂",
+  "when.tomorrow": "tomorrow",
+  "when.days": { "one": "in {count} day", "other": "in {count} days" },
+  "when.weeks": { "one": "in {count} week", "other": "in {count} weeks" },
+  "when.months": { "one": "in {count} month", "other": "in {count} months" },
+  "turns": "turns {age}",
+  "chip.today": "today",
+
+  "widget.upcoming.empty": "nobody yet",
+  "widget.upcoming.emptyHint": "add people on the birthdays page.",
+
+  "page.addPerson": "person",
+  "page.nudgeHint": "you get a nudge a week before and on the day (bell / your channels).",
+  "page.empty": "nobody yet",
+  "action.edit": "edit",
+  "action.remove": "remove",
+  "action.cancel": "cancel",
+  "action.save": "save",
+  "confirm.remove": "remove {name}?",
+
+  "modal.edit": "edit",
+  "modal.new": "new person",
+  "field.name": "name",
+  "field.knowYear": "i know the birth year",
+  "field.birthday": "birthday",
+  "field.dayMonth": "day and month",
+  "field.dayMonthHint": "MM-DD, e.g. 03-14",
+  "field.note": "note",
+  "field.noteHint": "gift ideas, allergies, the tea they like",
+
+  "notify.today.title": "🎂 {name} has a birthday today",
+  "notify.today.titleTurns": "🎂 {name} has a birthday today – turns {age}",
+  "notify.week.title": "{name}'s birthday in a week",
+  "notify.week.note": "note: {note}",
+  "notify.week.body": "time to get a present",
+
+  "eink.empty": "no birthdays yet",
+  "eink.today": "today",
+  "eink.tomorrow": "tomorrow",
+  "eink.inDays": "in {count}d"
+}

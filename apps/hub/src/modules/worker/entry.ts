@@ -7,6 +7,7 @@ import { parentPort, receiveMessageOnPort, workerData } from "node:worker_thread
 import { pathToFileURL } from "node:url";
 import { Hono } from "hono";
 import type { ModuleServer, ModuleServerContext } from "@orbis/sdk/server";
+import { createTranslator } from "@orbis/sdk/server";
 import type { Device, ModuleStatus } from "@orbis/sdk";
 import type { SerializedRequest, SerializedResponse, SyncCall, SyncResult, ToHub, ToWorker, WorkerData } from "./protocol";
 
@@ -44,6 +45,9 @@ function async<T>(m: Omit<Extract<ToHub, { t: "call" }>, "id">): Promise<T> {
 }
 
 let settings = data.settings;
+let language = data.language;
+let translator = createTranslator(language, data.locales);
+const languageListeners = new Set<(language: string) => void>();
 const settingsListeners = new Set<(s: Record<string, unknown>) => void>();
 const deviceListeners = new Set<(d: Device[]) => void>();
 const moduleListeners = new Set<(ids: string[]) => void>();
@@ -136,6 +140,16 @@ const ctx: ModuleServerContext = {
   },
   http,
   fetch: perms.has("network:fetch") ? globalThis.fetch.bind(globalThis) : (denied("network:fetch") as unknown as typeof fetch),
+  i18n: {
+    get language() {
+      return language;
+    },
+    t: (key, vars) => translator(key, vars),
+    onChange(cb) {
+      languageListeners.add(cb);
+      return () => languageListeners.delete(cb);
+    },
+  },
 };
 
 let server: ModuleServer | null = null;
@@ -182,6 +196,11 @@ port.on("message", (m: ToWorker) => {
     case "settings":
       settings = m.settings;
       for (const cb of settingsListeners) cb(settings);
+      return;
+    case "language":
+      language = m.language;
+      translator = createTranslator(language, data.locales);
+      for (const cb of languageListeners) cb(language);
       return;
     case "devices": {
       if (!deviceListeners.size) return;

@@ -21,6 +21,7 @@ const layoutInput = z.array(z.object({ id: z.string(), x: z.number().int().min(0
 const settingsPatch = z
   .object({
     hubName: z.string().min(1).max(64),
+    language: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/, "bcp-47 language tag"),
     locale: z.string(),
     timezone: z.string(),
     theme: z.enum(["system", "light", "dark"]),

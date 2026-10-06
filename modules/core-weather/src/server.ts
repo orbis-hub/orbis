@@ -125,7 +125,8 @@ export default defineModule<Settings>({
     ctx.http.get("/geocode", async (c) => {
       const q = c.req.query("q");
       if (!q) return c.json([]);
-      const res = await ctx.fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=de&format=json`, { signal: AbortSignal.timeout(10_000) });
+      const lang = ctx.i18n.language.split("-")[0] || "en";
+      const res = await ctx.fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=${encodeURIComponent(lang)}&format=json`, { signal: AbortSignal.timeout(10_000) });
       const j = (await res.json()) as { results?: Array<{ name: string; country: string; admin1?: string; latitude: number; longitude: number }> };
       return c.json((j.results ?? []).map((r) => ({ name: r.name, country: r.country, region: r.admin1, lat: r.latitude, lon: r.longitude })));
     });
@@ -134,6 +135,7 @@ export default defineModule<Settings>({
 
     // e-ink: reuse the cached data; the hub calls this for every render
     einkRender = async (req) => {
+      const t = ctx.i18n.t;
       const cfg = req.config as { location?: string; days?: number; details?: boolean };
       const d = await get(cfg.location || undefined);
       const deg = d.units === "imperial" ? "°F" : "°C";
@@ -161,7 +163,7 @@ export default defineModule<Settings>({
             justify: "center" as const,
             gap: 2,
             children: [
-              { type: "text" as const, text: i === 0 ? "today" : new Date(day.date).toLocaleDateString(req.locale, { weekday: "short" }).toLowerCase(), size: 13, gray: 0.5 },
+              { type: "text" as const, text: i === 0 ? t("common.today") : new Date(day.date).toLocaleDateString(req.locale, { weekday: "short" }).toLowerCase(), size: 13, gray: 0.5 },
               { type: "weather-icon" as const, name: icon(day.code), size: Math.max(20, Math.min(40, req.width / days.length - 12)) },
               { type: "text" as const, text: `${Math.round(day.max)}° ${Math.round(day.min)}°`, size: 14, pixel: false },
               ...(day.precipProb >= 20 ? [{ type: "text" as const, text: `☂ ${day.precipProb}%`, size: 11, pixel: false, gray: 0.5 }] : []),
@@ -185,8 +187,10 @@ export default defineModule<Settings>({
             gap: 2,
             children: [
               { type: "text", text: `${Math.round(c.temp)}${deg}`, size: big },
-              { type: "text", text: `${d.location.name} · feels ${Math.round(c.feelsLike)}°`, size: 12, pixel: false, gray: 0.4 },
-              ...(cfg.details !== false && d.daily[0] ? [{ type: "text" as const, text: `${Math.round(d.daily[0].min)}° / ${Math.round(d.daily[0].max)}° · ${Math.round(c.wind)} ${d.units === "imperial" ? "mph" : "km/h"} · ${c.humidity}% rh`, size: 11, pixel: false, gray: 0.5 }] : []),
+              { type: "text", text: t("eink.feels", { name: d.location.name, temp: Math.round(c.feelsLike) }), size: 12, pixel: false, gray: 0.4 },
+              ...(cfg.details !== false && d.daily[0]
+                ? [{ type: "text" as const, text: t("eink.details", { min: Math.round(d.daily[0].min), max: Math.round(d.daily[0].max), wind: Math.round(c.wind), unit: d.units === "imperial" ? "mph" : "km/h", humidity: c.humidity }), size: 11, pixel: false, gray: 0.5 }]
+                : []),
             ],
           },
         ],

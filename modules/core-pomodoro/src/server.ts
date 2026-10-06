@@ -50,11 +50,11 @@ export default defineModule({
         const long = state.round % d.rounds === 0;
         state.mode = long ? "long" : "break";
         state.totalMs = long ? d.long : d.break;
-        ctx.notify({ key: "block", title: long ? "focus block done – long break" : "focus block done – short break", body: state.label ?? undefined, level: "info", icon: "alarm-clock" });
+        ctx.notify({ key: "block", title: ctx.i18n.t(long ? "notify.blockDoneLong" : "notify.blockDoneShort"), body: state.label ?? undefined, level: "info", icon: "alarm-clock" });
       } else {
         state.mode = "focus";
         state.totalMs = d.focus;
-        ctx.notify({ key: "block", title: "break over – back to it", body: state.label ?? undefined, level: "info", icon: "alarm-clock" });
+        ctx.notify({ key: "block", title: ctx.i18n.t("notify.breakOver"), body: state.label ?? undefined, level: "info", icon: "alarm-clock" });
       }
       state.running = false;
       state.endsAt = null;
@@ -113,7 +113,8 @@ export default defineModule({
     einkRender = () => {
       const left = state.running && state.endsAt ? Math.max(0, new Date(state.endsAt).getTime() - Date.now()) : state.remainingMs;
       const m = Math.floor(left / 60_000), s = Math.floor((left % 60_000) / 1000);
-      return { type: "col", grow: 1, align: "center", justify: "center", gap: 4, children: [{ type: "text", text: state.mode === "focus" ? "focus" : "break", size: 12, gray: 0.5 }, { type: "text", text: `${m}:${String(s).padStart(2, "0")}`, size: 40 }, { type: "bar", value: state.totalMs - left, max: state.totalMs, height: 8 }, { type: "text", text: `${state.todayFocusMinutes} min focused today`, size: 11, pixel: false, gray: 0.5 }] };
+      const t = ctx.i18n.t;
+      return { type: "col", grow: 1, align: "center", justify: "center", gap: 4, children: [{ type: "text", text: state.mode === "focus" ? t("widget.timer.focus") : state.mode === "long" ? t("widget.timer.longBreak") : t("widget.timer.break"), size: 12, gray: 0.5 }, { type: "text", text: `${m}:${String(s).padStart(2, "0")}`, size: 40 }, { type: "bar", value: state.totalMs - left, max: state.totalMs, height: 8 }, { type: "text", text: t("widget.timer.focusedToday", { count: state.todayFocusMinutes }), size: 11, pixel: false, gray: 0.5 }] };
     };
     ctx.logger.info("focus timer ready");
   },
@@ -125,7 +126,7 @@ export default defineModule({
   async einkTap(ctx) {
     const running = ctx.storage.get<TimerState>("state")?.running;
     await ctx.http.fetch(new Request(`http://m/${running ? "pause" : "start"}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }));
-    return { refresh: true, toast: running ? "paused" : "focus started" };
+    return { refresh: true, toast: ctx.i18n.t(running ? "eink.paused" : "eink.started") };
   },
 });
 

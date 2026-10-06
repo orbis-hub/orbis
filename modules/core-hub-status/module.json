@@ -83,5 +83,6 @@
   ],
   "permissions": [
     "scheduler"
-  ]
+  ],
+  "languages": ["en", "de"]
 }

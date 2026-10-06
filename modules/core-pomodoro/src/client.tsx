@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { defineClient, useModuleApi, useModuleEvents, useModuleQuery, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModuleApi, useModuleEvents, useModuleQuery, useT, type WidgetProps } from "@orbis/sdk/client";
 import { Button, Icon } from "@orbis/ui";
 import type { TimerState } from "./server";
 
@@ -7,6 +7,7 @@ type Config = { focusMinutes?: number; breakMinutes?: number; longBreakMinutes?:
 
 function TimerWidget({ config, size }: WidgetProps<Config>) {
   const api = useModuleApi();
+  const t = useT();
   const q = useModuleQuery<TimerState>("/state", { intervalMs: 60_000 });
   const [st, setSt] = useState<TimerState | undefined>();
   useEffect(() => setSt(q.data), [q.data]);
@@ -14,11 +15,11 @@ function TimerWidget({ config, size }: WidgetProps<Config>) {
   const [, tick] = useState(0);
   useEffect(() => {
     if (!st?.running) return;
-    const t = setInterval(() => tick((x) => x + 1), 500);
-    return () => clearInterval(t);
+    const iv = setInterval(() => tick((x) => x + 1), 500);
+    return () => clearInterval(iv);
   }, [st?.running]);
   const [label, setLabel] = useState("");
-  if (!st) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
+  if (!st) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
 
   const left = st.running && st.endsAt ? Math.max(0, new Date(st.endsAt).getTime() - Date.now()) : st.remainingMs;
   const m = Math.floor(left / 60_000), s = Math.floor((left % 60_000) / 1000);
@@ -30,27 +31,27 @@ function TimerWidget({ config, size }: WidgetProps<Config>) {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, textAlign: "center" }}>
-      <div className="pixel" style={{ fontSize: 12, color: focus ? "var(--accent)" : "var(--accent-2)" }}>{focus ? "focus" : st.mode === "long" ? "long break" : "break"}{st.label ? ` · ${st.label}` : ""}</div>
+      <div className="pixel" style={{ fontSize: 12, color: focus ? "var(--accent)" : "var(--accent-2)" }}>{focus ? t("widget.timer.focus") : st.mode === "long" ? t("widget.timer.longBreak") : t("widget.timer.break")}{st.label ? ` · ${st.label}` : ""}</div>
       <div className="pixel" style={{ fontSize: big, lineHeight: 1, fontVariantNumeric: "tabular-nums", color: left === 0 ? "var(--ok)" : undefined }}>{m}:{String(s).padStart(2, "0")}</div>
       <div className="progress" style={{ width: "80%", height: 6 }}><i style={{ width: `${pct}%`, background: focus ? "var(--accent)" : "var(--accent-2)", transition: "width 0.5s linear" }} /></div>
       {config.showRounds !== false ? (
-        <div style={{ display: "flex", gap: 4 }} title={`${st.round % rounds} of ${rounds} rounds`}>
+        <div style={{ display: "flex", gap: 4 }} title={t("widget.timer.rounds", { done: st.round % rounds, total: rounds })}>
           {Array.from({ length: rounds }, (_, i) => <i key={i} style={{ width: 8, height: 8, border: "1.5px solid var(--line)", background: i < st.round % rounds || (st.round > 0 && st.round % rounds === 0) ? "var(--accent)" : "transparent", display: "inline-block" }} />)}
         </div>
       ) : null}
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
         {st.running ? (
-          <Button onClick={() => call("/pause")}><Icon name="pause" size={14} /> pause</Button>
+          <Button onClick={() => call("/pause")}><Icon name="pause" size={14} /> {t("widget.timer.pause")}</Button>
         ) : (
-          <Button variant="primary" onClick={() => call("/start", { label })}><Icon name="play" size={14} /> {left === st.totalMs ? "start" : "resume"}</Button>
+          <Button variant="primary" onClick={() => call("/start", { label })}><Icon name="play" size={14} /> {left === st.totalMs ? t("widget.timer.start") : t("widget.timer.resume")}</Button>
         )}
-        <Button icon size="sm" variant="ghost" onClick={() => call("/skip")} aria-label="skip block" title="skip"><Icon name="forward" size={14} /></Button>
-        <Button icon size="sm" variant="ghost" onClick={() => call("/reset")} aria-label="reset" title="reset"><Icon name="reload" size={14} /></Button>
+        <Button icon size="sm" variant="ghost" onClick={() => call("/skip")} aria-label={t("widget.timer.skipBlock")} title={t("widget.timer.skip")}><Icon name="forward" size={14} /></Button>
+        <Button icon size="sm" variant="ghost" onClick={() => call("/reset")} aria-label={t("widget.timer.reset")} title={t("widget.timer.reset")}><Icon name="reload" size={14} /></Button>
       </div>
       {!st.running && left === st.totalMs && size.height > 160 ? (
-        <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="what are you working on?" style={{ maxWidth: 220, padding: "3px 6px", fontSize: 11, textAlign: "center" }} />
+        <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t("widget.timer.labelPlaceholder")} style={{ maxWidth: 220, padding: "3px 6px", fontSize: 11, textAlign: "center" }} />
       ) : null}
-      <div className="soft" style={{ fontSize: 10 }}>{st.todayFocusMinutes} min focused today</div>
+      <div className="soft" style={{ fontSize: 10 }}>{t("widget.timer.focusedToday", { count: st.todayFocusMinutes })}</div>
     </div>
   );
 }

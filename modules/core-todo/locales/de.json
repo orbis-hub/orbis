@@ -1,0 +1,69 @@
+{
+  "manifest.name": "Aufgaben",
+  "manifest.description": "Listen und Aufgaben mit Fälligkeit. Ein Widget pro Liste plus eine ganze Seite.",
+  "widget.list.name": "Todo-Liste",
+  "widget.list.description": "Aufgaben einer Liste, Schnelleingabe inklusive.",
+  "widget.today.name": "Heute fällig",
+  "widget.today.description": "Alles, was heute fällig oder überfällig ist, über alle Listen.",
+  "page.tasks.name": "Aufgaben",
+
+  "common.loading": "lade…",
+  "common.add": "hinzufügen",
+  "common.cancel": "abbrechen",
+  "common.save": "speichern",
+  "common.create": "anlegen",
+  "common.delete": "löschen",
+  "common.edit": "bearbeiten",
+
+  "due.yesterday": "gestern",
+  "due.overdue": { "one": "{count} tag überfällig", "other": "{count} tage überfällig" },
+  "due.today": "heute",
+  "due.tomorrow": "morgen",
+
+  "task.done": "erledigt: {title}",
+  "task.toggle_failed": "aufgabe konnte nicht aktualisiert werden",
+
+  "quickadd.placeholder": "aufgabe hinzufügen…",
+  "quickadd.placeholder_tip": "aufgabe hinzufügen… (tipp: mit !today oder !tomorrow enden)",
+  "quickadd.failed": "aufgabe konnte nicht angelegt werden: {error}",
+
+  "widget.list.empty": "alles erledigt ✓",
+  "widget.list.open": { "one": "{count} offen", "other": "{count} offen" },
+  "widget.today.empty": "heute nichts fällig",
+  "widget.today.enjoy": "genieß den tag ☕",
+
+  "page.lists": "listen",
+  "page.new_list": "neue liste",
+  "page.tasks": "aufgaben",
+  "page.show_done": "erledigte zeigen",
+  "page.list_menu": "listenmenü",
+  "page.empty.title": "nichts hier",
+  "page.empty.body": "füg oben eine aufgabe hinzu.",
+
+  "menu.clear_completed": "erledigte entfernen",
+  "menu.rename": "liste umbenennen",
+  "menu.rename_prompt": "listenname",
+  "menu.delete": "liste löschen",
+  "menu.delete_confirm": "\"{name}\" mit allen aufgaben löschen?",
+
+  "modal.edit_task": "aufgabe bearbeiten",
+  "modal.new_list": "neue liste",
+  "modal.save_failed": "speichern fehlgeschlagen: {error}",
+  "modal.delete_failed": "löschen fehlgeschlagen: {error}",
+  "modal.create_failed": "liste konnte nicht angelegt werden: {error}",
+
+  "field.title": "titel",
+  "field.notes": "notizen",
+  "field.due": "fällig",
+  "field.list": "liste",
+  "field.name": "name",
+  "field.color": "farbe",
+
+  "notify.overdue": "überfällig: {title}",
+  "notify.due_today": "heute fällig: {title}",
+
+  "eink.today_empty": "heute nichts fällig",
+  "eink.list_empty": "alles erledigt ✓",
+  "eink.overdue": "überfällig",
+  "eink.more": { "one": "+{count} weitere", "other": "+{count} weitere" }
+}

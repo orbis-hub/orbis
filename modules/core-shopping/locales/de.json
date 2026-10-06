@@ -1,0 +1,51 @@
+{
+  "manifest.name": "Einkaufsliste",
+  "manifest.description": "gemeinsame einkaufsliste: schnell hinzufügen, mengen, regale, im laden abhaken, gekauftes kommt beim nächsten mal wieder.",
+  "widget.list.name": "Einkaufsliste",
+  "widget.list.description": "offene einträge mit großen kästchen und einem schnell-hinzufügen-feld.",
+  "page.shopping.name": "Einkaufen",
+
+  "aisle.fruit": "obst",
+  "aisle.vegetables": "gemüse",
+  "aisle.bakery": "backwaren",
+  "aisle.pantry": "vorrat",
+  "aisle.fridge": "kühlregal",
+  "aisle.frozen": "tiefkühl",
+  "aisle.sweets": "süßes",
+  "aisle.drinks": "getränke",
+  "aisle.household": "haushalt",
+  "aisle.hygiene": "drogerie",
+  "aisle.pets": "tiere",
+  "aisle.other": "sonstiges",
+
+  "quickadd.placeholder": "2x milch @kühlregal",
+  "quickadd.add": "hinzufügen",
+
+  "list.loading": "lädt…",
+  "list.empty": "liste ist leer",
+  "list.nothing": "nichts zu kaufen",
+  "list.toBuy": { "one": "{count} zu kaufen", "other": "{count} zu kaufen" },
+  "list.more": "+{count} weitere",
+  "list.new": "name der neuen liste",
+  "list.tidy": "aufräumen",
+
+  "tip.prefix": "tipp:",
+  "tip.example": "2x milch @kühlregal",
+  "tip.text": "setzt menge und regal. tipp @ für die regal-vorlagen; die meisten sachen finden ihr regal von selbst, und was du schon mal gekauft hast, kommt mit seinem regal aus den vorschlägen zurück.",
+
+  "item.aisle": "regal setzen",
+  "item.remove": "entfernen",
+
+  "picker.title": "regal für {name}",
+  "picker.none": "kein regal",
+  "picker.custom": "eigenes regal",
+  "picker.save": "speichern",
+
+  "bought.title": "zuletzt gekauft",
+  "bought.empty": "noch nichts",
+  "bought.again": "nochmal kaufen",
+  "bought.hint": "antippen, um es wieder auf die liste zu setzen.",
+
+  "eink.bought": "{name} ✓",
+  "error.nameRequired": "name fehlt"
+}

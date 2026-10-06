@@ -1,0 +1,32 @@
+{
+  "manifest.name": "Notizen",
+  "manifest.description": "Einfache Notizen mit etwas Markdown. Eine gepinnte Notiz auf dem Dashboard, eine Seite zum Schreiben.",
+  "widget.note.name": "Notiz",
+  "widget.note.description": "Eine Notiz, gerendert. Zum Bearbeiten auf die Notizen-Seite.",
+  "widget.scratch.name": "Schmierzettel",
+  "widget.scratch.description": "Tipp direkt ins Widget. Wird beim Schreiben gespeichert.",
+  "page.notes.name": "Notizen",
+
+  "common.loading": "lädt…",
+  "common.saving": "speichert…",
+  "common.saved": "gespeichert",
+  "common.delete": "löschen",
+
+  "widget.note.empty": "keine notiz",
+  "widget.note.emptyHint": "schreib eine auf der notizen-seite und pinne sie.",
+  "widget.scratch.placeholder": "schreib hier, es speichert sich von selbst…",
+
+  "page.notes.title": "notizen",
+  "page.notes.newNote": "neue notiz",
+  "page.notes.empty": "noch keine notizen",
+  "page.notes.chars": { "one": "{count} zeichen", "other": "{count} zeichen" },
+  "page.notes.titleField": "titel",
+  "page.notes.preview": "vorschau",
+  "page.notes.pin": "ans dashboard-widget pinnen",
+  "page.notes.confirmDelete": "\"{title}\" löschen?",
+  "page.notes.bodyPlaceholder": "# überschrift\n- liste\n- [ ] checkbox\n**fett** *kursiv* `code` [link](https://…)",
+  "page.notes.pick": "wähl eine notiz oder leg eine an",
+
+  "untitled": "ohne titel",
+  "eink.empty": "keine notizen"
+}

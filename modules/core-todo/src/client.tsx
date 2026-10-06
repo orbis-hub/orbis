@@ -1,21 +1,23 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { defineClient, useModuleApi, useModuleEvents, useModuleQuery, type PageProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModule, useModuleApi, useModuleEvents, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
+import type { Translator } from "@orbis/sdk/client";
 import { Button, Checkbox, Chip, Empty, Icon, Input, Menu, Modal, Field, Select, Window, cx } from "@orbis/ui";
 
 type List = { id: string; name: string; color: string | null; sort: number; open: number };
 type Task = { id: string; list_id: string; title: string; notes: string | null; done: number; due: string | null; sort: number; created_at: string; done_at: string | null };
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
-function dueLabel(due: string | null) {
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+function dueLabel(due: string | null, t: Translator, locale: string) {
   if (!due) return null;
   const d = new Date(due);
-  const t = new Date();
-  const dayDiff = Math.round((new Date(d.toDateString()).getTime() - new Date(t.toDateString()).getTime()) / 86400_000);
-  if (dayDiff < 0) return { text: dayDiff === -1 ? "yesterday" : `${-dayDiff}d overdue`, tone: "bad" as const };
-  if (dayDiff === 0) return { text: "today", tone: "accent" as const };
-  if (dayDiff === 1) return { text: "tomorrow", tone: undefined };
-  if (dayDiff < 7) return { text: d.toLocaleDateString(undefined, { weekday: "short" }), tone: undefined };
-  return { text: d.toLocaleDateString(undefined, { day: "numeric", month: "short" }), tone: undefined };
+  const now = new Date();
+  const dayDiff = Math.round((new Date(d.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / 86400_000);
+  if (dayDiff < 0) return { text: dayDiff === -1 ? t("due.yesterday") : t("due.overdue", { count: -dayDiff }), tone: "bad" as const };
+  if (dayDiff === 0) return { text: t("due.today"), tone: "accent" as const };
+  if (dayDiff === 1) return { text: t("due.tomorrow"), tone: undefined };
+  if (dayDiff < 7) return { text: d.toLocaleDateString(locale, { weekday: "short" }), tone: undefined };
+  return { text: d.toLocaleDateString(locale, { day: "numeric", month: "short" }), tone: undefined };
 }
 
 function useTasks(query: string) {
@@ -23,24 +25,36 @@ function useTasks(query: string) {
   return q;
 }
 
-function TaskRow({ t, onChange, dense, showList, lists }: { t: Task; onChange: () => void; dense?: boolean; showList?: boolean; lists?: List[] }) {
+function ErrorLine({ msg }: { msg: string | null }) {
+  return msg ? <span role="alert" style={{ color: "var(--dnd)", fontSize: 11 }}>{msg}</span> : null;
+}
+
+function TaskRow({ t: task, onChange, dense, showList, lists }: { t: Task; onChange: () => void; dense?: boolean; showList?: boolean; lists?: List[] }) {
   const api = useModuleApi();
-  const due = dueLabel(t.due);
-  const list = lists?.find((l) => l.id === t.list_id);
+  const t = useT();
+  const { locale } = useModule();
+  const [err, setErr] = useState<string | null>(null);
+  const due = dueLabel(task.due, t, locale);
+  const list = lists?.find((l) => l.id === task.list_id);
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: dense ? "3px 0" : "5px 0", borderBottom: "1px dashed var(--line)", opacity: t.done ? 0.55 : 1 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: dense ? "3px 0" : "5px 0", borderBottom: "1px dashed var(--line)", opacity: task.done ? 0.55 : 1 }}>
       <Checkbox
-        checked={!!t.done}
+        checked={!!task.done}
         onChange={async (e) => {
-          await api(`/tasks/${t.id}`, { method: "PATCH", json: { done: e.target.checked } });
-          onChange();
+          setErr(null);
+          try {
+            await api(`/tasks/${task.id}`, { method: "PATCH", json: { done: e.target.checked } });
+            onChange();
+          } catch (ex) {
+            setErr(`${t("task.toggle_failed")}: ${errMsg(ex)}`);
+          }
         }}
-        aria-label={`done: ${t.title}`}
+        aria-label={t("task.done", { title: task.title })}
         style={{ marginTop: 3 }}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ textDecoration: t.done ? "line-through" : undefined, fontSize: dense ? 12 : 13, overflowWrap: "anywhere" }}>{t.title}</div>
-        {(due || (showList && list && list.id !== "inbox") || t.notes) && (
+        <div style={{ textDecoration: task.done ? "line-through" : undefined, fontSize: dense ? 12 : 13, overflowWrap: "anywhere" }}>{task.title}</div>
+        {(due || (showList && list && list.id !== "inbox") || task.notes || err) && (
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
             {due ? (
               <Chip tone={due.tone} style={{ fontSize: 10 }}>
@@ -48,7 +62,8 @@ function TaskRow({ t, onChange, dense, showList, lists }: { t: Task; onChange: (
               </Chip>
             ) : null}
             {showList && list && list.id !== "inbox" ? <Chip style={{ fontSize: 10, borderColor: list.color ?? undefined }}>{list.name}</Chip> : null}
-            {t.notes ? <span className="soft" style={{ fontSize: 10 }}>{t.notes}</span> : null}
+            {task.notes ? <span className="soft" style={{ fontSize: 10 }}>{task.notes}</span> : null}
+            <ErrorLine msg={err} />
           </div>
         )}
       </div>
@@ -56,38 +71,47 @@ function TaskRow({ t, onChange, dense, showList, lists }: { t: Task; onChange: (
   );
 }
 
-function QuickAdd({ listId, onAdded, placeholder = "add a task…" }: { listId: string; onAdded: () => void; placeholder?: string }) {
+function QuickAdd({ listId, onAdded, placeholder }: { listId: string; onAdded: () => void; placeholder?: string }) {
   const api = useModuleApi();
+  const t = useT();
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     setBusy(true);
+    setErr(null);
     try {
       // "buy milk !tomorrow" / "!today" shortcuts
-      let t = title.trim();
+      let text = title.trim();
       let due: string | null = null;
-      const m = t.match(/\s!(today|tomorrow|\d{4}-\d{2}-\d{2})$/i);
+      const m = text.match(/\s!(today|tomorrow|\d{4}-\d{2}-\d{2})$/i);
       if (m) {
-        t = t.slice(0, m.index).trim();
+        text = text.slice(0, m.index).trim();
         const d = new Date();
         if (m[1]!.toLowerCase() === "tomorrow") d.setDate(d.getDate() + 1);
         due = m[1]!.match(/^\d{4}/) ? new Date(m[1]!).toISOString() : new Date(d.toDateString()).toISOString();
       }
-      await api("/tasks", { method: "POST", json: { title: t, listId, due } });
+      await api("/tasks", { method: "POST", json: { title: text, listId, due } });
       setTitle("");
       onAdded();
+    } catch (ex) {
+      // keep the input so nothing typed gets lost
+      setErr(t("quickadd.failed", { error: errMsg(ex) }));
     } finally {
       setBusy(false);
     }
   }
   return (
-    <form onSubmit={submit} style={{ display: "flex", gap: 6 }}>
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={placeholder} style={{ padding: "4px 8px" }} />
-      <Button type="submit" size="sm" loading={busy} disabled={!title.trim()} aria-label="add">
-        <Icon name="plus" size={12} />
-      </Button>
+    <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", gap: 6 }}>
+        <Input value={title} onChange={(e) => { setTitle(e.target.value); if (err) setErr(null); }} placeholder={placeholder ?? t("quickadd.placeholder")} aria-invalid={err ? true : undefined} style={{ padding: "4px 8px" }} />
+        <Button type="submit" size="sm" loading={busy} disabled={!title.trim()} aria-label={t("common.add")}>
+          <Icon name="plus" size={12} />
+        </Button>
+      </div>
+      <ErrorLine msg={err} />
     </form>
   );
 }
@@ -95,44 +119,46 @@ function QuickAdd({ listId, onAdded, placeholder = "add a task…" }: { listId: 
 /* ---------- widgets ---------- */
 
 function ListWidget({ config }: WidgetProps<{ listId?: string; showDone?: boolean; quickAdd?: boolean }>) {
+  const t = useT();
   const listId = config.listId || "inbox";
   const q = useTasks(`?list=${encodeURIComponent(listId)}${config.showDone ? "&done=1" : ""}`);
-  const open = (q.data ?? []).filter((t) => !t.done).length;
+  const open = (q.data ?? []).filter((x) => !x.done).length;
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: 6 }}>
       <div className="scroll-y" style={{ flex: 1, minHeight: 0 }}>
         {q.loading && !q.data ? (
-          <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>
+          <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>
         ) : q.error ? (
           <span style={{ color: "var(--dnd)", fontSize: 12 }}>{q.error.message}</span>
         ) : (q.data ?? []).length === 0 ? (
           <div className="empty" style={{ padding: 12 }}>
-            <span className="pixel">all clear ✓</span>
+            <span className="pixel">{t("widget.list.empty")}</span>
           </div>
         ) : (
-          (q.data ?? []).map((t) => <TaskRow key={t.id} t={t} onChange={q.refetch} dense />)
+          (q.data ?? []).map((x) => <TaskRow key={x.id} t={x} onChange={q.refetch} dense />)
         )}
       </div>
       {config.quickAdd !== false ? <QuickAdd listId={listId} onAdded={q.refetch} /> : null}
-      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{open} open</div>
+      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{t("widget.list.open", { count: open })}</div>
     </div>
   );
 }
 
 function TodayWidget() {
+  const t = useT();
   const q = useTasks("?scope=today");
   const lists = useModuleQuery<List[]>("/lists", { refetchOn: ["changed"] });
   return (
     <div className="scroll-y" style={{ height: "100%" }}>
       {q.loading && !q.data ? (
-        <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>
+        <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>
       ) : (q.data ?? []).length === 0 ? (
         <div className="empty" style={{ padding: 12 }}>
-          <span className="pixel">nothing due today</span>
-          enjoy ☕
+          <span className="pixel">{t("widget.today.empty")}</span>
+          {t("widget.today.enjoy")}
         </div>
       ) : (
-        (q.data ?? []).map((t) => <TaskRow key={t.id} t={t} onChange={q.refetch} dense showList lists={lists.data} />)
+        (q.data ?? []).map((x) => <TaskRow key={x.id} t={x} onChange={q.refetch} dense showList lists={lists.data} />)
       )}
     </div>
   );
@@ -142,21 +168,31 @@ function TodayWidget() {
 
 function TasksPage(_props: PageProps) {
   const api = useModuleApi();
+  const t = useT();
   const lists = useModuleQuery<List[]>("/lists", { refetchOn: ["changed"] });
   const [listId, setListId] = useState("inbox");
   const [showDone, setShowDone] = useState(false);
   const q = useTasks(`?list=${encodeURIComponent(listId)}${showDone ? "&done=1" : ""}`);
   const [editing, setEditing] = useState<Task | null>(null);
   const [newList, setNewList] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const current = lists.data?.find((l) => l.id === listId);
   useEffect(() => {
     if (lists.data && !lists.data.some((l) => l.id === listId)) setListId("inbox");
   }, [lists.data, listId]);
+  const run = async (fn: () => Promise<unknown>) => {
+    setErr(null);
+    try {
+      await fn();
+    } catch (ex) {
+      setErr(errMsg(ex));
+    }
+  };
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(160px, 220px) minmax(0, 1fr)", gap: 14, alignItems: "start" }} className="todo-page">
       <style>{`@media (max-width: 760px) { .todo-page { grid-template-columns: minmax(0,1fr) !important; } }`}</style>
-      <Window title="lists" right={<Button icon size="sm" variant="ghost" onClick={() => setNewList(true)} aria-label="new list"><Icon name="plus" size={12} /></Button>} tight>
+      <Window title={t("page.lists")} right={<Button icon size="sm" variant="ghost" onClick={() => setNewList(true)} aria-label={t("page.new_list")}><Icon name="plus" size={12} /></Button>} tight>
         <div style={{ display: "flex", flexDirection: "column", padding: 6 }}>
           {(lists.data ?? []).map((l) => (
             <button key={l.id} type="button" className="nav-item" aria-current={l.id === listId ? "page" : undefined} onClick={() => setListId(l.id)} style={{ justifyContent: "space-between" }}>
@@ -170,33 +206,34 @@ function TasksPage(_props: PageProps) {
         </div>
       </Window>
       <Window
-        title={current?.name ?? "tasks"}
+        title={current?.name ?? t("page.tasks")}
         right={
           <>
-            <Checkbox checked={showDone} onChange={(e) => setShowDone(e.target.checked)} label={<span style={{ fontSize: 11 }}>show done</span>} />
+            <Checkbox checked={showDone} onChange={(e) => setShowDone(e.target.checked)} label={<span style={{ fontSize: 11 }}>{t("page.show_done")}</span>} />
             <Menu
-              trigger={<Button icon size="sm" variant="ghost" aria-label="list menu"><Icon name="more-vertical" size={12} /></Button>}
+              trigger={<Button icon size="sm" variant="ghost" aria-label={t("page.list_menu")}><Icon name="more-vertical" size={12} /></Button>}
               items={[
-                { label: "clear completed", icon: "check-double", onSelect: async () => { await api("/tasks/clear-done", { method: "POST", json: { listId } }); q.refetch(); } },
-                { label: "rename list", icon: "edit", disabled: listId === "inbox", onSelect: async () => { const name = prompt("list name", current?.name); if (name) await api(`/lists/${listId}`, { method: "PATCH", json: { name } }); } },
+                { label: t("menu.clear_completed"), icon: "check-double", onSelect: () => run(async () => { await api("/tasks/clear-done", { method: "POST", json: { listId } }); q.refetch(); }) },
+                { label: t("menu.rename"), icon: "edit", disabled: listId === "inbox", onSelect: () => run(async () => { const name = prompt(t("menu.rename_prompt"), current?.name); if (name) await api(`/lists/${listId}`, { method: "PATCH", json: { name } }); }) },
                 { sep: true, label: "" },
-                { label: "delete list", icon: "trash", danger: true, disabled: listId === "inbox", onSelect: async () => { if (confirm(`delete "${current?.name}" and all its tasks?`)) { await api(`/lists/${listId}`, { method: "DELETE" }); setListId("inbox"); } } },
+                { label: t("menu.delete"), icon: "trash", danger: true, disabled: listId === "inbox", onSelect: () => run(async () => { if (confirm(t("menu.delete_confirm", { name: current?.name }))) { await api(`/lists/${listId}`, { method: "DELETE" }); setListId("inbox"); } }) },
               ]}
             />
           </>
         }
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <QuickAdd listId={listId} onAdded={q.refetch} placeholder="add a task… (tip: end with !today or !tomorrow)" />
+          <QuickAdd listId={listId} onAdded={q.refetch} placeholder={t("quickadd.placeholder_tip")} />
+          <ErrorLine msg={err} />
           {(q.data ?? []).length === 0 ? (
-            <Empty icon="checkbox-on" title="nothing here">add a task above.</Empty>
+            <Empty icon="checkbox-on" title={t("page.empty.title")}>{t("page.empty.body")}</Empty>
           ) : (
-            (q.data ?? []).map((t) => (
-              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            (q.data ?? []).map((x) => (
+              <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <TaskRow t={t} onChange={q.refetch} />
+                  <TaskRow t={x} onChange={q.refetch} />
                 </div>
-                <Button icon size="sm" variant="ghost" onClick={() => setEditing(t)} aria-label="edit"><Icon name="edit" size={12} /></Button>
+                <Button icon size="sm" variant="ghost" onClick={() => setEditing(x)} aria-label={t("common.edit")}><Icon name="edit" size={12} /></Button>
               </div>
             ))
           )}
@@ -210,45 +247,59 @@ function TasksPage(_props: PageProps) {
 
 function TaskModal({ task, lists, onClose, onSaved }: { task: Task | null; lists: List[]; onClose: () => void; onSaved: () => void }) {
   const api = useModuleApi();
+  const t = useT();
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [due, setDue] = useState("");
   const [listId, setListId] = useState("inbox");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     if (task) {
       setTitle(task.title);
       setNotes(task.notes ?? "");
       setDue(task.due ? task.due.slice(0, 10) : "");
       setListId(task.list_id);
+      setErr(null);
     }
   }, [task]);
   if (!task) return null;
+  const attempt = (key: "modal.save_failed" | "modal.delete_failed", fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setErr(null);
+    fn()
+      .then(() => {
+        onSaved();
+        onClose();
+      })
+      .catch((ex) => setErr(t(key, { error: errMsg(ex) })))
+      .finally(() => setBusy(false));
+  };
   return (
-    <Modal open onClose={onClose} title="edit task">
+    <Modal open onClose={onClose} title={t("modal.edit_task")}>
       <form
-        onSubmit={async (e) => {
+        onSubmit={(e) => {
           e.preventDefault();
-          await api(`/tasks/${task.id}`, { method: "PATCH", json: { title, notes: notes || null, due: due ? new Date(due).toISOString() : null, listId } });
-          onSaved();
-          onClose();
+          attempt("modal.save_failed", () => api(`/tasks/${task.id}`, { method: "PATCH", json: { title, notes: notes || null, due: due ? new Date(due).toISOString() : null, listId } }));
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <Field label="title"><Input value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus /></Field>
-        <Field label="notes"><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+        <Field label={t("field.title")}><Input value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus /></Field>
+        <Field label={t("field.notes")}><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Field label="due"><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} min={todayKey()} /></Field>
-          <Field label="list">
+          <Field label={t("field.due")}><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} min={todayKey()} /></Field>
+          <Field label={t("field.list")}>
             <Select value={listId} onChange={(e) => setListId(e.target.value)}>
               {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </Select>
           </Field>
         </div>
+        <ErrorLine msg={err} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-          <Button variant="danger" onClick={async () => { await api(`/tasks/${task.id}`, { method: "DELETE" }); onSaved(); onClose(); }}><Icon name="trash" size={12} /> delete</Button>
+          <Button variant="danger" disabled={busy} onClick={() => attempt("modal.delete_failed", () => api(`/tasks/${task.id}`, { method: "DELETE" }))}><Icon name="trash" size={12} /> {t("common.delete")}</Button>
           <div style={{ display: "flex", gap: 8 }}>
-            <Button onClick={onClose}>cancel</Button>
-            <Button type="submit" variant="primary">save</Button>
+            <Button onClick={onClose}>{t("common.cancel")}</Button>
+            <Button type="submit" variant="primary" loading={busy}>{t("common.save")}</Button>
           </div>
         </div>
       </form>
@@ -258,31 +309,41 @@ function TaskModal({ task, lists, onClose, onSaved }: { task: Task | null; lists
 
 function NewListModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: string) => void }) {
   const api = useModuleApi();
+  const t = useT();
   const [name, setName] = useState("");
   const [color, setColor] = useState("#e2789b");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   return (
-    <Modal open={open} onClose={onClose} title="new list">
+    <Modal open={open} onClose={onClose} title={t("modal.new_list")}>
       <form
-        onSubmit={async (e) => {
+        onSubmit={(e) => {
           e.preventDefault();
-          const l = await api<{ id: string }>("/lists", { method: "POST", json: { name, color } });
-          setName("");
-          onCreated(l.id);
-          onClose();
+          setBusy(true);
+          setErr(null);
+          api<{ id: string }>("/lists", { method: "POST", json: { name, color } })
+            .then((l) => {
+              setName("");
+              onCreated(l.id);
+              onClose();
+            })
+            .catch((ex) => setErr(t("modal.create_failed", { error: errMsg(ex) })))
+            .finally(() => setBusy(false));
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <Field label="name"><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></Field>
-        <Field label="color">
+        <Field label={t("field.name")}><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></Field>
+        <Field label={t("field.color")}>
           <div style={{ display: "flex", gap: 6 }}>
             {["#e2789b", "#8b7fd6", "#4fc47f", "#f0b232", "#f23f43", "#4f93d6", "#9a9a9a"].map((c) => (
               <button key={c} type="button" onClick={() => setColor(c)} aria-label={c} className={cx("btn btn-icon")} style={{ background: c, borderColor: c === color ? "var(--ink)" : c, boxShadow: "none" }} />
             ))}
           </div>
         </Field>
+        <ErrorLine msg={err} />
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button onClick={onClose}>cancel</Button>
-          <Button type="submit" variant="primary" disabled={!name.trim()}>create</Button>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          <Button type="submit" variant="primary" loading={busy} disabled={!name.trim()}>{t("common.create")}</Button>
         </div>
       </form>
     </Modal>

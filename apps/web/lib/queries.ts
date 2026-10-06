@@ -5,9 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { hubFetch, subscribeHub } from "./hub";
 
-export type AuthStatus = { setup: boolean; authenticated: boolean; user: { id: string; name: string; role: string } | null; hubVersion: string };
+export type AuthStatus = { setup: boolean; authenticated: boolean; user: { id: string; name: string; role: string } | null; hubVersion: string; language?: string; locale?: string };
 export type HubSettings = {
   hubName: string;
+  /** ui language, bcp-47 ("en", "de") */
+  language: string;
   locale: string;
   timezone: string;
   theme: "system" | "light" | "dark";
@@ -86,6 +88,11 @@ export function useHubEventsSync() {
           break;
         case "settings:changed":
           void qc.invalidateQueries({ queryKey: qk.settings });
+          if (ev.key === "language" || ev.key === "locale") {
+            // language lives in the public auth status; module manifests come back translated
+            void qc.invalidateQueries({ queryKey: qk.auth });
+            void qc.invalidateQueries({ queryKey: qk.modules });
+          }
           break;
         case "users:changed":
           void qc.invalidateQueries({ queryKey: qk.users });

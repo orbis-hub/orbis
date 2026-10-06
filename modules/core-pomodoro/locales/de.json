@@ -1,0 +1,27 @@
+{
+  "manifest.name": "Fokus-Timer",
+  "manifest.description": "Fokus-Timer im Pomodoro-Stil. Der Zustand liegt auf dem Hub, er läuft also über Geräte und Reloads hinweg weiter.",
+  "widget.timer.name": "Fokus-Timer",
+
+  "common.loading": "lädt…",
+
+  "widget.timer.focus": "fokus",
+  "widget.timer.break": "pause",
+  "widget.timer.longBreak": "lange pause",
+  "widget.timer.rounds": "{done} von {total} runden",
+  "widget.timer.pause": "anhalten",
+  "widget.timer.start": "start",
+  "widget.timer.resume": "weiter",
+  "widget.timer.skipBlock": "block überspringen",
+  "widget.timer.skip": "überspringen",
+  "widget.timer.reset": "zurücksetzen",
+  "widget.timer.labelPlaceholder": "woran arbeitest du?",
+  "widget.timer.focusedToday": "{count} min fokus heute",
+
+  "notify.blockDoneLong": "fokusblock geschafft – lange pause",
+  "notify.blockDoneShort": "fokusblock geschafft – kurze pause",
+  "notify.breakOver": "pause vorbei – weiter geht's",
+
+  "eink.paused": "angehalten",
+  "eink.started": "fokus gestartet"
+}

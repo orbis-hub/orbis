@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { defineClient, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModule, useT, type WidgetProps } from "@orbis/sdk/client";
 
 type Config = { showSeconds?: boolean; showDate?: boolean; hour12?: boolean; timezone?: string; label?: string };
 
@@ -13,15 +13,17 @@ function useNow(tickMs: number) {
 }
 
 function DigitalClock({ config, size }: WidgetProps<Config>) {
+  const t = useT();
+  const { locale } = useModule();
   const now = useNow(config.showSeconds ? 1000 : 10_000);
   const tz = config.timezone || undefined;
   let time = "";
   let date = "";
   try {
-    time = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: config.showSeconds ? "2-digit" : undefined, hour12: config.hour12 ?? false, timeZone: tz }).format(now);
-    date = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(now);
+    time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", second: config.showSeconds ? "2-digit" : undefined, hour12: config.hour12 ?? false, timeZone: tz }).format(now);
+    date = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(now);
   } catch {
-    time = "bad tz";
+    time = t("error.badTimezone");
   }
   // scale the digits with the widget: roughly 1/4 of the height, capped by width
   const px = Math.max(18, Math.min(size.height * 0.42, size.width / (config.showSeconds ? 5.2 : 3.6)));

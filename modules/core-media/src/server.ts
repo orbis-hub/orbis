@@ -79,7 +79,7 @@ export default defineModule<Settings>({
       if (res.status === 429) {
         const retry = Number(res.headers.get("retry-after") ?? "30");
         pausedUntil = Date.now() + Math.min(300, Math.max(5, retry)) * 1000;
-        throw Object.assign(new Error(`spotify rate limit, pausing ${Math.round((pausedUntil - Date.now()) / 1000)}s`), { status: 429 });
+        throw Object.assign(new Error(ctx.i18n.t("error.rateLimit", { seconds: Math.round((pausedUntil - Date.now()) / 1000) })), { status: 429 });
       }
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -113,14 +113,14 @@ export default defineModule<Settings>({
       const stateKey = c.req.query("state") ?? "";
       const pending = storage.get<{ verifier: string; redirectUri: string; back: string }>(`spotify:pkce:${stateKey}`);
       storage.delete(`spotify:pkce:${stateKey}`);
-      if (!pending) return c.text("login expired, try again", 400);
+      if (!pending) return c.text(ctx.i18n.t("error.loginExpired"), 400);
       if (c.req.query("error")) return c.redirect(`${pending.back}${pending.back.includes("?") ? "&" : "?"}spotify_error=${encodeURIComponent(c.req.query("error")!)}`);
       const res = await ctx.fetch("https://accounts.spotify.com/api/token", {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ grant_type: "authorization_code", code: c.req.query("code") ?? "", redirect_uri: pending.redirectUri, client_id: clientId(), code_verifier: pending.verifier }),
       });
-      if (!res.ok) return c.text(`token exchange failed: ${await res.text()}`, 400);
+      if (!res.ok) return c.text(ctx.i18n.t("error.tokenExchange", { detail: await res.text() }), 400);
       const j = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number; scope: string };
       storage.set("spotify:tokens", { access: j.access_token, refresh: j.refresh_token, expiresAt: Date.now() + j.expires_in * 1000, scope: j.scope } satisfies Tokens);
       logger.info("spotify connected");
@@ -144,8 +144,8 @@ export default defineModule<Settings>({
     const haAvailable = () => ctx.modules.has("home-assistant");
     const providerId = (): ProviderId => (settings.get().provider === "ha" && haAvailable() ? "ha" : "spotify");
     const providers = (): ProviderInfo[] => [
-      { id: "spotify", name: "spotify", available: !!clientId(), reason: clientId() ? undefined : "client id missing" },
-      { id: "ha", name: "home assistant", available: haAvailable(), reason: haAvailable() ? undefined : "home assistant module not installed" },
+      { id: "spotify", name: "spotify", available: !!clientId(), reason: clientId() ? undefined : ctx.i18n.t("reason.clientIdMissing") },
+      { id: "ha", name: "home assistant", available: haAvailable(), reason: haAvailable() ? undefined : ctx.i18n.t("reason.haMissing") },
     ];
     const haSelected = () => storage.get<string>("ha:selected") ?? null;
     let haBase = "";
@@ -178,7 +178,7 @@ export default defineModule<Settings>({
         devices,
         context: null,
         updatedAt: new Date().toISOString(),
-        error: list.length ? undefined : "no media_player entities in home assistant",
+        error: list.length ? undefined : ctx.i18n.t("error.noHaPlayers"),
       };
     }
 
@@ -265,13 +265,19 @@ export default defineModule<Settings>({
 
     const schedule = () => ctx.scheduler.every("poll", (settings.get().pollSeconds ?? 10) * 1000, () => poll(), { immediate: true });
     const reportStatus = () => {
+      const t = ctx.i18n.t;
       if (providerId() === "ha") ctx.status.set({ state: "ok" });
-      else if (!clientId()) ctx.status.set({ state: "needs-setup", message: "add your spotify client id", action: { label: "settings", settings: true } });
-      else if (!tokens()) ctx.status.set({ state: "needs-setup", message: "spotify is not connected yet", action: { label: "connect", page: "media" } });
+      else if (!clientId()) ctx.status.set({ state: "needs-setup", message: t("status.needsClientId"), action: { label: t("status.settings"), settings: true } });
+      else if (!tokens()) ctx.status.set({ state: "needs-setup", message: t("status.notConnected"), action: { label: t("status.connect"), page: "media" } });
       else ctx.status.set({ state: "ok" });
     };
     reportStatus();
     schedule();
+    ctx.i18n.onChange(() => {
+      reportStatus();
+      lastSig = ""; // re-broadcast so translated provider reasons / errors reach clients
+      void poll(true);
+    });
     ctx.modules.onChange(() => {
       haBase = "";
       reportStatus();

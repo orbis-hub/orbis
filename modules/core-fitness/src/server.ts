@@ -102,6 +102,7 @@ export function normalizeIngest(body: unknown, source: string): Array<Omit<Activ
 export default defineModule<Settings>({
   setup(ctx) {
     const { http, storage, events, logger, settings, scheduler, status } = ctx;
+    const t = ctx.i18n.t;
     storage.run(`CREATE TABLE IF NOT EXISTS {{t:activities}} (id TEXT PRIMARY KEY, source TEXT NOT NULL, ext_id TEXT, type TEXT NOT NULL, name TEXT, start TEXT NOT NULL, duration_s INTEGER NOT NULL DEFAULT 0, distance_m INTEGER NOT NULL DEFAULT 0, calories REAL, elevation_m REAL, created_at TEXT NOT NULL)`);
     storage.run(`CREATE UNIQUE INDEX IF NOT EXISTS {{t:activities_ext}} ON {{t:activities}} (source, ext_id)`);
     storage.run(`CREATE TABLE IF NOT EXISTS {{t:sources}} (id TEXT PRIMARY KEY, name TEXT NOT NULL, secret TEXT NOT NULL, created_at TEXT NOT NULL, last_at TEXT, count INTEGER NOT NULL DEFAULT 0)`);
@@ -128,9 +129,10 @@ export default defineModule<Settings>({
 
     const reportStatus = () => {
       const srcCount = storage.sql<{ n: number }>(`SELECT COUNT(*) AS n FROM {{t:sources}}`)[0]?.n ?? 0;
-      if (!tokens() && srcCount === 0) status.set({ state: "needs-setup", message: "connect strava or add an ingest source", action: { label: "open fitness", page: "fitness" } });
+      if (!tokens() && srcCount === 0) status.set({ state: "needs-setup", message: t("status.needsSetup"), action: { label: t("status.openFitness"), page: "fitness" } });
       else status.set(null);
     };
+    ctx.i18n.onChange(reportStatus);
 
     /* ---------- strava (authorization code; strava has no pkce, so the secret lives in settings) ---------- */
     async function stravaToken(): Promise<string | null> {
@@ -150,7 +152,7 @@ export default defineModule<Settings>({
     async function syncStrava(full = false): Promise<{ added: number; seen: number } | { error: string }> {
       if (syncing) return { added: 0, seen: 0 };
       const access = await stravaToken();
-      if (!access) return { error: "strava not connected" };
+      if (!access) return { error: t("error.notConnected") };
       syncing = true;
       try {
         const after = full ? Math.floor((Date.now() - 365 * 86400_000) / 1000) : Math.floor((Date.now() - 45 * 86400_000) / 1000);
@@ -159,8 +161,8 @@ export default defineModule<Settings>({
         let seen = 0;
         for (;;) {
           const res = await ctx.fetch(`https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=100&page=${page}`, { headers: { authorization: `Bearer ${access}` }, signal: AbortSignal.timeout(20_000) });
-          if (res.status === 429) return { error: "strava rate limit, try later" };
-          if (!res.ok) return { error: `strava HTTP ${res.status}` };
+          if (res.status === 429) return { error: t("error.rateLimit") };
+          if (!res.ok) return { error: t("error.http", { status: res.status }) };
           const list = (await res.json()) as Array<Record<string, unknown>>;
           for (const a of list) {
             seen++;
@@ -180,7 +182,7 @@ export default defineModule<Settings>({
     }
 
     http.get("/strava/login", (c) => {
-      if (!clientId() || !clientSecret()) return c.json({ error: "set the strava client id + secret in the module settings first" }, 400);
+      if (!clientId() || !clientSecret()) return c.json({ error: t("error.noClient") }, 400);
       const stateKey = randomBytes(12).toString("hex");
       const origin = new URL(c.req.url).origin;
       const redirectUri = `${origin}/api/m/fitness/strava/callback`;
@@ -193,10 +195,10 @@ export default defineModule<Settings>({
       const stateKey = c.req.query("state") ?? "";
       const pending = storage.get<{ redirectUri: string; back: string }>(`strava:state:${stateKey}`);
       storage.delete(`strava:state:${stateKey}`);
-      if (!pending) return c.text("login expired, try again", 400);
+      if (!pending) return c.text(t("error.loginExpired"), 400);
       if (c.req.query("error")) return c.redirect(`${pending.back}${pending.back.includes("?") ? "&" : "?"}strava_error=${encodeURIComponent(c.req.query("error")!)}`);
       const res = await ctx.fetch("https://www.strava.com/oauth/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: clientId(), client_secret: clientSecret(), code: c.req.query("code") ?? "", grant_type: "authorization_code" }) });
-      if (!res.ok) return c.text(`token exchange failed: ${await res.text()}`, 400);
+      if (!res.ok) return c.text(t("error.tokenExchange", { detail: await res.text() }), 400);
       const j = (await res.json()) as { access_token: string; refresh_token: string; expires_at: number; athlete?: Tokens["athlete"] };
       storage.set("strava:tokens", { access: j.access_token, refresh: j.refresh_token, expiresAt: j.expires_at * 1000, athlete: j.athlete } satisfies Tokens);
       logger.info("strava connected");
@@ -313,8 +315,8 @@ export default defineModule<Settings>({
       const imperial = settings.get().units === "imperial";
       if (req.widget === "recent") {
         const rows = storage.sql<Activity>(`SELECT * FROM {{t:activities}} ${cfg.types?.length ? `WHERE type IN (${cfg.types.map(() => "?").join(",")})` : ""} ORDER BY start DESC LIMIT ?`, [...(cfg.types ?? []), Math.min(cfg.count ?? 5, Math.max(1, Math.floor((req.height - 4) / 20)))]);
-        if (!rows.length) return { type: "text", text: "no workouts yet", size: 12, gray: 0.5 };
-        return { type: "col", grow: 1, gap: 3, children: rows.map((a) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "text" as const, text: new Date(a.start).toLocaleDateString("en-GB", { weekday: "short" }).toLowerCase(), size: 11, pixel: false, gray: 0.5 }, { type: "text" as const, text: a.name ?? a.type, size: 12, pixel: false, grow: 1, wrap: false }, { type: "text" as const, text: a.distance_m ? `${(a.distance_m / (imperial ? 1609.344 : 1000)).toFixed(1)} ${imperial ? "mi" : "km"}` : `${Math.round(a.duration_s / 60)} min`, size: 12, pixel: false, bold: true }] })) };
+        if (!rows.length) return { type: "text", text: t("eink.empty"), size: 12, gray: 0.5 };
+        return { type: "col", grow: 1, gap: 3, children: rows.map((a) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "text" as const, text: new Date(a.start).toLocaleDateString(req.locale, { weekday: "short", timeZone: req.timezone }).toLowerCase(), size: 11, pixel: false, gray: 0.5 }, { type: "text" as const, text: a.name ?? a.type, size: 12, pixel: false, grow: 1, wrap: false }, { type: "text" as const, text: a.distance_m ? `${(a.distance_m / (imperial ? 1609.344 : 1000)).toFixed(1)} ${imperial ? "mi" : "km"}` : `${Math.round(a.duration_s / 60)} min`, size: 12, pixel: false, bold: true }] })) };
       }
       const w = weekStats(cfg.types);
       const metric = cfg.metric ?? "distance";
@@ -327,7 +329,7 @@ export default defineModule<Settings>({
         grow: 1,
         gap: 4,
         children: [
-          { type: "row", gap: 6, align: "center", children: [{ type: "text", text: "this week", size: 11, gray: 0.5, grow: 1 }, { type: "text", text: fmt(w.totals.thisWeek[metric]), size: 13, bold: true }, { type: "text", text: `last ${fmt(w.totals.lastWeek[metric])}`, size: 10, pixel: false, gray: 0.5 }] },
+          { type: "row", gap: 6, align: "center", children: [{ type: "text", text: t("eink.thisWeek"), size: 11, gray: 0.5, grow: 1 }, { type: "text", text: fmt(w.totals.thisWeek[metric]), size: 13, bold: true }, { type: "text", text: t("eink.last", { value: fmt(w.totals.lastWeek[metric]) }), size: 10, pixel: false, gray: 0.5 }] },
           { type: "row", gap: 4, align: "end", grow: 1, children: vals.map((v, i) => ({ type: "col" as const, grow: 1, gap: 2, align: "center" as const, justify: "end" as const, children: [{ type: "box" as const, height: Math.max(v > 0 ? 3 : 1, Math.round((v / max) * barH)), fill: v > 0 ? 1 : 0, border: v > 0 ? 1 : 0, children: [] }, { type: "text" as const, text: w.days[i]!.slice(8), size: 9, pixel: false, gray: 0.5 }] })) },
         ],
       };

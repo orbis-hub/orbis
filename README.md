@@ -7,7 +7,7 @@
 <!-- cozy:repo -->
 <div align="center">
 
-<a href="https://github.com/orbis-hub/orbis"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-dark.svg?v=8152dc0bf5"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-light.svg?v=8152dc0bf5" width="840" alt="orbis-hub/orbis: your life, one dashboard. self-hosted modular life manager: hub, web app, mobile wrapper, sdk and core modules"></picture></a>
+<a href="https://github.com/orbis-hub/orbis"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-dark.svg?v=5a33409cbf"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/repo-light.svg?v=5a33409cbf" width="840" alt="orbis-hub/orbis: your life, one dashboard. self-hosted modular life manager: hub, web app, mobile wrapper, sdk and core modules"></picture></a>
 
 </div>
 <!-- /cozy:repo -->
@@ -52,12 +52,13 @@ the installer asks whether this machine runs **hub + web** (one container, the u
 | **focus timer** | timer | pomodoro on the hub, shared across devices |
 | **birthdays** | upcoming | people and dates, reminders a week before and on the day |
 | **feeds** | headlines | rss / atom, mark read, favicons |
-| **shopping list** | list | quick add with quantities and aisles, suggestions from past buys, store mode |
+| **shopping list** | list | quick add with quantities, aisle templates (`@fruit`, `@obst` …) and automatic aisle detection from the item name, suggestions from past buys, store mode in supermarket order |
 | **shelly** | switch, power overview | gen1 + gen2 shellys on the lan, mdns discovery, watts |
-| **transport** | departures | next departures from a stop with delays, stop search, germany-wide (db) + vbb/bvg/öbb |
+| **transport** | departures | next departures from a stop with delays, stop search with city / district / state, "near me", map with the route of a departure, germany-wide (db) + vbb/bvg/öbb |
 | **mealplan** | today's meals | week grid, recipe import from any food blog url, "add this week's ingredients" → shopping |
 | **finance** | money left, accounts | balances you type in, recurring costs, "left this month", csv import, blur for wall displays |
 | **fitness** | this week, last workouts | strava sync, ingest url for apple health shortcuts / scripts, this week vs last as pixel bars |
+| **waste collection** | next collections, this week | when the bins go out: schedule by address (mymüll / jumomind), ical feed or manual rules, reminder the evening before, e-ink |
 
 plus: several dashboards, multi-user with owner/admin/member roles and private or shared dashboards, a lan device scanner that smart home modules build on, a module store fed by a registry, light/dark. everything else is a module away: see the [module ideas](https://github.com/orbis-hub/orbis/issues?q=is%3Aissue+is%3Aopen+label%3A%22module+idea%22) or write your own.
 
@@ -72,6 +73,19 @@ pnpm pack:module                # module.tgz for a release
 ```
 
 [module developer guide](https://github.com/orbis-hub/orbis/wiki/Module-Developer-Guide) · [sdk reference](https://github.com/orbis-hub/orbis/wiki/SDK-Reference) · [publishing](https://github.com/orbis-hub/orbis/wiki/Publishing-and-Registry)
+
+## languages
+
+the ui speaks the hub's language: settings → hub → language (english and german today). modules bring their own translations as flat json files next to `module.json`:
+
+```
+modules/core-todo/
+  module.json          "languages": ["en", "de"]
+  locales/en.json      { "manifest.name": "Todo", "widget.list.name": "Todo list", "quickAdd.placeholder": "add a task…", "due": { "one": "{count} task due", "other": "{count} tasks due" } }
+  locales/de.json      { "manifest.name": "Aufgaben", ... }
+```
+
+`orbis-module build` copies them to `dist/locales/`, the hub translates `manifest.*`, `widget.<id>.*` and `page.<id>.*` for the store and the sidebar, and in code you use `const t = useT()` from `@orbis/sdk/client` (`t("quickAdd.placeholder")`, `t("due", { count: 3 })`) or `ctx.i18n.t(...)` on the server for notifications and e-ink. missing keys fall back to english, then to the key itself. `pnpm i18n:check` reports gaps across the app and all modules. the registry index lists `languages` per module so the store can show what a module speaks.
 
 ## repo
 
@@ -101,7 +115,7 @@ pnpm web     # http://localhost:3000
 <!-- cozy:commits -->
 <div align="center">
 
-<a href="https://github.com/orbis-hub/orbis/commits"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-dark.svg?v=f67c497bbb"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-light.svg?v=f67c497bbb" width="840" alt="latest commits of orbis-hub/orbis"></picture></a>
+<a href="https://github.com/orbis-hub/orbis/commits"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-dark.svg?v=20c74c20e3"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/commits-light.svg?v=20c74c20e3" width="840" alt="latest commits of orbis-hub/orbis"></picture></a>
 
 </div>
 <!-- /cozy:commits -->
@@ -109,7 +123,7 @@ pnpm web     # http://localhost:3000
 <!-- cozy:releases -->
 <div align="center">
 
-<a href="https://github.com/orbis-hub/orbis/releases"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-dark.svg?v=dacee5a261"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-light.svg?v=dacee5a261" width="840" alt="releases: v0.1.2, v0.1.1, modules-v0.1.7, modules-v0.1.6"></picture></a>
+<a href="https://github.com/orbis-hub/orbis/releases"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-dark.svg?v=1875186124"><img src="https://raw.githubusercontent.com/orbis-hub/orbis/output/releases-light.svg?v=1875186124" width="840" alt="releases: v0.1.2, v0.1.1, modules-v0.1.7, modules-v0.1.6"></picture></a>
 
 </div>
 <!-- /cozy:releases -->
@@ -127,7 +141,8 @@ pnpm web     # http://localhost:3000
 ## roadmap
 
 - [x] hub, web, sdk, module store, device scanner, accounts, installer
-- [x] 20 first-party modules, from clock to finance
+- [x] 21 first-party modules, from clock to waste collection
+- [x] languages: english and german across the app and every module, translations per module as json
 - [x] notifications (bell, ntfy, telegram), backup & restore, kiosk mode, dashboard accents
 - [x] e-ink: hub renderer, firmware for inkplate / lilygo / waveshare, web flasher, taps reach widgets
 - [x] shelly direct via the device registry, orbis as a device in home assistant (mqtt)

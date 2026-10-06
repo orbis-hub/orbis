@@ -29,13 +29,15 @@ export default defineModule<Settings>({
     let ws: WebSocket | null = null;
     let msgId = 1;
     let connected = false;
-    let lastError: string | null = null;
+    /** last connection error as a locale key (+vars) so it is re-translated when the hub language changes */
+    let lastError: { key: string; vars?: Record<string, string> } | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
     let stopped = false;
 
     const base = () => (settings.get().url ?? "").trim().replace(/\/+$/, "");
     const token = () => (settings.get().token ?? "").trim();
+    const errorText = () => (lastError ? ctx.i18n.t(lastError.key, lastError.vars) : null);
 
     const toEntity = (s: HaState): Entity => ({
       id: s.entity_id,
@@ -49,10 +51,12 @@ export default defineModule<Settings>({
     });
 
     const reportStatus = () => {
-      if (!base() || !token()) ctx.status.set({ state: "needs-setup", message: "enter your home assistant url and a long-lived access token", action: { label: "settings", settings: true } });
-      else if (!connected) ctx.status.set({ state: lastError ? "error" : "warning", message: lastError ?? "connecting to home assistant…", action: { label: "settings", settings: true } });
+      const t = ctx.i18n.t;
+      if (!base() || !token()) ctx.status.set({ state: "needs-setup", message: t("status.needsSetup"), action: { label: t("status.settings"), settings: true } });
+      else if (!connected) ctx.status.set({ state: lastError ? "error" : "warning", message: errorText() ?? t("status.connecting"), action: { label: t("status.settings"), settings: true } });
       else ctx.status.set({ state: "ok" });
     };
+    const offLanguage = ctx.i18n.onChange(() => reportStatus());
 
     function send(msg: Record<string, unknown>): Promise<unknown> {
       if (!ws || ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("not connected to home assistant"));
@@ -80,7 +84,8 @@ export default defineModule<Settings>({
       try {
         ws = new WebSocket(url);
       } catch (err) {
-        lastError = (err as Error).message;
+        lastError = { key: "error.unreachable", vars: { url: base() } };
+        logger.warn(`websocket failed: ${(err as Error).message}`);
         reportStatus();
         scheduleReconnect();
         return;
@@ -95,7 +100,7 @@ export default defineModule<Settings>({
         }
         if (m.type === "auth_required") ws!.send(JSON.stringify({ type: "auth", access_token: token() }));
         else if (m.type === "auth_invalid") {
-          lastError = "home assistant rejected the token";
+          lastError = { key: "error.tokenRejected" };
           connected = false;
           reportStatus();
           ws?.close();
@@ -132,7 +137,7 @@ export default defineModule<Settings>({
         }
       };
       ws.onerror = () => {
-        lastError = `cannot reach ${base()}`;
+        lastError = { key: "error.unreachable", vars: { url: base() } };
       };
       ws.onclose = () => {
         connected = false;
@@ -164,7 +169,7 @@ export default defineModule<Settings>({
     }
 
     /* ---- api ---- */
-    http.get("/status", (c) => c.json({ connected, error: lastError, url: base(), entities: entities.size, configured: !!(base() && token()) }));
+    http.get("/status", (c) => c.json({ connected, error: errorText(), url: base(), entities: entities.size, configured: !!(base() && token()) }));
     http.get("/entities", (c) => {
       const domain = c.req.query("domain");
       const q = c.req.query("q")?.toLowerCase();
@@ -237,6 +242,7 @@ export default defineModule<Settings>({
       if (reconnectTimer) clearTimeout(reconnectTimer);
       ws?.close();
       offSettings();
+      offLanguage();
       stopMqtt();
     };
 
@@ -249,7 +255,7 @@ export default defineModule<Settings>({
         return { type: "col", grow: 1, gap: 4, children: list.map((e) => ({ type: "row" as const, gap: 8, align: "center" as const, children: [{ type: "text" as const, text: e.name, size: 13, pixel: false, grow: 1, wrap: false }, { type: "text" as const, text: fmt(e), size: 13, bold: e.state === "on" }] })) };
       }
       const e = cfg.entity ? entities.get(cfg.entity) : null;
-      if (!e) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: cfg.entity ?? "no entity", size: 12, gray: 0.5 }] };
+      if (!e) return { type: "col", grow: 1, align: "center", justify: "center", children: [{ type: "text", text: cfg.entity ?? ctx.i18n.t("eink.noEntity"), size: 12, gray: 0.5 }] };
       const big = Math.max(18, Math.min(req.height * 0.45, req.width / 5));
       return { type: "col", grow: 1, align: "center", justify: "center", gap: 2, children: [{ type: "text", text: cfg.name ?? e.name, size: 12, gray: 0.5 }, { type: "text", text: fmt(e), size: big }] };
     };

@@ -1,0 +1,53 @@
+{
+  "manifest.name": "Shelly",
+  "manifest.description": "Shelly-Relais und -Stecker direkt übers lokale Netz, ohne Cloud, ohne Home Assistant. Gen2+ RPC (Plus / Pro / Mini), Gen1 einfach.",
+  "widget.switch.name": "Shelly-Schalter",
+  "widget.switch.description": "Ein Relais mit Leistungsaufnahme.",
+  "widget.power.name": "Leistungsübersicht",
+  "widget.power.description": "Alle Shellys mit ihren aktuellen Watt.",
+  "page.shelly.name": "Shelly",
+
+  "common.loading": "lade…",
+  "common.add": "hinzufügen",
+  "common.remove": "entfernen",
+  "common.on": "an",
+  "common.off": "aus",
+  "common.offline": "offline",
+
+  "widget.switch.pick.title": "gerät wählen",
+  "widget.switch.pick.body": "⋯ → konfigurieren, die ids stehen auf der shelly-seite.",
+  "widget.switch.unknown": "unbekanntes gerät",
+  "widget.switch.offline": "{name} offline",
+  "widget.switch.no_channel": "kanal gibt's nicht",
+
+  "widget.power.empty.title": "keine shellys",
+  "widget.power.empty.body": "weise geräte auf der shelly-seite zu.",
+  "widget.power.total": "gesamt",
+
+  "page.found": "in deinem netz gefunden",
+  "page.use_it": "nehmen",
+  "page.shellys": "shellys ({count})",
+  "page.empty.title": "noch keine shellys",
+  "page.empty.body": "scann das netz unter {devices} (sie melden sich per mdns) oder füg unten eine per ip hinzu.",
+  "page.empty.devices": "geräte",
+  "page.gen": "gen {gen}",
+  "page.id": "id: {id}",
+  "page.copied": "kopiert ✓",
+  "page.channel": "kanal {id}",
+  "page.add_by_ip": "per ip hinzufügen",
+
+  "status.found": { "one": "{count} shelly in deinem netz gefunden – weise es zu", "other": "{count} shellys in deinem netz gefunden – weise sie zu" },
+  "status.none": "noch keine shellys: scann das netz unter geräte oder füg eine per ip hinzu",
+  "status.offline": { "one": "{count} gerät offline", "other": "{count} geräte offline" },
+  "status.action": "shelly",
+
+  "error.cannot_claim": "das gerät lässt sich nicht übernehmen",
+  "error.ip_required": "ip oder host[:port] fehlt",
+  "error.no_answer": "unter der ip hat kein shelly geantwortet",
+  "error.unknown_device": "unbekanntes gerät",
+
+  "eink.offline": "offline",
+  "eink.no_device": "kein gerät",
+  "eink.on": "AN",
+  "eink.off": "AUS"
+}

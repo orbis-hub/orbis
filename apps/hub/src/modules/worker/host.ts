@@ -11,6 +11,7 @@ import type { ModuleManifest } from "@orbis/sdk";
 import type { EinkRequest, EinkTapRequest, EinkTapResult, EinkTree, ModuleServer, ModuleServerContext } from "@orbis/sdk/server";
 import { config } from "../../config";
 import { childLog } from "../../log";
+import { loadLocales } from "../locales";
 import type { SerializedRequest, SerializedResponse, SyncCall, SyncResult, ToHub, ToWorker, WorkerData } from "./protocol";
 
 export type WorkerServer = ModuleServer & { worker: Worker; alive: () => boolean };
@@ -35,11 +36,13 @@ export async function startWorkerServer(manifest: ModuleManifest, file: string, 
   const { port1: syncHub, port2: syncWorker } = new MessageChannel();
   const syncBuffer = new SharedArrayBuffer(4);
   const i32 = new Int32Array(syncBuffer);
-  const data: WorkerData = { moduleId: manifest.id, file, manifest, dir: ctx.dir, dataDir: ctx.dataDir, hubVersion: ctx.hubVersion, settings: ctx.settings.get() as Record<string, unknown>, syncPort: syncWorker, syncBuffer };
+  const data: WorkerData = { moduleId: manifest.id, file, manifest, dir: ctx.dir, dataDir: ctx.dataDir, hubVersion: ctx.hubVersion, settings: ctx.settings.get() as Record<string, unknown>, language: ctx.i18n.language, locales: loadLocales(ctx.dir), syncPort: syncWorker, syncBuffer };
   const worker = new Worker(entryUrl(), {
     workerData: data,
     transferList: [syncWorker],
-    env: { PATH: process.env.PATH ?? "", NODE_ENV: process.env.NODE_ENV ?? "", TZ: process.env.TZ ?? "" },
+    // keep secrets out of the worker, but pass what node itself needs: without TEMP/SystemRoot os.tmpdir()
+    // on windows becomes the literal "undefined\temp" (relative to cwd) and tsx/tar write into the repo.
+    env: Object.fromEntries(["PATH", "NODE_ENV", "TZ", "LANG", "LC_ALL", "HOME", "USERPROFILE", "TEMP", "TMP", "TMPDIR", "SystemRoot", "windir", "SYSTEMDRIVE", "COMSPEC"].filter((k) => process.env[k] !== undefined).map((k) => [k, process.env[k] as string])),
     resourceLimits: { maxOldGenerationSizeMb: 256 },
     stdout: false,
     stderr: false,
@@ -178,6 +181,7 @@ export async function startWorkerServer(manifest: ModuleManifest, file: string, 
   const offSettings = ctx.settings.onChange((s) => alive && worker.postMessage({ t: "settings", settings: s as Record<string, unknown> } satisfies ToWorker));
   const offDevices = ctx.devices.onChange(() => alive && worker.postMessage({ t: "devices" } satisfies ToWorker));
   const offModules = ctx.modules.onChange((loaded) => alive && worker.postMessage({ t: "modules", loaded } satisfies ToWorker));
+  const offLanguage = ctx.i18n.onChange((language) => alive && worker.postMessage({ t: "language", language } satisfies ToWorker));
 
   /* ---- http: everything that reaches ctx.http goes to the worker's router ---- */
   ctx.http.all("*", async (c) => {
@@ -200,6 +204,7 @@ export async function startWorkerServer(manifest: ModuleManifest, file: string, 
       offSettings();
       offDevices();
       offModules();
+      offLanguage();
       if (alive) {
         try {
           await Promise.race([ask({ t: "teardown" }), new Promise((r) => setTimeout(r, 3000))]);

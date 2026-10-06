@@ -1,0 +1,32 @@
+{
+  "manifest.name": "Notes",
+  "manifest.description": "Plain notes with a little markdown. A pinned note on the dashboard, a page to write.",
+  "widget.note.name": "Note",
+  "widget.note.description": "One note, rendered. Click to edit on the notes page.",
+  "widget.scratch.name": "Scratchpad",
+  "widget.scratch.description": "Type straight into the widget. Saved as you go.",
+  "page.notes.name": "Notes",
+
+  "common.loading": "loading…",
+  "common.saving": "saving…",
+  "common.saved": "saved",
+  "common.delete": "delete",
+
+  "widget.note.empty": "no note",
+  "widget.note.emptyHint": "write one on the notes page and pin it.",
+  "widget.scratch.placeholder": "type here, it saves itself…",
+
+  "page.notes.title": "notes",
+  "page.notes.newNote": "new note",
+  "page.notes.empty": "no notes yet",
+  "page.notes.chars": { "one": "{count} char", "other": "{count} chars" },
+  "page.notes.titleField": "title",
+  "page.notes.preview": "preview",
+  "page.notes.pin": "pin to dashboard widget",
+  "page.notes.confirmDelete": "delete \"{title}\"?",
+  "page.notes.bodyPlaceholder": "# heading\n- list\n- [ ] checkbox\n**bold** *italic* `code` [link](https://…)",
+  "page.notes.pick": "pick or create a note",
+
+  "untitled": "untitled",
+  "eink.empty": "no notes"
+}

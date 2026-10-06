@@ -4,6 +4,7 @@ import { Button, Field, Input, Window } from "@orbis/ui";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { getHubUrl, hubFetch, HubError, isCapacitor, setHubUrl, setToken } from "@/lib/hub";
+import { useT } from "@/lib/i18n";
 import { useAuthStatus } from "@/lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const [password2, setPassword2] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     const h = getHubUrl();
@@ -37,8 +39,8 @@ export default function LoginPage() {
       if (status.data.authenticated) router.replace("/");
       else setStep(status.data.setup ? "login" : "setup");
     }
-    if (status.error) setError(status.error instanceof HubError ? status.error.message : "hub unreachable");
-  }, [hub, status.data, status.error, router]);
+    if (status.error) setError(status.error instanceof HubError ? status.error.message : t("login.error.unreachable"));
+  }, [hub, status.data, status.error, router, t]);
 
   async function saveHub(e: FormEvent) {
     e.preventDefault();
@@ -54,7 +56,7 @@ export default function LoginPage() {
       setHub(url);
       await qc.invalidateQueries();
     } catch (err) {
-      setError(`could not reach a hub at ${url} (${(err as Error).message})`);
+      setError(t("login.connect.failed", { url, error: (err as Error).message }));
     } finally {
       setBusy(false);
     }
@@ -63,7 +65,8 @@ export default function LoginPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (step === "setup" && password !== password2) return setError("passwords do not match");
+    if (step === "setup" && password.length < 6) return setError(t("login.error.short"));
+    if (step === "setup" && password !== password2) return setError(t("login.error.mismatch"));
     setBusy(true);
     try {
       const res = await hubFetch<{ token: string }>(step === "setup" ? "/api/auth/setup" : "/api/auth/login", { method: "POST", json: { name, password } });
@@ -71,7 +74,8 @@ export default function LoginPage() {
       await qc.invalidateQueries();
       router.replace("/");
     } catch (err) {
-      setError(err instanceof HubError ? err.message : "something went wrong");
+      const msg = err instanceof HubError ? err.message : "";
+      setError(msg === "wrong name or password" ? t("login.error.wrong") : msg || t("login.error.generic"));
     } finally {
       setBusy(false);
     }
@@ -84,61 +88,61 @@ export default function LoginPage() {
           <span style={{ color: "var(--accent)" }}>◎</span> orbis
         </div>
         {step === "hub" || hub === null ? (
-          <Window title="connect to your hub">
+          <Window title={t("login.connect.title")}>
             <form onSubmit={saveHub} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <p className="soft" style={{ fontSize: 12 }}>
-                {isCapacitor() ? "enter the address of your orbis hub on the local network." : "where is your orbis hub running?"}
+                {isCapacitor() ? t("login.connect.introApp") : t("login.connect.introWeb")}
               </p>
-              <Field label="hub url" hint="e.g. http://192.168.1.20:3001 or https://orbis.example.com">
+              <Field label={t("login.connect.hubUrl")} hint={t("login.connect.hubUrlHint")}>
                 <Input value={hubInput} onChange={(e) => setHubInput(e.target.value)} placeholder="http://192.168.1.20:3001" autoFocus inputMode="url" />
               </Field>
               {error ? <div style={{ color: "var(--dnd)", fontSize: 12 }}>{error}</div> : null}
               <Button type="submit" variant="primary" loading={busy}>
-                connect
+                {t("login.connect.button")}
               </Button>
             </form>
           </Window>
         ) : status.isPending && !status.data ? (
-          <Window title="connecting">
+          <Window title={t("login.connecting.title")}>
             <div className="pixel soft" style={{ fontSize: 13 }}>
-              talking to {hub}
+              {t("login.connecting.talkingTo", { hub })}
               <span className="blink">…</span>
             </div>
             {error ? (
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ color: "var(--dnd)", fontSize: 12 }}>{error}</div>
                 <Button size="sm" onClick={() => { setHubUrl(null); setHub(null); setError(null); }}>
-                  change hub url
+                  {t("login.changeHub")}
                 </Button>
               </div>
             ) : null}
           </Window>
         ) : (
-          <Window title={step === "setup" ? "welcome · create your account" : "sign in"} right={<span className="chip" style={{ fontSize: 10 }}>{(hub ?? "").replace(/^https?:\/\//, "")}</span>}>
+          <Window title={step === "setup" ? t("login.setup.title") : t("login.signin.title")} right={<span className="chip" style={{ fontSize: 10 }}>{(hub ?? "").replace(/^https?:\/\//, "")}</span>}>
             <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {step === "setup" ? (
                 <p className="soft" style={{ fontSize: 12 }}>
-                  this hub is brand new. pick a name and a password, you are the owner.
+                  {t("login.setup.intro")}
                 </p>
               ) : null}
-              <Field label="name">
-                <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" autoFocus required />
+              <Field label={t("login.name")}>
+                <Input id="login-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" autoFocus required aria-label={t("login.name")} />
               </Field>
-              <Field label="password" hint={step === "setup" ? "at least 6 characters" : undefined}>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={step === "setup" ? "new-password" : "current-password"} required minLength={6} />
+              <Field label={t("login.password")} hint={step === "setup" ? t("login.passwordHint") : undefined}>
+                <Input type="password" aria-label={t("login.password")} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={step === "setup" ? "new-password" : "current-password"} required minLength={6} />
               </Field>
               {step === "setup" ? (
-                <Field label="repeat password">
-                  <Input type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} autoComplete="new-password" required minLength={6} />
+                <Field label={t("login.repeatPassword")}>
+                  <Input type="password" aria-label={t("login.repeatPassword")} value={password2} onChange={(e) => setPassword2(e.target.value)} autoComplete="new-password" required minLength={6} />
                 </Field>
               ) : null}
               {error ? <div style={{ color: "var(--dnd)", fontSize: 12 }}>{error}</div> : null}
               <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
                 <button type="button" className="soft" style={{ fontSize: 11, textDecoration: "underline dotted" }} onClick={() => { setHubUrl(null); setHub(null); setStep("hub"); }}>
-                  other hub
+                  {t("login.otherHub")}
                 </button>
                 <Button type="submit" variant="primary" loading={busy}>
-                  {step === "setup" ? "create & enter" : "enter"}
+                  {step === "setup" ? t("login.setup.button") : t("login.signin.button")}
                 </Button>
               </div>
             </form>

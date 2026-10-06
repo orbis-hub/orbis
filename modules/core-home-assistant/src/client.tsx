@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { defineClient, useModuleApi, useModuleEvents, useModuleQuery, type PageProps, type SettingsProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModuleApi, useModuleEvents, useModuleQuery, useT, type PageProps, type SettingsProps, type WidgetProps } from "@orbis/sdk/client";
 import { Button, Chip, Empty, Field, Icon, Input, Select, Switch, Window, cx } from "@orbis/ui";
 import type { Entity } from "./server";
 
@@ -46,17 +46,19 @@ const isOn = (e: Entity | undefined) => !!e && ["on", "open", "unlocked", "playi
 const fmtValue = (e: Entity, decimals = 1) => (Number.isFinite(Number(e.state)) ? `${Number(e.state).toFixed(decimals)}${e.unit ? ` ${e.unit}` : ""}` : e.state.replace(/_/g, " "));
 
 function NotReady({ status, entity }: { status: Status | undefined; entity?: string }) {
-  if (!status) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
-  if (!status.configured) return <Empty icon="home" title="home assistant not set up">modules → home assistant → settings: url + token.</Empty>;
-  if (!status.connected) return <Empty icon="home" title="not connected">{status.error ?? "connecting…"}</Empty>;
-  if (!entity) return <Empty icon="home" title="pick an entity">⋯ → configure</Empty>;
-  return <Empty icon="warning-diamond" title="unknown entity">{entity}</Empty>;
+  const t = useT();
+  if (!status) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
+  if (!status.configured) return <Empty icon="home" title={t("notReady.notSetup")}>{t("notReady.notSetupHint")}</Empty>;
+  if (!status.connected) return <Empty icon="home" title={t("notReady.notConnected")}>{status.error ?? t("notReady.connecting")}</Empty>;
+  if (!entity) return <Empty icon="home" title={t("notReady.pickEntity")}>{t("notReady.pickEntityHint")}</Empty>;
+  return <Empty icon="warning-diamond" title={t("notReady.unknownEntity")}>{entity}</Empty>;
 }
 
 /* ---------- widgets ---------- */
 
 function ToggleWidget({ config, size }: WidgetProps<{ entity?: string; name?: string }>) {
   const api = useModuleApi();
+  const t = useT();
   const status = useStatus();
   const { entities } = useEntities(config.entity ? [config.entity] : []);
   const e = config.entity ? entities[config.entity] : undefined;
@@ -73,7 +75,7 @@ function ToggleWidget({ config, size }: WidgetProps<{ entity?: string; name?: st
     >
       <Icon name={domainIcon(e)} size={big} />
       <div className="pixel" style={{ fontSize: 13, color: "var(--ink)" }}>{config.name ?? e.name}</div>
-      <div style={{ fontSize: 11 }}>{on ? (brightness !== null ? `on · ${brightness}%` : e.state.replace(/_/g, " ")) : e.state.replace(/_/g, " ")}</div>
+      <div style={{ fontSize: 11 }}>{on ? (brightness !== null ? t("widget.toggle.onBrightness", { brightness }) : e.state.replace(/_/g, " ")) : e.state.replace(/_/g, " ")}</div>
       {e.domain === "light" && on && size.height > 120 ? (
         <input
           type="range"
@@ -127,6 +129,7 @@ function SensorWidget({ config, size }: WidgetProps<{ entity?: string; name?: st
 
 function ClimateWidget({ config, size }: WidgetProps<{ entity?: string; name?: string; step?: number }>) {
   const api = useModuleApi();
+  const t = useT();
   const status = useStatus();
   const { entities } = useEntities(config.entity ? [config.entity] : []);
   const e = config.entity ? entities[config.entity] : undefined;
@@ -135,18 +138,18 @@ function ClimateWidget({ config, size }: WidgetProps<{ entity?: string; name?: s
   const current = Number(e.attributes.current_temperature ?? NaN);
   const modes = (e.attributes.hvac_modes as string[] | undefined) ?? [];
   const step = config.step ?? 0.5;
-  const setTarget = (t: number) => void api("/call", { method: "POST", json: { domain: "climate", service: "set_temperature", entity: e.id, data: { temperature: Math.round(t * 2) / 2 } } });
+  const setTarget = (temp: number) => void api("/call", { method: "POST", json: { domain: "climate", service: "set_temperature", entity: e.id, data: { temperature: Math.round(temp * 2) / 2 } } });
   const big = Math.max(20, Math.min(size.height * 0.35, size.width / 5));
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
       <div className="soft" style={{ fontSize: 11 }}>{config.name ?? e.name} · {e.state.replace(/_/g, " ")}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Button icon onClick={() => Number.isFinite(target) && setTarget(target - step)} aria-label="lower"><Icon name="minus" size={16} /></Button>
+        <Button icon onClick={() => Number.isFinite(target) && setTarget(target - step)} aria-label={t("widget.climate.lower")}><Icon name="minus" size={16} /></Button>
         <div style={{ textAlign: "center", flex: 1 }}>
           <div className="pixel" style={{ fontSize: big, lineHeight: 1 }}>{Number.isFinite(target) ? `${target.toFixed(1)}°` : "–"}</div>
-          {Number.isFinite(current) ? <div className="soft" style={{ fontSize: 11 }}>now {current.toFixed(1)}°</div> : null}
+          {Number.isFinite(current) ? <div className="soft" style={{ fontSize: 11 }}>{t("widget.climate.now", { temp: current.toFixed(1) })}</div> : null}
         </div>
-        <Button icon onClick={() => Number.isFinite(target) && setTarget(target + step)} aria-label="raise"><Icon name="plus" size={16} /></Button>
+        <Button icon onClick={() => Number.isFinite(target) && setTarget(target + step)} aria-label={t("widget.climate.raise")}><Icon name="plus" size={16} /></Button>
       </div>
       {modes.length > 1 && size.height > 130 ? (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
@@ -210,6 +213,7 @@ const DOMAINS = ["light", "switch", "sensor", "binary_sensor", "climate", "media
 
 function EntitiesPage(_p: PageProps) {
   const api = useModuleApi();
+  const t = useT();
   const status = useStatus();
   const [q, setQ] = useState("");
   const [domain, setDomain] = useState("");
@@ -221,26 +225,26 @@ function EntitiesPage(_p: PageProps) {
 
   if (!status.data?.connected) {
     return (
-      <Window title="home assistant">
+      <Window title={t("page.entities.title")}>
         <NotReady status={status.data} />
-        {status.data?.configured ? <p className="soft" style={{ fontSize: 11, marginTop: 8 }}>url: {status.data.url}</p> : null}
+        {status.data?.configured ? <p className="soft" style={{ fontSize: 11, marginTop: 8 }}>{t("page.entities.url", { url: status.data.url })}</p> : null}
       </Window>
     );
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <Input placeholder="search entities…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
+        <Input placeholder={t("page.entities.search")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
         <Select value={domain} onChange={(e) => setDomain(e.target.value)} style={{ width: "auto" }}>
-          <option value="">all domains</option>
+          <option value="">{t("page.entities.allDomains")}</option>
           {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
         </Select>
-        <Chip tone="ok">{status.data.entities} entities · live</Chip>
-        <span className="soft" style={{ fontSize: 11 }}>click an id to copy it into a widget config</span>
+        <Chip tone="ok">{t("page.entities.live", { count: status.data.entities })}</Chip>
+        <span className="soft" style={{ fontSize: 11 }}>{t("page.entities.copyHint")}</span>
       </div>
       <Window tight>
         <div className="scroll-y" style={{ maxHeight: "70vh" }}>
-          {rows.length === 0 ? <div className="empty">nothing matches</div> : null}
+          {rows.length === 0 ? <div className="empty">{t("page.entities.nothingMatches")}</div> : null}
           {rows.map((e) => {
             const toggleable = ["light", "switch", "input_boolean", "fan", "cover", "lock", "automation", "media_player"].includes(e.domain);
             return (
@@ -258,7 +262,7 @@ function EntitiesPage(_p: PageProps) {
                       setTimeout(() => setCopied(null), 1200);
                     }}
                   >
-                    {copied === e.id ? "copied ✓" : e.id}
+                    {copied === e.id ? t("page.entities.copied") : e.id}
                   </button>
                 </div>
                 <span style={{ fontVariantNumeric: "tabular-nums", minWidth: 60, textAlign: "right" }}>{fmtValue(e)}</span>
@@ -273,15 +277,16 @@ function EntitiesPage(_p: PageProps) {
 }
 
 function HaSettings({ value, onChange }: SettingsProps) {
+  const t = useT();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Field label="home assistant url" hint="as the hub reaches it, e.g. http://homeassistant.local:8123 or http://192.168.1.10:8123">
+      <Field label={t("settings.url")} hint={t("settings.urlHint")}>
         <Input value={String(value.url ?? "")} onChange={(e) => onChange({ ...value, url: e.target.value.trim() })} placeholder="http://homeassistant.local:8123" inputMode="url" />
       </Field>
-      <Field label="long-lived access token" hint="ha → click your name bottom left → security → long-lived access tokens → create">
+      <Field label={t("settings.token")} hint={t("settings.tokenHint")}>
         <Input type="password" value={String(value.token ?? "")} onChange={(e) => onChange({ ...value, token: e.target.value.trim() })} autoComplete="off" />
       </Field>
-      <p className="soft" style={{ fontSize: 11 }}>the hub keeps one websocket to ha open and mirrors entity states; widgets update live. the token is stored on the hub only.</p>
+      <p className="soft" style={{ fontSize: 11 }}>{t("settings.info")}</p>
     </div>
   );
 }

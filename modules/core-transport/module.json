@@ -1,11 +1,12 @@
 {
   "id": "transport",
   "name": "Departures",
-  "version": "0.1.7",
+  "version": "0.2.0",
   "description": "Next departures from a stop near you. Germany first (DB / HAFAS via transport.rest, no key); other providers can be added.",
   "author": "orbis",
   "icon": "bus",
   "minHub": "0.1.0",
+  "languages": ["en", "de"],
   "entry": {
     "server": "dist/server.js",
     "client": "dist/client.js"
@@ -55,6 +56,11 @@
           "products": {
             "type": "array",
             "title": "Products (bus, tram, subway, suburban, regional, national; empty = all)"
+          },
+          "showMap": {
+            "type": "boolean",
+            "title": "Show a map with the stop and clicked routes (widgets 4+ columns wide)",
+            "default": false
           }
         }
       }

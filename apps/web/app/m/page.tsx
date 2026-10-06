@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Component, Suspense, type ComponentType, type ReactNode } from "react";
 import { Shell } from "@/components/Shell";
+import { useT } from "@/lib/i18n";
 import { ModuleProvider, useModuleClient } from "@/lib/module-host";
 import { useModules } from "@/lib/queries";
 
@@ -18,6 +19,7 @@ export default function Page() {
 }
 
 function ModulePageView() {
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
   const id = params.get("id");
@@ -34,26 +36,26 @@ function ModulePageView() {
       {page && mod.manifest.pages.length === 1 && page.name !== mod.manifest.name ? <span className="soft">· {page.name}</span> : null}
     </span>
   ) : (
-    "module"
+    t("page.module")
   );
 
   let body: ReactNode;
   if (modules.isPending) body = null;
-  else if (!mod) body = <Empty icon="warning-diamond" title="module not found">{`"${id}" is not installed.`} <Link href="/modules/">modules</Link></Empty>;
-  else if (!mod.enabled) body = <Empty icon="power-off" title="module disabled">enable {mod.manifest.name} under <Link href="/modules/">modules</Link>.</Empty>;
-  else if (mod.error) body = <Empty icon="bug" title="module error">{mod.error}</Empty>;
-  else if (error) body = <Empty icon="bug" title="failed to load">{error.message}</Empty>;
-  else if (!client) body = <div className="soft pixel" style={{ fontSize: 12 }}>loading<span className="blink">…</span></div>;
+  else if (!mod) body = <Empty icon="warning-diamond" title={t("page.notFound")}>{t("page.notInstalled", { id: String(id) })} <Link href="/modules/">{t("common.modules")}</Link></Empty>;
+  else if (!mod.enabled) body = <Empty icon="power-off" title={t("page.disabled")}>{t("page.enableBefore", { name: mod.manifest.name })} <Link href="/modules/">{t("common.modules")}</Link>{t("page.enableAfter")}</Empty>;
+  else if (mod.error) body = <Empty icon="bug" title={t("page.moduleError")}>{mod.error}</Empty>;
+  else if (error) body = <Empty icon="bug" title={t("page.failedToLoad")}>{error.message}</Empty>;
+  else if (!client) body = <div className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}<span className="blink">…</span></div>;
   else {
     const Comp = (pageId ? client.pages?.[pageId] : undefined) as ComponentType<ModulePageProps> | undefined;
     body = Comp ? (
       <ModuleProvider mod={mod}>
-        <PageErrorBoundary key={`${mod.id}:${pageId}`}>
+        <PageErrorBoundary key={`${mod.id}:${pageId}`} title={t("page.crashed")}>
           <Comp pageId={pageId!} params={params} />
         </PageErrorBoundary>
       </ModuleProvider>
     ) : (
-      <Empty icon="warning-diamond" title="page not found">{`${mod.manifest.name} has no page "${pageId}".`}</Empty>
+      <Empty icon="warning-diamond" title={t("page.pageNotFound")}>{t("page.noPage", { name: mod.manifest.name, page: String(pageId) })}</Empty>
     );
   }
 
@@ -76,13 +78,13 @@ function ModulePageView() {
   );
 }
 
-class PageErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class PageErrorBoundary extends Component<{ children: ReactNode; title: string }, { error: Error | null }> {
   state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
   render() {
-    if (this.state.error) return <Empty icon="bug" title="page crashed">{this.state.error.message}</Empty>;
+    if (this.state.error) return <Empty icon="bug" title={this.props.title}>{this.state.error.message}</Empty>;
     return this.props.children;
   }
 }

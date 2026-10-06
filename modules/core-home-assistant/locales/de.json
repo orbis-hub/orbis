@@ -1,0 +1,53 @@
+{
+  "manifest.name": "Home Assistant",
+  "manifest.description": "Deine Home-Assistant-Entitäten als Widgets: Schalter, Lichter, Sensoren, Klima, Szenen. Live über den HA-Websocket. Veröffentlicht orbis außerdem per MQTT in HA (nächster Termin, offene Aufgaben, Fokus-Schalter).",
+  "widget.toggle.name": "Schalter / Licht",
+  "widget.toggle.description": "Eine Entität mit Zustand und großem Schalter. Lichter bekommen Helligkeit.",
+  "widget.sensor.name": "Sensor",
+  "widget.sensor.description": "Ein Wert mit Einheit, dazu eine kleine Verlaufskurve.",
+  "widget.climate.name": "Klima",
+  "widget.climate.description": "Aktuelle und Zieltemperatur mit +/- und Modus.",
+  "widget.scenes.name": "Szenen & Skripte",
+  "widget.scenes.description": "Buttons, die Szenen aktivieren oder Skripte starten.",
+  "widget.group.name": "Entitätenliste",
+  "widget.group.description": "Mehrere Entitäten als kompakte Zeilen mit Schaltern und Werten.",
+  "page.entities.name": "Home Assistant",
+
+  "common.loading": "lädt…",
+
+  "notReady.notSetup": "home assistant ist nicht eingerichtet",
+  "notReady.notSetupHint": "module → home assistant → einstellungen: url + token.",
+  "notReady.notConnected": "nicht verbunden",
+  "notReady.connecting": "verbinde…",
+  "notReady.pickEntity": "wähl eine entität",
+  "notReady.pickEntityHint": "⋯ → konfigurieren",
+  "notReady.unknownEntity": "unbekannte entität",
+
+  "widget.toggle.onBrightness": "an · {brightness}%",
+  "widget.climate.lower": "runter",
+  "widget.climate.raise": "hoch",
+  "widget.climate.now": "jetzt {temp}°",
+
+  "page.entities.title": "home assistant",
+  "page.entities.url": "url: {url}",
+  "page.entities.search": "entitäten suchen…",
+  "page.entities.allDomains": "alle domains",
+  "page.entities.live": { "one": "{count} entität · live", "other": "{count} entitäten · live" },
+  "page.entities.copyHint": "klick auf eine id, um sie in eine widget-konfiguration zu kopieren",
+  "page.entities.nothingMatches": "nichts gefunden",
+  "page.entities.copied": "kopiert ✓",
+
+  "settings.url": "home assistant url",
+  "settings.urlHint": "so wie der hub sie erreicht, z. b. http://homeassistant.local:8123 oder http://192.168.1.10:8123",
+  "settings.token": "langlebiger zugriffstoken",
+  "settings.tokenHint": "ha → unten links auf deinen namen → sicherheit → langlebige zugriffstoken → erstellen",
+  "settings.info": "der hub hält einen websocket zu ha offen und spiegelt die entitätszustände; widgets aktualisieren sich live. der token bleibt nur auf dem hub.",
+
+  "status.needsSetup": "gib deine home assistant url und einen langlebigen zugriffstoken ein",
+  "status.settings": "einstellungen",
+  "status.connecting": "verbinde mit home assistant…",
+  "error.tokenRejected": "home assistant hat den token abgelehnt",
+  "error.unreachable": "{url} ist nicht erreichbar",
+
+  "eink.noEntity": "keine entität"
+}

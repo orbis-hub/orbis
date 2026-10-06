@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { defineClient, useModuleApi, useModuleQuery, type PageProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModuleApi, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
 import { Button, Checkbox, Chip, Empty, Field, Icon, Input, Modal, Window, cx } from "@orbis/ui";
 import type { HabitWithStats } from "./server";
 
@@ -55,10 +55,11 @@ function HabitGrid({ h, weeks, cell = 10, onToggle }: { h: HabitWithStats; weeks
 
 function TodayWidget({ config, size }: WidgetProps<{ showStreak?: boolean }>) {
   const api = useModuleApi();
+  const t = useT();
   const q = useHabits(1);
   const list = q.data ?? [];
-  if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
-  if (!list.length) return <Empty icon="check-double" title="no habits yet">add some on the habits page.</Empty>;
+  if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
+  if (!list.length) return <Empty icon="check-double" title={t("widget.today.empty")}>{t("widget.today.emptyHint")}</Empty>;
   const done = list.filter((h) => h.doneToday).length;
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -67,28 +68,29 @@ function TodayWidget({ config, size }: WidgetProps<{ showStreak?: boolean }>) {
           <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: size.height < 140 ? "1px 0" : "3px 0", borderBottom: "1px dashed var(--line)" }}>
             <Checkbox checked={h.doneToday} onChange={() => void api("/toggle", { method: "POST", json: { habitId: h.id } }).then(() => q.refetch())} label={<span style={{ fontSize: 13, textDecoration: h.doneToday ? "line-through" : undefined, opacity: h.doneToday ? 0.6 : 1 }}>{h.name}</span>} />
             <span style={{ flex: 1 }} />
-            {config.showStreak !== false && h.streak > 0 ? <Chip style={{ fontSize: 10, borderColor: h.color }}>{h.streak}d</Chip> : null}
+            {config.showStreak !== false && h.streak > 0 ? <Chip style={{ fontSize: 10, borderColor: h.color }}>{t("common.streakShort", { count: h.streak })}</Chip> : null}
           </div>
         ))}
       </div>
       <div className="progress"><i style={{ width: `${(done / list.length) * 100}%` }} /></div>
-      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{done}/{list.length} today</div>
+      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{t("widget.today.progress", { done, total: list.length })}</div>
     </div>
   );
 }
 
 function GridWidget({ config, size }: WidgetProps<{ habitId?: string; weeks?: number }>) {
   const api = useModuleApi();
+  const t = useT();
   const q = useHabits();
   const h = (config.habitId ? q.data?.find((x) => x.id === config.habitId) : q.data?.[0]) ?? null;
-  if (!h) return <Empty icon="check-double" title={q.loading ? "loading…" : "no habit"} />;
+  if (!h) return <Empty icon="check-double" title={q.loading ? t("common.loading") : t("widget.grid.none")} />;
   const weeks = config.weeks ?? 12;
   const cell = Math.max(5, Math.min(14, Math.floor((size.width - 8) / weeks) - 2, Math.floor((size.height - 40) / 7) - 2));
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
         <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><i style={{ width: 10, height: 10, background: h.color, display: "inline-block" }} /> {h.name}</span>
-        <span className="soft">{h.streak}d streak · {h.last30}/30</span>
+        <span className="soft">{t("widget.grid.stats", { streak: h.streak, last30: h.last30 })}</span>
       </div>
       <HabitGrid h={h} weeks={weeks} cell={cell} onToggle={(day) => void api("/toggle", { method: "POST", json: { habitId: h.id, day } }).then(() => q.refetch())} />
     </div>
@@ -97,6 +99,7 @@ function GridWidget({ config, size }: WidgetProps<{ habitId?: string; weeks?: nu
 
 function HabitsPage(_p: PageProps) {
   const api = useModuleApi();
+  const t = useT();
   const q = useHabits();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -106,26 +109,26 @@ function HabitsPage(_p: PageProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <Button onClick={() => setAdding(true)}><Icon name="plus" size={12} /> habit</Button>
-        <span className="soft" style={{ fontSize: 11 }}>click a square to toggle a past day.</span>
+        <Button onClick={() => setAdding(true)}><Icon name="plus" size={12} /> {t("page.habits.add")}</Button>
+        <span className="soft" style={{ fontSize: 11 }}>{t("page.habits.hint")}</span>
       </div>
-      {list.length === 0 ? <Empty icon="check-double" title="no habits yet">start small: one or two.</Empty> : null}
+      {list.length === 0 ? <Empty icon="check-double" title={t("page.habits.empty")}>{t("page.habits.emptyHint")}</Empty> : null}
       {list.map((h) => (
         <Window
           key={h.id}
           title={<span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><i style={{ width: 10, height: 10, background: h.color, display: "inline-block" }} /> {h.name}</span>}
           right={
             <>
-              <Chip style={{ fontSize: 10 }}>{h.streak}d streak</Chip>
-              <Chip style={{ fontSize: 10 }}>{h.last30}/30 days</Chip>
-              <Chip style={{ fontSize: 10 }}>target {h.target_per_week}/week</Chip>
-              <Button icon size="sm" variant="ghost" aria-label="delete" onClick={() => { if (confirm(`delete "${h.name}" and its history?`)) api(`/habits/${h.id}`, { method: "DELETE" }).then(() => q.refetch()); }}><Icon name="trash" size={12} /></Button>
+              <Chip style={{ fontSize: 10 }}>{t("page.habits.streak", { count: h.streak })}</Chip>
+              <Chip style={{ fontSize: 10 }}>{t("page.habits.last30", { count: h.last30 })}</Chip>
+              <Chip style={{ fontSize: 10 }}>{t("page.habits.target", { count: h.target_per_week })}</Chip>
+              <Button icon size="sm" variant="ghost" aria-label={t("common.delete")} onClick={() => { if (confirm(t("page.habits.confirmDelete", { name: h.name }))) api(`/habits/${h.id}`, { method: "DELETE" }).then(() => q.refetch()); }}><Icon name="trash" size={12} /></Button>
             </>
           }
         >
           <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
             <Button variant={h.doneToday ? "default" : "primary"} onClick={() => void api("/toggle", { method: "POST", json: { habitId: h.id } }).then(() => q.refetch())}>
-              <Icon name={h.doneToday ? "check" : "square"} size={14} /> {h.doneToday ? "done today" : "mark today"}
+              <Icon name={h.doneToday ? "check" : "square"} size={14} /> {h.doneToday ? t("page.habits.doneToday") : t("page.habits.markToday")}
             </Button>
             <div className="scroll-x" style={{ flex: 1, minWidth: 0 }}>
               <HabitGrid h={h} weeks={26} cell={11} onToggle={(day) => void api("/toggle", { method: "POST", json: { habitId: h.id, day } }).then(() => q.refetch())} />
@@ -133,7 +136,7 @@ function HabitsPage(_p: PageProps) {
           </div>
         </Window>
       ))}
-      <Modal open={adding} onClose={() => setAdding(false)} title="new habit">
+      <Modal open={adding} onClose={() => setAdding(false)} title={t("page.habits.newTitle")}>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -144,20 +147,20 @@ function HabitsPage(_p: PageProps) {
           }}
           style={{ display: "flex", flexDirection: "column", gap: 12 }}
         >
-          <Field label="name"><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus placeholder="drink water, read 10 pages, walk" /></Field>
-          <Field label="color">
+          <Field label={t("page.habits.fieldName")}><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus placeholder={t("page.habits.namePlaceholder")} /></Field>
+          <Field label={t("page.habits.fieldColor")}>
             <div style={{ display: "flex", gap: 6 }}>
               {["#e2789b", "#8b7fd6", "#4fc47f", "#f0b232", "#f23f43", "#4f93d6", "#2f9fbf", "#d9702e"].map((c) => (
                 <button key={c} type="button" onClick={() => setColor(c)} aria-label={c} className={cx("btn btn-icon")} style={{ background: c, borderColor: c === color ? "var(--ink)" : c, boxShadow: "none" }} />
               ))}
             </div>
           </Field>
-          <Field label="target per week" hint="7 = every day">
+          <Field label={t("page.habits.fieldTarget")} hint={t("page.habits.targetHint")}>
             <Input type="number" min={1} max={7} value={target} onChange={(e) => setTarget(Number(e.target.value))} />
           </Field>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <Button onClick={() => setAdding(false)}>cancel</Button>
-            <Button type="submit" variant="primary" disabled={!name.trim()}>add</Button>
+            <Button onClick={() => setAdding(false)}>{t("common.cancel")}</Button>
+            <Button type="submit" variant="primary" disabled={!name.trim()}>{t("common.add")}</Button>
           </div>
         </form>
       </Modal>

@@ -1,0 +1,13 @@
+{
+  "notifications.ago.now": "jetzt",
+  "notifications.ago.min": "{count} min",
+  "notifications.ago.h": "{count} h",
+  "notifications.ago.d": "{count} t",
+  "notifications.urgent": "🚨 {title}",
+  "notifications.aria": "benachrichtigungen, {count} ungelesen",
+  "notifications.title": "benachrichtigungen",
+  "notifications.markAllRead": "alle als gelesen markieren",
+  "notifications.clear": "leeren",
+  "notifications.quiet": "alles ruhig",
+  "notifications.dismiss": "verwerfen"
+}

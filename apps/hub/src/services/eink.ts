@@ -311,7 +311,7 @@ export async function handleTap(display: EinkDisplay, x: number, y: number): Pro
   if (!mod?.loaded || !mod.server?.einkTap || !mod.built) return { refresh: true, widget: box.widget, module: box.module };
   const settings = getAllSettings();
   // content area: inside the 1.5px frame and below the ~24px title bar, matching the box eink() rendered into
-  const req = { displayId: display.id, width: Math.floor(box.w) - 12, height: Math.floor(box.h) - 30, grayLevelsBits: display.grayscale, widget: box.widget, config: box.config, locale: settings.locale, timezone: settings.timezone, now: new Date(), x: Math.round(x - box.x - 6), y: Math.round(y - box.y - 24) };
+  const req = { displayId: display.id, width: Math.floor(box.w) - 12, height: Math.floor(box.h) - 30, grayLevelsBits: display.grayscale, widget: box.widget, config: box.config, locale: settings.locale, timezone: settings.timezone, language: settings.language, now: new Date(), x: Math.round(x - box.x - 6), y: Math.round(y - box.y - 24) };
   try {
     const r = (await mod.server.einkTap(mod.built.ctx, req)) ?? {};
     return { refresh: r.refresh ?? true, toast: r.toast, widget: box.widget, module: box.module };
@@ -336,7 +336,7 @@ export async function renderDisplay(display: EinkDisplay, opts: { format: "png" 
       const cell: Cell = { x, y, w: width, h: height, title: String(w.config.title ?? def?.name ?? w.widget), tree: null };
       if (mod?.loaded && mod.server?.eink && mod.built) {
         try {
-          const req: EinkRequest = { displayId: display.id, width: Math.floor(width) - 12, height: Math.floor(height) - 30, grayLevelsBits: display.grayscale, widget: w.widget, config: w.config, locale: settings.locale, timezone: settings.timezone, now: new Date() };
+          const req: EinkRequest = { displayId: display.id, width: Math.floor(width) - 12, height: Math.floor(height) - 30, grayLevelsBits: display.grayscale, widget: w.widget, config: w.config, locale: settings.locale, timezone: settings.timezone, language: settings.language, now: new Date() };
           cell.tree = await mod.server.eink(mod.built.ctx, req);
         } catch (err) {
           cell.error = (err as Error).message;

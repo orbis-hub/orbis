@@ -1,4 +1,5 @@
 export * from "./manifest";
+export * from "./i18n";
 
 /** A device the hub found on the local network. */
 export type Device = {
@@ -101,6 +102,8 @@ export type RegistryEntry = {
   /** mirror of the manifest's deps / softDeps so the store can show them before installing */
   deps?: string[];
   softDeps?: string[];
+  /** mirror of the manifest's `languages` so the store can show which translations a module ships */
+  languages?: string[];
 };
 
 export type RegistryIndex = {

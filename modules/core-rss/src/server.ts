@@ -101,14 +101,16 @@ export default defineModule<Settings>({
       reportStatus();
     }
     const reportStatus = () => {
+      const t = ctx.i18n.t;
       const fs = feeds();
-      if (!fs.length) ctx.status.set({ state: "needs-setup", message: "add a feed or two", action: { label: "feeds", page: "feeds" } });
-      else if (fs.some((f) => f.error)) ctx.status.set({ state: "warning", message: `${fs.filter((f) => f.error).length} feed(s) failing`, action: { label: "feeds", page: "feeds" } });
+      if (!fs.length) ctx.status.set({ state: "needs-setup", message: t("status.needs_feeds"), action: { label: t("status.action"), page: "feeds" } });
+      else if (fs.some((f) => f.error)) ctx.status.set({ state: "warning", message: t("status.failing", { count: fs.filter((f) => f.error).length }), action: { label: t("status.action"), page: "feeds" } });
       else ctx.status.set({ state: "ok" });
     };
     const schedule = () => ctx.scheduler.every("refresh", (settings.get().refreshMinutes ?? 30) * 60_000, refreshAll, { immediate: true });
     schedule();
     settings.onChange(schedule);
+    ctx.i18n.onChange(reportStatus);
 
     http.get("/feeds", (c) => {
       const counts = Object.fromEntries(db.sql<{ feed_id: string; n: number }>(`SELECT feed_id, COUNT(*) AS n FROM {{t:items}} WHERE read = 0 GROUP BY feed_id`).map((r) => [r.feed_id, r.n]));
@@ -116,14 +118,14 @@ export default defineModule<Settings>({
     });
     http.post("/feeds", async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { url?: string };
-      if (!b.url) return c.json({ error: "url required" }, 400);
+      if (!b.url) return c.json({ error: ctx.i18n.t("error.url_required") }, 400);
       let url = b.url.trim();
       if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
       const id = uid();
       try {
         db.run(`INSERT INTO {{t:feeds}} (id, url, title, sort) VALUES (?, ?, ?, ?)`, [id, url, new URL(url).hostname, feeds().length]);
       } catch {
-        return c.json({ error: "feed already added" }, 409);
+        return c.json({ error: ctx.i18n.t("error.already_added") }, 409);
       }
       const f = feeds().find((x) => x.id === id)!;
       await fetchFeed(f);
@@ -179,7 +181,7 @@ export default defineModule<Settings>({
       const cfg = req.config as { feedId?: string; count?: number };
       const items = db.sql<Item>(`SELECT i.*, f.title AS feed_title FROM {{t:items}} i JOIN {{t:feeds}} f ON f.id = i.feed_id ${cfg.feedId ? "WHERE i.feed_id = ?" : ""} ORDER BY i.published DESC LIMIT ?`, cfg.feedId ? [cfg.feedId, 20] : [20]);
       const max = Math.max(1, Math.floor((req.height - 4) / 34));
-      if (!items.length) return { type: "text", text: "no items yet", size: 12, gray: 0.5 };
+      if (!items.length) return { type: "text", text: ctx.i18n.t("eink.empty"), size: 12, gray: 0.5 };
       return { type: "col", grow: 1, gap: 4, children: items.slice(0, max).map((it) => ({ type: "col" as const, gap: 0, children: [{ type: "text" as const, text: it.title, size: 13, pixel: false, wrap: false }, { type: "text" as const, text: `${it.feed_title} · ${new Date(it.published).toLocaleTimeString(req.locale, { hour: "2-digit", minute: "2-digit" })}`, size: 10, pixel: false, gray: 0.5, wrap: false }] })) };
     };
     logger.info(`feeds ready (${feeds().length} feeds)`);

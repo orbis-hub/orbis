@@ -152,12 +152,20 @@ export default defineModule<Settings>({
     einkRender = (req) => {
       const o = overview();
       const cfg = req.config as { mode?: "left" | "total" };
-      const fmt = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${o.currency}`;
+      const t = ctx.i18n.t;
+      const locale = settings.get().locale || req.locale;
+      const fmt = (n: number) => {
+        try {
+          return `${n.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${o.currency}`;
+        } catch {
+          return `${Math.round(n)} ${o.currency}`;
+        }
+      };
       const big = cfg.mode === "total" ? o.total : o.left;
       const children: import("@orbis/sdk/server").EinkTree[] = [
-        { type: "text", text: cfg.mode === "total" ? "total" : "left this month", size: 11, gray: 0.5 },
+        { type: "text", text: cfg.mode === "total" ? t("eink.total") : t("eink.left"), size: 11, gray: 0.5 },
         { type: "text", text: fmt(big), size: Math.min(34, Math.max(18, Math.floor(req.width / 7))), bold: true, wrap: false },
-        { type: "text", text: cfg.mode === "total" ? `${fmt(o.upcomingExpenses)} still due` : `${fmt(o.perDay)} / day · ${o.daysLeft} days`, size: 11, pixel: false, gray: 0.5 },
+        { type: "text", text: cfg.mode === "total" ? t("eink.stillDue", { amount: fmt(o.upcomingExpenses) }) : t("overview.perDay", { amount: fmt(o.perDay), count: o.daysLeft }), size: 11, pixel: false, gray: 0.5 },
       ];
       if (req.height > 110) for (const u of o.upcoming.slice(0, Math.floor((req.height - 90) / 18))) children.push({ type: "row", gap: 6, align: "center", children: [{ type: "text", text: u.date.slice(8), size: 11, pixel: false, gray: 0.5 }, { type: "text", text: u.name, size: 12, pixel: false, grow: 1, wrap: false }, { type: "text", text: `${u.kind === "income" ? "+" : "−"}${fmt(u.amount)}`, size: 12, pixel: false, wrap: false }] });
       return { type: "col", grow: 1, gap: 3, children };
