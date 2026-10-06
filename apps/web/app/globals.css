@@ -85,8 +85,8 @@
 .widget .win-body .empty { height: 100%; min-height: 0; padding: 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: safe center; overflow: hidden; overflow-wrap: anywhere; }
 .widget .win-body .empty .pixel { font-size: 13px; margin-bottom: 2px; }
 @container widget (max-width: 180px) {
-  .empty > svg { display: none; }
-  .empty .pixel { font-size: var(--fs-meta); }
+  .widget .win-body .empty > svg { display: none; }
+  .widget .win-body .empty .pixel { font-size: var(--fs-meta); }
 }
 /* phones: add/edit are hidden because the stacked list (container < 640px, see Grid) cannot be edited anyway */
 @media (max-width: 671px) { .hide-phone { display: none !important; } }

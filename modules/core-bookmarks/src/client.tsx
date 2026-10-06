@@ -20,8 +20,8 @@ function useLinks(group?: string) {
 function Tile({ l, size, label }: { l: Link; size: number; label: boolean }) {
   return (
     <a href={l.url} target="_blank" rel="noreferrer" title={l.url} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, width: size, minHeight: size, padding: 6, border: "1.5px solid var(--line)", background: "var(--paper-2)", boxShadow: "2px 2px 0 var(--line)", textDecoration: "none", color: "var(--ink)" }} className="tile">
-      {l.favicon ? <img src={l.favicon} alt="" width={size * 0.4} height={size * 0.4} style={{ imageRendering: "auto" }} /> : <Icon name={l.icon ?? "link"} size={size * 0.4} style={{ color: "var(--accent)" }} />}
-      {label ? <span style={{ fontSize: Math.max(9, size * 0.14), textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>{l.title}</span> : null}
+      {l.favicon ? <img src={l.favicon} alt="" width={size * 0.4} height={size * 0.4} style={{ imageRendering: "auto" }} /> : <Icon name={l.icon ?? "link"} size={size * 0.4} style={{ color: "var(--accent-ink)" }} />}
+      {label ? <span style={{ fontSize: `max(var(--fs-min), ${Math.round(size * 0.14)}px)`, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>{l.title}</span> : null}
     </a>
   );
 }
@@ -63,19 +63,19 @@ function BookmarksPage(_p: PageProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <Button onClick={() => setEditing({ group: groups[0] ?? "" })}><Icon name="plus" size={12} /> {t("page.addLink")}</Button>
-        <span className="soft" style={{ fontSize: 11 }}>{t("page.faviconHint")}</span>
+        <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("page.faviconHint")}</span>
       </div>
       {(q.data ?? []).length === 0 ? <Empty icon="bookmark" title={t("page.empty")}>{t("page.emptyHint")}</Empty> : null}
       {groups.map((g) => (
-        <Window key={g || "_"} title={g || t("group.default")} right={<span className="soft" style={{ fontSize: 10 }}>{(q.data ?? []).filter((l) => l.group === g).length}</span>}>
+        <Window key={g || "_"} title={g || t("group.default")} right={<span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{(q.data ?? []).filter((l) => l.group === g).length}</span>}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {(q.data ?? []).filter((l) => l.group === g).map((l) => (
               <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderBottom: "1px dashed var(--line)", fontSize: 12 }}>
                 <div style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                  {l.favicon ? <img src={l.favicon} alt="" width={16} height={16} /> : <Icon name={l.icon ?? "link"} size={14} style={{ color: "var(--accent)" }} />}
+                  {l.favicon ? <img src={l.favicon} alt="" width={16} height={16} /> : <Icon name={l.icon ?? "link"} size={14} style={{ color: "var(--accent-ink)" }} />}
                 </div>
                 <a href={l.url} target="_blank" rel="noreferrer" style={{ flex: "0 1 auto", color: "var(--ink)", textDecoration: "none" }}>{l.title}</a>
-                <span className="soft" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11 }}>{l.url.replace(/^https?:\/\//, "")}</span>
+                <span className="soft" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--fs-meta)" }}>{l.url.replace(/^https?:\/\//, "")}</span>
                 <Button icon size="sm" variant="ghost" onClick={() => setEditing(l)} aria-label={t("action.edit")}><Icon name="edit" size={12} /></Button>
                 <Button icon size="sm" variant="ghost" onClick={() => setDeleting(l)} aria-label={t("action.delete")}><Icon name="trash" size={12} /></Button>
               </div>
@@ -88,7 +88,7 @@ function BookmarksPage(_p: PageProps) {
         <Modal open onClose={() => setDeleting(null)} title={t("modal.delete")} width={360}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ fontSize: 12 }}>{t("confirm.delete", { title: deleting.title })}</div>
-            <div className="soft" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deleting.url}</div>
+            <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deleting.url}</div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <Button onClick={() => setDeleting(null)}>{t("action.cancel")}</Button>
               <Button variant="primary" onClick={() => void remove(deleting)}><Icon name="trash" size={12} /> {t("action.delete")}</Button>
@@ -140,7 +140,7 @@ function EditModal({ link, groups, onClose, onSave }: { link: Partial<Link>; gro
             ))}
           </div>
         </Field>
-        {error ? <div role="alert" style={{ fontSize: 11, color: "var(--danger, #c33)" }}>{t("error.save", { message: error })}</div> : null}
+        {error ? <div role="alert" style={{ fontSize: "var(--fs-meta)", color: "var(--danger, #c33)" }}>{t("error.save", { message: error })}</div> : null}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <Button onClick={onClose}>{t("action.cancel")}</Button>
           <Button type="submit" variant="primary" disabled={busy}>{t("action.save")}</Button>

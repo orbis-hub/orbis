@@ -53,7 +53,7 @@ export default function EinkPage() {
     <Shell
       title={
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon name="tv" size={16} style={{ color: "var(--accent)" }} /> {t("eink.title")}
+          <Icon name="tv" size={16} style={{ color: "var(--accent-ink)" }} /> {t("eink.title")}
         </span>
       }
       actions={admin ? <Button size="sm" onClick={() => setCreating(true)}><Icon name="plus" size={14} /> {t("eink.display")}</Button> : null}
@@ -71,7 +71,7 @@ export default function EinkPage() {
                 key={d.id}
                 title={d.name}
                 right={
-                  <Chip style={{ fontSize: 10 }} tone={d.lastSeen && minute * 60_000 - new Date(d.lastSeen).getTime() < d.refreshMinutes * 2 * 60_000 ? "ok" : undefined}>
+                  <Chip style={{ fontSize: "var(--fs-meta)" }} tone={d.lastSeen && minute * 60_000 - new Date(d.lastSeen).getTime() < d.refreshMinutes * 2 * 60_000 ? "ok" : undefined}>
                     {d.lastSeen ? t("eink.seen", { time: new Date(d.lastSeen).toLocaleTimeString() }) : t("eink.neverConnected")}
                   </Chip>
                 }
@@ -107,7 +107,7 @@ export default function EinkPage() {
                       <Input type="number" min={1} max={1440} defaultValue={d.refreshMinutes} disabled={!admin} onBlur={(e) => Number(e.target.value) !== d.refreshMinutes && m.update.mutate({ id: d.id, refreshMinutes: Number(e.target.value) })} />
                     </Field>
                   </div>
-                  <div className="soft" style={{ fontSize: 11 }}>
+                  <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>
                     {t("eink.imageUrl")} <code style={{ overflowWrap: "anywhere" }}>{hub}/api/eink/{d.id}.bin</code>
                   </div>
                   {admin ? (

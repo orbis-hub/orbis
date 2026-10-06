@@ -13,7 +13,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <div style={{ padding: "5px 10px", borderBottom: "1.5px solid #5c4a62", background: "#291f32", fontSize: 13 }}>● ○ ○ {t("error.crashed")}</div>
           <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
             <div>{t("error.couldNotStart")}</div>
-            <pre style={{ fontSize: 11, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0, background: "#291f32", padding: 8, border: "1.5px solid #5c4a62" }}>
+            <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0, background: "#291f32", padding: 8, border: "1.5px solid #5c4a62" }}>
               {error.message}
               {error.digest ? `\n\n${t("error.digest", { digest: error.digest })}` : ""}
             </pre>

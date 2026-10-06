@@ -17,7 +17,7 @@ export default function AccountsPage() {
     <Shell
       title={
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon name="users" size={16} style={{ color: "var(--accent)" }} /> {t("accounts.title")}
+          <Icon name="users" size={16} style={{ color: "var(--accent-ink)" }} /> {t("accounts.title")}
         </span>
       }
     >
@@ -66,7 +66,7 @@ function Profile() {
       <Window title={t("accounts.you")}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <Icon name="avatar-circle" size={28} style={{ color: "var(--accent)" }} />
+            <Icon name="avatar-circle" size={28} style={{ color: "var(--accent-ink)" }} />
             <div>
               <div className="pixel" style={{ fontSize: 15 }}>{me?.name}</div>
               <RoleChip role={me?.role as Role} />
@@ -114,7 +114,7 @@ function Profile() {
 
 function RoleChip({ role }: { role: Role | undefined }) {
   const t = useT();
-  return <Chip tone={role === "owner" ? "accent" : role === "admin" ? "ok" : undefined} style={{ fontSize: 10 }}>{role ? t(`accounts.role.${role}`) : "?"}</Chip>;
+  return <Chip tone={role === "owner" ? "accent" : role === "admin" ? "ok" : undefined} style={{ fontSize: "var(--fs-meta)" }}>{role ? t(`accounts.role.${role}`) : "?"}</Chip>;
 }
 
 function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
@@ -132,7 +132,7 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Window
-        title={<span>{t("accounts.users")} <Chip style={{ fontSize: 10 }}>{users.data?.length ?? 0}</Chip></span>}
+        title={<span>{t("accounts.users")} <Chip style={{ fontSize: "var(--fs-meta)" }}>{users.data?.length ?? 0}</Chip></span>}
         right={
           <Button size="sm" onClick={() => setCreating(true)}>
             <Icon name="user-plus" size={12} /> {t("accounts.newUser")}
@@ -145,7 +145,7 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr className="pixel" style={{ fontSize: 11, color: "var(--ink-soft)", textAlign: "left" }}>
+              <tr className="pixel" style={{ fontSize: "var(--fs-meta)", color: "var(--ink-soft)", textAlign: "left" }}>
                 <th style={th}>{t("accounts.col.user")}</th>
                 <th style={th}>{t("accounts.col.role")}</th>
                 <th style={th}>{t("accounts.col.active")}</th>
@@ -161,10 +161,10 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
                   <tr key={u.id} style={{ opacity: u.disabled ? 0.55 : 1 }}>
                     <td style={td}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Icon name="avatar-circle" size={18} style={{ color: u.role === "owner" ? "var(--accent)" : "var(--ink-soft)" }} />
+                        <Icon name="avatar-circle" size={18} style={{ color: u.role === "owner" ? "var(--accent-ink)" : "var(--ink-soft)" }} />
                         <div>
                           <div>{u.name}{isMe ? <span className="soft"> {t("common.you")}</span> : null}</div>
-                          <div className="soft" style={{ fontSize: 10 }}>{t("accounts.since", { date: new Date(u.createdAt).toLocaleDateString() })}</div>
+                          <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("accounts.since", { date: new Date(u.createdAt).toLocaleDateString() })}</div>
                         </div>
                       </div>
                     </td>
@@ -172,7 +172,7 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
                       {u.role === "owner" ? (
                         <RoleChip role="owner" />
                       ) : (
-                        <Select value={u.role} disabled={locked || (isMe && !isOwner)} aria-label={t("accounts.roleOf", { name: u.name })} onChange={(e) => m.update.mutate({ id: u.id, role: e.target.value as Role }, { onError: err })} style={{ padding: "2px 24px 2px 6px", fontSize: 11, minWidth: 100 }}>
+                        <Select value={u.role} disabled={locked || (isMe && !isOwner)} aria-label={t("accounts.roleOf", { name: u.name })} onChange={(e) => m.update.mutate({ id: u.id, role: e.target.value as Role }, { onError: err })} style={{ padding: "2px 24px 2px 6px", fontSize: "var(--fs-meta)", minWidth: 100 }}>
                           <option value="member">{t("accounts.role.member")}</option>
                           <option value="admin" disabled={!isOwner}>{t("accounts.role.admin")}</option>
                         </Select>
@@ -201,7 +201,7 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
           </table>
         )}
       </Window>
-      <div className="soft" style={{ fontSize: 11, lineHeight: 1.7 }}>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", lineHeight: 1.7 }}>
         <b className="pixel">{t("accounts.roles.title")}</b> · <b>{t("accounts.role.owner")}</b>: {t("accounts.roles.owner")} · <b>{t("accounts.role.admin")}</b>: {t("accounts.roles.admin")} ·{" "}
         <b>{t("accounts.role.member")}</b>: {t("accounts.roles.member")}
         <br />

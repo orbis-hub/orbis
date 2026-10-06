@@ -2,6 +2,7 @@
   "settings.title": "einstellungen",
   "settings.saved": "gespeichert",
   "settings.save": "speichern",
+  "settings.readOnly": "das können nur admins ändern; frag den hub-besitzer.",
   "settings.hub.title": "hub",
   "settings.hub.name": "hub-name",
   "settings.hub.language": "sprache",

@@ -211,7 +211,7 @@ function RouteMap({ stop, routes, height }: { stop: Stop; routes: TripRoute[]; h
   return (
     <div style={{ position: "relative", height, isolation: "isolate", zIndex: 0, border: "1px solid var(--line)", background: "var(--paper-2)" }}>
       <div ref={el} style={{ position: "absolute", inset: 0 }} />
-      {state === "loading" ? <span className="soft pixel" style={{ position: "absolute", left: 8, top: 6, fontSize: 11 }}>{t("map.loading")}</span> : null}
+      {state === "loading" ? <span className="soft pixel" style={{ position: "absolute", left: 8, top: 6, fontSize: "var(--fs-meta)" }}>{t("map.loading")}</span> : null}
     </div>
   );
 }
@@ -356,7 +356,7 @@ function StopSearch({ onPick, initial, autoFocus }: { onPick: (s: Stop) => void;
       </div>
       {open && (res.length || note) ? (
         <div className="menu" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 60, padding: 2, maxHeight: 280, overflow: "auto" }}>
-          {near && !q.trim() ? <div className="soft" style={{ fontSize: 10, padding: "4px 8px" }}>{near.label}</div> : null}
+          {near && !q.trim() ? <div className="soft" style={{ fontSize: "var(--fs-meta)", padding: "4px 8px" }}>{near.label}</div> : null}
           {note && !res.length ? <div className="soft" style={{ fontSize: 12, padding: "6px 8px" }}>{note}</div> : null}
           {res.map((s) => {
             const label = placeLabel(s.place, { homeCountry, locale });
@@ -365,14 +365,14 @@ function StopSearch({ onPick, initial, autoFocus }: { onPick: (s: Stop) => void;
                 <Icon name="map-pin" size={12} style={{ marginTop: 3 }} />
                 <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                  <span className="soft" style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {label || (s.place === undefined && s.lat != null ? "…" : "")}
                     {s.distanceKm != null ? `${label ? " · " : ""}${t("search.distance", { distance: formatKm(s.distanceKm) })}` : ""}
                   </span>
                 </span>
                 {s.products.length ? (
                   <span style={{ display: "flex", gap: 3, marginTop: 2, flexShrink: 0 }}>
-                    {s.products.slice(0, 3).map((p) => <Chip key={p} style={{ fontSize: 9, padding: "0 4px", lineHeight: "14px" }}>{productName(t, p)}</Chip>)}
+                    {s.products.slice(0, 3).map((p) => <Chip key={p} style={{ fontSize: "var(--fs-min)", padding: "0 4px", lineHeight: "14px" }}>{productName(t, p)}</Chip>)}
                   </span>
                 ) : null}
               </button>
@@ -413,22 +413,22 @@ function DepRow({ d, now, dense, route, onToggle }: { d: Departure; now: number;
       onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(d); } } : undefined}
       aria-pressed={clickable ? !!route : undefined}
       title={clickable ? t("map.route") : undefined}
-      style={{ display: "flex", alignItems: "center", gap: 8, padding: dense ? "2px 0" : "5px 0", borderBottom: "1px dashed var(--line)", opacity: d.cancelled ? 0.5 : 1, background: route ? "var(--paper-2)" : undefined, cursor: clickable ? "pointer" : undefined }}
+      style={{ display: "flex", alignItems: "center", gap: dense ? 6 : 8, padding: dense ? "2px 0" : "5px 0", borderBottom: "1px dashed var(--line)", opacity: d.cancelled ? 0.5 : 1, background: route ? "var(--paper-2)" : undefined, cursor: clickable ? "pointer" : undefined, minWidth: 0 }}
     >
-      <span className="pixel" style={{ minWidth: 34, fontSize: dense ? 12 : 14, textAlign: "center", border: "1.5px solid var(--line)", borderLeft: `4px solid ${d.color}`, padding: "0 4px", background: "var(--paper-2)" }}>{d.line}</span>
+      <span className="pixel" style={{ minWidth: dense ? 28 : 34, flex: "none", fontSize: dense ? 12 : 14, textAlign: "center", border: "1.5px solid var(--line)", borderLeft: `4px solid ${d.color}`, padding: "0 4px", background: "var(--paper-2)", whiteSpace: "nowrap" }}>{d.line}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: dense ? 12 : 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: d.cancelled ? "line-through" : undefined }}>{d.direction}</div>
         {!dense ? (
-          <div className="soft" style={{ fontSize: 10, display: "flex", gap: 8 }}>
+          <div className="soft" style={{ fontSize: "var(--fs-meta)", display: "flex", gap: 8 }}>
             {d.platform ? <span>{t("platform", { platform: d.platform })}</span> : null}
             {d.cancelled ? <span style={{ color: "var(--dnd)" }}>{t("cancelled")}</span> : null}
             {route?.status === "loading" ? <span>{t("map.routeLoading")}</span> : route?.status === "error" ? <span style={{ color: "var(--dnd)" }}>{t("map.routeError")}</span> : route?.status === "ok" ? <span style={{ color: route.route.color }}>● {t("map.stops", { count: route.route.stopovers.length })}</span> : null}
           </div>
         ) : null}
       </div>
-      <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-        <div style={{ fontSize: dense ? 13 : 15, fontWeight: 600, color: d.cancelled ? "var(--dnd)" : m !== null && m <= 1 ? "var(--accent)" : undefined }}>{d.cancelled ? "✕" : m === null ? "–" : m <= 0 ? t("now") : `${m}'`}</div>
-        {d.delayMin ? <div style={{ fontSize: 10, color: d.delayMin > 0 ? "var(--dnd)" : "var(--ok)" }}>{dense ? (d.delayMin > 0 ? `+${d.delayMin}` : d.delayMin) : d.delayMin > 0 ? t("delay", { count: d.delayMin }) : t("early", { count: d.delayMin })}</div> : null}
+      <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", flex: "none" }}>
+        <div style={{ fontSize: dense ? 13 : 15, fontWeight: 600, color: d.cancelled ? "var(--dnd)" : m !== null && m <= 1 ? "var(--accent-ink)" : undefined }}>{d.cancelled ? "✕" : m === null ? "–" : m <= 0 ? t("now") : `${m}'`}</div>
+        {d.delayMin ? <div style={{ fontSize: "var(--fs-meta)", color: d.delayMin > 0 ? "var(--dnd)" : "var(--ok)" }}>{dense ? (d.delayMin > 0 ? `+${d.delayMin}` : d.delayMin) : d.delayMin > 0 ? t("delay", { count: d.delayMin }) : t("early", { count: d.delayMin })}</div> : null}
       </div>
     </div>
   );
@@ -452,17 +452,23 @@ function DeparturesWidget({ config, size, instance }: WidgetProps<Config>) {
   if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("loading")}</span>;
   if (!q.data || "error" in q.data) return <Empty icon="warning-diamond" title={t("noData")}>{errorText(q.error as QueryError, q.data)}</Empty>;
   const deps = filterDeps(q.data.departures, config, now);
-  const dense = size.height < 160;
+  // compact rows (no platform line, smaller type) when the widget is shorter than 3 rows or narrower than 3 columns
+  const narrow = size.width > 0 && size.width < 200;
+  const dense = size.height < 160 || narrow;
   const list = (
-    <div className="scroll-y" style={{ flex: 1, minHeight: 0 }}>
+    <div className="scroll-y" style={{ flex: 1, minHeight: 0, overflowX: "hidden" }}>
       {deps.length === 0 ? <div className="soft" style={{ fontSize: 12 }}>{t("nothingSoon")}</div> : deps.map((d) => <DepRow key={d.tripId} d={d} now={now} dense={dense} route={withMap ? routes[d.tripId] : undefined} onToggle={withMap ? toggle : undefined} />)}
     </div>
   );
+  const stopLabel = config.stopName ?? config.stopId;
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
-      <div className="soft" style={{ fontSize: 11, display: "flex", justifyContent: "space-between" }}>
-        <span><Icon name="map-pin" size={10} /> {config.stopName ?? config.stopId}</span>
-        {config.walkMinutes ? <span>{t("walk", { count: config.walkMinutes })}</span> : null}
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", display: "flex", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }} title={stopLabel}>
+          <Icon name="map-pin" size={10} style={{ flex: "none" }} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stopLabel}</span>
+        </span>
+        {config.walkMinutes && !narrow ? <span style={{ flex: "none", whiteSpace: "nowrap" }}>{t("walk", { count: config.walkMinutes })}</span> : null}
       </div>
       {withMap && stop ? (
         <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 8 }}>
@@ -528,10 +534,10 @@ function DeparturesPage(_p: PageProps) {
             <span className="dots"><i /><i /><i /></span>
             <span className="title" style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
               <span>{stop.name}</span>
-              {stop.place ? <span className="soft" style={{ fontSize: 10, fontWeight: 400 }}>{placeLabel(stop.place, { locale })}</span> : null}
+              {stop.place ? <span className="soft" style={{ fontSize: "var(--fs-meta)", fontWeight: 400 }}>{placeLabel(stop.place, { locale })}</span> : null}
             </span>
             <span style={{ display: "flex", gap: 6, alignItems: "center", marginLeft: "auto" }}>
-              {board ? <Chip style={{ fontSize: 10 }}>{t("updated", { time: new Date(board.fetchedAt).toLocaleTimeString(locale) })}</Chip> : null}
+              {board ? <Chip style={{ fontSize: "var(--fs-meta)" }}>{t("updated", { time: new Date(board.fetchedAt).toLocaleTimeString(locale) })}</Chip> : null}
               {drawn.length ? <Button size="sm" onClick={clear}>{t("map.clearRoutes")}</Button> : null}
               <Button size="sm" aria-pressed={showMap} onClick={() => setShowMap((v) => !v)}><Icon name="map" size={12} /> {showMap ? t("map.hide") : t("map.show")}</Button>
             </span>
@@ -540,7 +546,7 @@ function DeparturesPage(_p: PageProps) {
             {showMap ? (
               <div>
                 <RouteMap stop={stop} routes={drawn} height={320} />
-                <div className="soft" style={{ fontSize: 10, marginTop: 4 }}>{t("map.routeHint")}</div>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)", marginTop: 4 }}>{t("map.routeHint")}</div>
               </div>
             ) : null}
             <div>
@@ -559,7 +565,7 @@ function DeparturesPage(_p: PageProps) {
       ) : (
         <Empty icon="bus" title={t("page.searchTitle")}>{t("page.searchHint")}</Empty>
       )}
-      <p className="soft" style={{ fontSize: 11 }}>{t("page.footer")}</p>
+      <p className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("page.footer")}</p>
     </div>
   );
 }

@@ -21,13 +21,13 @@ export default function ModulesPage() {
     <Shell
       title={
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon name="blocks" size={16} style={{ color: "var(--accent)" }} /> {t("modules.title")}
+          <Icon name="blocks" size={16} style={{ color: "var(--accent-ink)" }} /> {t("modules.title")}
         </span>
       }
     >
       <Tabs className="mb-4">
         <Tab active={tab === "installed"} onClick={() => setTab("installed")}>
-          {t("modules.tab.installed")} <Chip style={{ fontSize: 10 }}>{modules.data?.length ?? 0}</Chip>
+          {t("modules.tab.installed")} <Chip style={{ fontSize: "var(--fs-meta)" }}>{modules.data?.length ?? 0}</Chip>
         </Tab>
         <Tab active={tab === "store"} onClick={() => setTab("store")}>
           {t("modules.tab.store")}
@@ -90,9 +90,9 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
                 <Chip tone="ok">{t("modules.status.running")}</Chip>
               ) : null}
             </div>
-            {mod.error ? <div style={{ color: "var(--dnd)", fontSize: 11, overflowWrap: "anywhere" }}>{mod.error}</div> : null}
+            {mod.error ? <div style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)", overflowWrap: "anywhere" }}>{mod.error}</div> : null}
             {!mod.error && mod.status && mod.status.state !== "ok" ? (
-              <div className="win win-dashed win-flat" style={{ padding: "6px 8px", fontSize: 11, display: "flex", gap: 8, alignItems: "center", flexDirection: "row", borderColor: mod.status.state === "error" ? "var(--dnd)" : "var(--idle)" }}>
+              <div className="win win-dashed win-flat" style={{ padding: "6px 8px", fontSize: "var(--fs-meta)", display: "flex", gap: 8, alignItems: "center", flexDirection: "row", borderColor: mod.status.state === "error" ? "var(--dnd)" : "var(--idle)" }}>
                 <Icon name="warning-diamond" size={12} style={{ color: mod.status.state === "error" ? "var(--dnd)" : "var(--idle)", flex: "none" }} />
                 <span style={{ flex: 1 }}>{mod.status.message ?? t("modules.status.attention")}</span>
                 {mod.status.action ? (
@@ -105,7 +105,7 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
               </div>
             ) : null}
             {mod.manifest.permissions.length ? (
-              <div className="soft" style={{ fontSize: 11 }}>
+              <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>
                 {t("modules.permissions", { list: mod.manifest.permissions.join(", ") })}
               </div>
             ) : null}
@@ -164,12 +164,12 @@ function DepsLine({ mod, all }: { mod: InstalledModule; all: InstalledModule[] }
     const tone = st === "ok" ? "ok" : hard ? "bad" : undefined;
     return (
       <span key={id} style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
-        <Chip tone={tone} style={{ fontSize: 10 }} title={t(`modules.deps.${st}`)}>
+        <Chip tone={tone} style={{ fontSize: "var(--fs-meta)" }} title={t(`modules.deps.${st}`)}>
           {id}
           {st === "ok" ? " ✓" : st === "missing" ? "" : ` (${t(`modules.deps.${st}`)})`}
         </Chip>
         {st === "missing" ? (
-          <Button size="sm" variant="ghost" style={{ padding: "0 6px", fontSize: 10 }} loading={m.install.isPending && m.install.variables?.id === id} onClick={() => m.install.mutate({ id }, { onSuccess: () => toast(t("modules.installed", { name: id }), "ok"), onError: (e) => toast(t("modules.installError", { name: id, error: e.message }), "bad") })}>
+          <Button size="sm" variant="ghost" style={{ padding: "0 6px", fontSize: "var(--fs-meta)" }} loading={m.install.isPending && m.install.variables?.id === id} onClick={() => m.install.mutate({ id }, { onSuccess: () => toast(t("modules.installed", { name: id }), "ok"), onError: (e) => toast(t("modules.installError", { name: id, error: e.message }), "bad") })}>
             {t("common.install")}
           </Button>
         ) : null}
@@ -177,7 +177,7 @@ function DepsLine({ mod, all }: { mod: InstalledModule; all: InstalledModule[] }
     );
   };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "var(--fs-meta)" }}>
       {deps.length ? (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
           <span className="soft">{t("modules.deps.needs")}</span>
@@ -217,12 +217,12 @@ function Store() {
         <Button size="sm" onClick={() => setRefresh((v) => !v)} loading={reg.isFetching}>
           <Icon name="reload" size={12} /> {t("common.refresh")}
         </Button>
-        <span className="soft" style={{ fontSize: 11 }}>
+        <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>
           {t("modules.store.registries", { count: reg.data?.registries.length ?? 0 })}
         </span>
       </div>
       {reg.data?.errors.map((e) => (
-        <div key={e.url} className="win win-dashed win-flat" style={{ padding: "6px 10px", fontSize: 11, color: "var(--idle)" }}>
+        <div key={e.url} className="win win-dashed win-flat" style={{ padding: "6px 10px", fontSize: "var(--fs-meta)", color: "var(--idle)" }}>
           <Icon name="warning-diamond" size={12} /> {e.url}: {e.error}
         </div>
       ))}
@@ -254,7 +254,7 @@ function Store() {
             <Icon name="download" size={12} /> {t("common.install")}
           </Button>
         </form>
-        <p className="soft" style={{ fontSize: 11, marginTop: 8 }}>
+        <p className="soft" style={{ fontSize: "var(--fs-meta)", marginTop: 8 }}>
           {t("modules.store.trust")} {t("modules.store.trustCovers")} <b>{t("modules.store.trustNotCovered")}</b>
         </p>
       </Window>
@@ -284,7 +284,7 @@ function StoreCard({ entry, busy, onInstall }: { entry: RegistryModule; busy: bo
           ))}
         </div>
         {entry.deps?.length || entry.softDeps?.length ? (
-          <div className="soft" style={{ fontSize: 11 }}>
+          <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>
             {entry.deps?.length ? <span>{t("modules.store.needs", { deps: entry.deps.join(", ") })}</span> : null}
             {entry.softDeps?.length ? <span>{t("modules.store.worksWith", { deps: entry.softDeps.join(", ") })}</span> : null}
           </div>
@@ -298,7 +298,7 @@ function StoreCard({ entry, busy, onInstall }: { entry: RegistryModule; busy: bo
             </Button>
           )}
           {entry.repo ? (
-            <a href={entry.repo.replace(/^github:/, "https://github.com/")} target="_blank" rel="noreferrer" style={{ fontSize: 11 }}>
+            <a href={entry.repo.replace(/^github:/, "https://github.com/")} target="_blank" rel="noreferrer" style={{ fontSize: "var(--fs-meta)" }}>
               {t("modules.store.source")}
             </a>
           ) : null}

@@ -39,13 +39,17 @@ function WeekWidget({ config, size }: WidgetProps<WeekConfig>) {
   const todayIdx = w.days.indexOf(new Date().toLocaleDateString("sv-SE"));
   const series = [{ values: w.thisWeek[metric], label: t("series.thisWeek") }, ...(config.compare !== false ? [{ values: w.lastWeek[metric], label: t("series.lastWeek"), dashed: true }] : [])];
   const diff = w.totals.thisWeek[metric] - w.totals.lastWeek[metric];
+  const vs = config.compare !== false && w.totals.lastWeek[metric] ? t("week.vsLastWeek", { diff: `${diff >= 0 ? "+" : "−"}${fmtMetric(metric, Math.abs(diff), imperial)}` }) : null;
+  // size is 0×0 until the frame has measured itself; until then assume the 3×3 default (≈140px high)
+  const h = size.height > 0 ? size.height : 140;
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span className="pixel" style={{ fontSize: size.height < 150 ? 16 : 20, fontWeight: 600 }}>{fmtMetric(metric, w.totals.thisWeek[metric], imperial)}</span>
-        {config.compare !== false && w.totals.lastWeek[metric] ? <span className="soft" style={{ fontSize: 10, color: diff >= 0 ? "var(--ok)" : undefined }}>{t("week.vsLastWeek", { diff: `${diff >= 0 ? "+" : "−"}${fmtMetric(metric, Math.abs(diff), imperial)}` })}</span> : null}
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, minWidth: 0, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+        <span className="pixel" style={{ fontSize: h < 150 ? 16 : 20, fontWeight: 600, whiteSpace: "nowrap", flex: "none" }}>{fmtMetric(metric, w.totals.thisWeek[metric], imperial)}</span>
+        {vs ? <span className="soft" style={{ fontSize: "var(--fs-meta)", color: diff >= 0 ? "var(--ok-ink)" : undefined, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={vs}>{vs}</span> : null}
       </div>
-      <Bars series={series} labels={w.days.map((d) => new Date(d).toLocaleDateString(locale, { weekday: "narrow" }))} highlight={todayIdx} height={Math.max(30, size.height - 70)} format={(v) => fmtMetric(metric, v, imperial)} />
+      {/* the bars take what is left under the number line (≈24px) and above the weekday labels (≈19px) */}
+      <Bars series={series} labels={w.days.map((d) => new Date(d).toLocaleDateString(locale, { weekday: "narrow" }))} highlight={todayIdx} height={Math.max(30, h - 70)} format={(v) => fmtMetric(metric, v, imperial)} />
     </div>
   );
 }
@@ -55,15 +59,15 @@ function ActivityRow({ a, imperial, dense, onDelete }: { a: Activity; imperial: 
   const { locale } = useModule();
   const pace = fmtPace(a.distance_m, a.duration_s, a.type, imperial);
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", padding: dense ? "3px 0" : "6px 0", borderBottom: "1px dashed var(--line)" }}>
-      <Icon name={typeIcon(a.type)} size={dense ? 12 : 16} />
+    <div style={{ display: "flex", gap: 8, alignItems: "center", padding: dense ? "3px 0" : "6px 0", borderBottom: "1px dashed var(--line)", minWidth: 0 }}>
+      <Icon name={typeIcon(a.type)} size={dense ? 12 : 16} style={{ flex: "none" }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: dense ? 12 : 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name ?? a.type}</div>
-        <div className="soft" style={{ fontSize: 10 }}>{new Date(a.start).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })} · {a.type}{a.source !== "strava" ? ` · ${a.source}` : ""}</div>
+        <div style={{ fontSize: dense ? 12 : 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name ?? a.type}>{a.name ?? a.type}</div>
+        <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{new Date(a.start).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })} · {a.type}{a.source !== "strava" ? ` · ${a.source}` : ""}</div>
       </div>
-      <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+      <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", flex: "none", whiteSpace: "nowrap" }}>
         <div style={{ fontSize: dense ? 12 : 14, fontWeight: 600 }}>{a.distance_m ? fmtDist(a.distance_m, imperial) : fmtDur(a.duration_s)}</div>
-        <div className="soft" style={{ fontSize: 10 }}>{a.distance_m ? fmtDur(a.duration_s) : a.calories ? `${Math.round(a.calories)} kcal` : ""}{pace ? ` · ${pace}` : ""}</div>
+        <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{a.distance_m ? fmtDur(a.duration_s) : a.calories ? `${Math.round(a.calories)} kcal` : ""}{pace ? ` · ${pace}` : ""}</div>
       </div>
       {onDelete ? <Button size="sm" variant="ghost" onClick={onDelete} aria-label={t("action.delete")}><Icon name="trash" size={12} /></Button> : null}
     </div>
@@ -76,7 +80,7 @@ function RecentWidget({ config, size }: WidgetProps<RecentConfig>) {
   const q = useModuleQuery<Activity[]>(`/activities?limit=${config.count ?? 5}${config.types?.length ? `&types=${encodeURIComponent(config.types.join(","))}` : ""}`, { refetchOn: ["changed"] });
   if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("loading")}</span>;
   if (!q.data?.length) return <Empty icon="heart" title={t("widget.recent.empty")} />;
-  return <div className="scroll-y" style={{ height: "100%" }}>{q.data.map((a) => <ActivityRow key={a.id} a={a} imperial={st?.units === "imperial"} dense={size.height < 200} />)}</div>;
+  return <div className="scroll-y" style={{ height: "100%", overflowX: "hidden", minWidth: 0 }}>{q.data.map((a) => <ActivityRow key={a.id} a={a} imperial={st?.units === "imperial"} dense={size.height < 200} />)}</div>;
 }
 
 function FitnessPage(_p: PageProps) {
@@ -159,7 +163,7 @@ function FitnessPage(_p: PageProps) {
       </div>
 
       <div className="win">
-        <div className="win-title"><span className="dots"><i /><i /><i /></span><span className="title">{t("page.strava")}</span>{st.data?.strava.connected ? <Chip tone="ok" style={{ marginLeft: "auto", fontSize: 10 }}>{t("strava.connected")}</Chip> : null}</div>
+        <div className="win-title"><span className="dots"><i /><i /><i /></span><span className="title">{t("page.strava")}</span>{st.data?.strava.connected ? <Chip tone="ok" style={{ marginLeft: "auto", fontSize: "var(--fs-min)" }}>{t("strava.connected")}</Chip> : null}</div>
         <div className="win-body" style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
           {st.data?.strava.connected ? (
             <>
@@ -191,7 +195,7 @@ function FitnessPage(_p: PageProps) {
             <div key={s.id} className="win" style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <b>{s.name}</b>
-                <span className="soft" style={{ fontSize: 10 }}>{t("source.count", { count: s.count })}{s.last_at ? ` · ${t("source.last", { time: new Date(s.last_at).toLocaleString(locale) })}` : ""}</span>
+                <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("source.count", { count: s.count })}{s.last_at ? ` · ${t("source.last", { time: new Date(s.last_at).toLocaleString(locale) })}` : ""}</span>
                 <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
                   <Button size="sm" variant="ghost" onClick={() => setShowSecret(showSecret === s.id ? null : s.id)}>{showSecret === s.id ? t("action.hide") : t("action.showSetup")}</Button>
                   <Button size="sm" variant="ghost" onClick={() => void rotate(s.id)} title={t("action.rotate")}><Icon name="reload" size={12} /></Button>
@@ -208,7 +212,7 @@ function FitnessPage(_p: PageProps) {
                   <div className="soft">
                     <b>{t("setup.shortcut.title")}</b> <Kbd>Find Workouts</Kbd> {t("setup.shortcut.sort")} → <Kbd>Repeat with Each</Kbd> → <Kbd>Get Contents of URL</Kbd> {t("setup.shortcut.rest")}
                   </div>
-                  <pre className="win" style={{ fontSize: 11, padding: 8, overflow: "auto", margin: 0 }}>{`curl -X POST ${base}/api/m/fitness/ingest/${s.id} \\
+                  <pre className="win" style={{ fontSize: "var(--fs-meta)", padding: 8, overflow: "auto", margin: 0 }}>{`curl -X POST ${base}/api/m/fitness/ingest/${s.id} \\
   -H "Authorization: Bearer ${s.secret ?? secrets[s.id] ?? "<secret>"}" -H "content-type: application/json" \\
   -d '{"type":"run","start":"${new Date().toISOString()}","duration":32,"distanceKm":5.2,"calories":340}'`}</pre>
                 </div>
@@ -235,7 +239,7 @@ function FitnessPage(_p: PageProps) {
 function Stat({ label, value, soft }: { label: string; value: string; soft?: boolean }) {
   return (
     <div>
-      <div className="soft" style={{ fontSize: 10 }}>{label}</div>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{label}</div>
       <div className="pixel" style={{ fontSize: soft ? 16 : 22, opacity: soft ? 0.8 : 1 }}>{value}</div>
     </div>
   );

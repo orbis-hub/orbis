@@ -31,7 +31,7 @@ function ModulePageView() {
 
   const title = mod ? (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <Icon name={page?.icon ?? mod.manifest.icon ?? "square"} size={16} style={{ color: "var(--accent)" }} />
+      <Icon name={page?.icon ?? mod.manifest.icon ?? "square"} size={16} style={{ color: "var(--accent-ink)" }} />
       {mod.manifest.name}
       {page && mod.manifest.pages.length === 1 && page.name !== mod.manifest.name ? <span className="soft">· {page.name}</span> : null}
     </span>

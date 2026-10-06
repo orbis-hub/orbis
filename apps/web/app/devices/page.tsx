@@ -24,7 +24,7 @@ export default function DevicesPage() {
     <Shell
       title={
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon name="wifi" size={16} style={{ color: "var(--accent)" }} /> {t("devices.title")}
+          <Icon name="wifi" size={16} style={{ color: "var(--accent-ink)" }} /> {t("devices.title")}
         </span>
       }
       actions={
@@ -36,7 +36,7 @@ export default function DevicesPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Input type="search" placeholder={t("devices.filter")} aria-label={t("devices.filter")} value={filter} onChange={(e) => setFilter(e.target.value)} style={{ maxWidth: 260 }} />
-          <span className="soft" style={{ fontSize: 11 }}>
+          <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>
             {t("devices.count", { count: list.length })} · {t("devices.onlineCount", { count: list.filter((d) => d.online).length })}
           </span>
         </div>
@@ -48,7 +48,7 @@ export default function DevicesPage() {
           <Window tight>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr className="pixel" style={{ fontSize: 11, color: "var(--ink-soft)", textAlign: "left" }}>
+                <tr className="pixel" style={{ fontSize: "var(--fs-meta)", color: "var(--ink-soft)", textAlign: "left" }}>
                   <th style={th}></th>
                   <th style={th}>{t("devices.col.device")}</th>
                   <th style={th}>{t("devices.col.ip")}</th>
@@ -133,27 +133,27 @@ function DeviceRow({ d, claimable }: { d: Device; claimable: Array<{ id: string;
                 <Icon name="edit" size={11} />
               </button>
             </div>
-            {d.hostname && d.label ? <div className="soft" style={{ fontSize: 11 }}>{d.hostname}</div> : null}
+            {d.hostname && d.label ? <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{d.hostname}</div> : null}
           </div>
         )}
       </td>
       <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{d.ip}</td>
       <td style={{ ...td, display: "var(--col-wide, table-cell)" }}>
-        <div style={{ fontSize: 11 }}>{d.mac ?? "—"}</div>
-        <div className="soft" style={{ fontSize: 11 }}>{d.vendor ?? ""}</div>
+        <div style={{ fontSize: "var(--fs-meta)" }}>{d.mac ?? "—"}</div>
+        <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{d.vendor ?? ""}</div>
       </td>
       <td style={{ ...td, display: "var(--col-wide, table-cell)" }}>
         <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
           {d.services.slice(0, 4).map((s, i) => (
-            <Chip key={i} title={`${s.kind} ${s.name}${s.port ? `:${s.port}` : ""}`} style={{ fontSize: 10 }}>
+            <Chip key={i} title={`${s.kind} ${s.name}${s.port ? `:${s.port}` : ""}`} style={{ fontSize: "var(--fs-meta)" }}>
               {s.name.replace(/^_/, "").replace(/\._tcp.*$/, "")}
             </Chip>
           ))}
-          {d.services.length > 4 ? <Chip style={{ fontSize: 10 }}>+{d.services.length - 4}</Chip> : null}
+          {d.services.length > 4 ? <Chip style={{ fontSize: "var(--fs-meta)" }}>+{d.services.length - 4}</Chip> : null}
         </div>
       </td>
       <td style={td}>
-        <Select value={d.claimedBy ?? ""} aria-label={`${t("devices.col.module")}: ${name}`} onChange={(e) => m.update.mutate({ id: d.id, claimedBy: e.target.value || null }, { onError: (err) => toast(err.message, "bad") })} style={{ padding: "2px 24px 2px 6px", fontSize: 11, minWidth: 110 }}>
+        <Select value={d.claimedBy ?? ""} aria-label={`${t("devices.col.module")}: ${name}`} onChange={(e) => m.update.mutate({ id: d.id, claimedBy: e.target.value || null }, { onError: (err) => toast(err.message, "bad") })} style={{ padding: "2px 24px 2px 6px", fontSize: "var(--fs-meta)", minWidth: 110 }}>
           <option value="">{t("devices.unassigned")}</option>
           {claimable.map((c) => (
             <option key={c.id} value={c.id}>

@@ -15,6 +15,10 @@ function withAlpha(hex: string, alpha: number) {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 const targetOf = (h: HabitWithStats) => (h.kind === "count" ? h.target_per_day : 1);
+/** gap between grid cells for a cell size (8px → 2, 14px → 3) */
+const gapFor = (cell: number) => Math.max(1, Math.round(cell / 5));
+const MIN_CELL = 8;
+const MAX_CELL = 14;
 
 function useHabits(days = 400) {
   return useModuleQuery<HabitWithStats[]>(`/habits?days=${days}`, { refetchOn: ["changed"] });
@@ -39,9 +43,9 @@ function HabitGrid({ h, weeks, cell = 10, onToggle }: { h: HabitWithStats; weeks
     }
     cols.push(col);
   }
-  const gap = Math.max(1, Math.round(cell / 5));
+  const gap = gapFor(cell);
   return (
-    <div style={{ display: "flex", gap, overflow: "hidden" }}>
+    <div style={{ display: "flex", gap, overflow: "hidden", flex: "none" }}>
       {cols.map((col, wi) => (
         <div key={wi} style={{ display: "flex", flexDirection: "column", gap }}>
           {col.map((d) => {
@@ -74,17 +78,18 @@ function TodayControl({ h, dense, onDone }: { h: HabitWithStats; dense?: boolean
   const t = useT();
   const call = (path: string) => void api(path, { method: "POST", json: { habitId: h.id } }).then(onDone).catch(() => undefined);
   if (h.kind !== "count") {
-    return <Checkbox checked={h.doneToday} onChange={() => call("/toggle")} label={<span style={{ fontSize: 13, textDecoration: h.doneToday ? "line-through" : undefined, opacity: h.doneToday ? 0.6 : 1 }}>{h.name}</span>} />;
+    // the label truncates instead of wrapping under the box (.habit-check rules in TodayWidget)
+    return <Checkbox className="habit-check" checked={h.doneToday} onChange={() => call("/toggle")} label={<span title={h.name} style={{ display: "block", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: h.doneToday ? "line-through" : undefined, opacity: h.doneToday ? 0.6 : 1 }}>{h.name}</span>} />;
   }
   const ratio = Math.min(1, h.todayCount / h.target_per_day);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
       <Icon name={h.doneToday ? "check" : "plus"} size={12} className={h.doneToday ? undefined : "soft"} style={{ color: h.doneToday ? h.color : undefined, flex: "none" }} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ fontSize: 13, opacity: h.doneToday ? 0.6 : 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
+        <span title={h.name} style={{ fontSize: 13, opacity: h.doneToday ? 0.6 : 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
         {!dense ? <div className="progress" style={{ height: 4 }}><i style={{ width: `${ratio * 100}%`, background: h.color }} /></div> : null}
       </div>
-      <span className="soft" style={{ fontSize: 11, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{t("widget.today.count", { count: h.todayCount, target: h.target_per_day })}</span>
+      <span className="soft" style={{ fontSize: "var(--fs-meta)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{t("widget.today.count", { count: h.todayCount, target: h.target_per_day })}</span>
       <Button icon size="sm" variant={h.doneToday ? "ghost" : "default"} aria-label={t("common.plusOne")} title={t("common.plusOne")} onClick={() => call("/increment")}><Icon name="plus" size={12} /></Button>
     </div>
   );
@@ -99,18 +104,19 @@ function TodayWidget({ config, size }: WidgetProps<{ showStreak?: boolean }>) {
   const done = list.filter((h) => h.doneToday).length;
   const dense = size.height < 140;
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
-      <div className="scroll-y" style={{ flex: 1, minHeight: 0 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+      {/* the checkbox takes the free width and its label truncates; the streak chip keeps its size */}
+      <style>{`.habit-check{flex:1;min-width:0}.habit-check>span{flex:1;min-width:0}`}</style>
+      <div className="scroll-y" style={{ flex: 1, minHeight: 0, overflowX: "hidden" }}>
         {list.map((h) => (
-          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: dense ? "1px 0" : "3px 0", borderBottom: "1px dashed var(--line)" }}>
+          <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: dense ? "1px 0" : "3px 0", borderBottom: "1px dashed var(--line)", minWidth: 0 }}>
             <TodayControl h={h} dense={dense} onDone={() => void q.refetch()} />
-            {h.kind !== "count" ? <span style={{ flex: 1 }} /> : null}
-            {config.showStreak !== false && h.streak > 0 ? <Chip style={{ fontSize: 10, borderColor: h.color }}>{t("common.streakShort", { count: h.streak })}</Chip> : null}
+            {config.showStreak !== false && h.streak > 0 ? <Chip style={{ fontSize: "var(--fs-meta)", borderColor: h.color, flex: "none" }}>{t("common.streakShort", { count: h.streak })}</Chip> : null}
           </div>
         ))}
       </div>
       <div className="progress"><i style={{ width: `${(done / list.length) * 100}%` }} /></div>
-      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{t("widget.today.progress", { done, total: list.length })}</div>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", textAlign: "right" }}>{t("widget.today.progress", { done, total: list.length })}</div>
     </div>
   );
 }
@@ -121,17 +127,62 @@ function GridWidget({ config, size }: WidgetProps<{ habitId?: string; weeks?: nu
   const q = useHabits();
   const h = (config.habitId ? q.data?.find((x) => x.id === config.habitId) : q.data?.[0]) ?? null;
   if (!h) return <Empty icon="check-double" title={q.loading ? t("common.loading") : t("widget.grid.none")} />;
-  const weeks = config.weeks ?? 12;
-  const cell = Math.max(5, Math.min(14, Math.floor((size.width - 8) / weeks) - 2, Math.floor((size.height - 40) / 7) - 2));
-  return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-        <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><i style={{ width: 10, height: 10, background: h.color, display: "inline-block" }} /> {h.name}</span>
-        <span className="soft">{t("widget.grid.stats", { streak: h.streak, last30: h.last30 })}</span>
+  const maxWeeks = config.weeks ?? 12;
+  // size is 0×0 before the frame has measured itself; assume the 4×2 default (≈328×70) until then
+  const w = size.width > 0 ? size.width : 328;
+  const hgt = size.height > 0 ? size.height : 70;
+  // header above the grid when 7 rows of 8px cells still fit under it, beside it when the widget is wide but short
+  // (the 4×2 default), and only as a tooltip when it is both short and narrow
+  const minGrid = 7 * MIN_CELL + 6 * gapFor(MIN_CELL);
+  const header: "top" | "side" | "none" = hgt - GRID_HEADER >= minGrid ? "top" : w >= 2 * GRID_SIDE ? "side" : "none";
+  const { cell, weeks } = gridFit(header === "side" ? w - GRID_SIDE - 10 : w, header === "top" ? hgt - GRID_HEADER : hgt, maxWeeks);
+  const stats = t("widget.grid.stats", { streak: h.streak, last30: h.last30 });
+  const grid = <HabitGrid h={h} weeks={weeks} cell={cell} onToggle={(day) => void api("/toggle", { method: "POST", json: { habitId: h.id, day } }).then(() => q.refetch())} />;
+  const swatch = <i style={{ width: 10, height: 10, background: h.color, display: "inline-block", flex: "none" }} />;
+  if (header === "side") {
+    return (
+      <div style={{ height: "100%", display: "flex", gap: 10, alignItems: "center", minWidth: 0 }} title={`${h.name} · ${stats}`}>
+        <div style={{ flex: `0 1 ${GRID_SIDE}px`, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
+          <span style={{ display: "flex", gap: 6, alignItems: "center", minWidth: 0 }}>{swatch}<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span></span>
+          <span className="soft" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stats}</span>
+        </div>
+        {grid}
       </div>
-      <HabitGrid h={h} weeks={weeks} cell={cell} onToggle={(day) => void api("/toggle", { method: "POST", json: { habitId: h.id, day } }).then(() => q.refetch())} />
+    );
+  }
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, justifyContent: "center", minWidth: 0 }} title={header === "none" ? `${h.name} · ${stats}` : undefined}>
+      {header === "top" ? (
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, minWidth: 0 }}>
+          <span style={{ display: "flex", gap: 6, alignItems: "center", minWidth: 0 }}>{swatch}<span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span></span>
+          <span className="soft" style={{ flex: "none", whiteSpace: "nowrap" }}>{stats}</span>
+        </div>
+      ) : null}
+      {grid}
     </div>
   );
+}
+
+/** name/stats line of the grid widget: ~12px text plus its gap to the grid */
+const GRID_HEADER = 22;
+/** width reserved for the name/stats column when it sits beside the grid */
+const GRID_SIDE = 120;
+
+/**
+ * cell size from the height: the largest cell (≤14px) whose 7 weekday rows fit, never below 8px;
+ * then as many weeks as the width takes (capped by the config), so narrow widgets show fewer weeks instead of smaller cells
+ */
+function gridFit(availW: number, availH: number, maxWeeks: number) {
+  let cell = MIN_CELL;
+  for (let c = MAX_CELL; c >= MIN_CELL; c--) {
+    if (7 * c + 6 * gapFor(c) <= availH) {
+      cell = c;
+      break;
+    }
+  }
+  const gap = gapFor(cell);
+  const weeks = Math.max(1, Math.min(maxWeeks, Math.floor((availW + gap) / (cell + gap))));
+  return { cell, weeks };
 }
 
 /* ---------- page ---------- */
@@ -195,7 +246,7 @@ function HabitModal({ habit, open, onClose, onSaved }: { habit: HabitWithStats |
             </Field>
           )}
         </div>
-        {err ? <span role="alert" style={{ color: "var(--dnd)", fontSize: 11 }}>{err}</span> : null}
+        {err ? <span role="alert" style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{err}</span> : null}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <Button onClick={onClose}>{t("common.cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy} disabled={!d.name.trim()}>{habit ? t("common.save") : t("common.add")}</Button>
@@ -221,9 +272,9 @@ function HabitsPage(_p: PageProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <Button onClick={() => setModal({ open: true, habit: null })}><Icon name="plus" size={12} /> {t("page.habits.add")}</Button>
-        <span className="soft" style={{ fontSize: 11 }}>{t("page.habits.hint")}</span>
+        <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("page.habits.hint")}</span>
       </div>
-      {err ? <span role="alert" style={{ color: "var(--dnd)", fontSize: 11 }}>{err}</span> : null}
+      {err ? <span role="alert" style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{err}</span> : null}
       {list.length === 0 ? <Empty icon="check-double" title={t("page.habits.empty")}>{t("page.habits.emptyHint")}</Empty> : null}
       {list.map((h) => (
         <Window
@@ -231,12 +282,12 @@ function HabitsPage(_p: PageProps) {
           title={<span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><i style={{ width: 10, height: 10, background: h.color, display: "inline-block" }} /> {h.name}</span>}
           right={
             <>
-              <Chip style={{ fontSize: 10 }}>{t("page.habits.streak", { count: h.streak })}</Chip>
-              <Chip style={{ fontSize: 10 }}>{t("page.habits.last30", { count: h.last30 })}</Chip>
+              <Chip style={{ fontSize: "var(--fs-meta)" }}>{t("page.habits.streak", { count: h.streak })}</Chip>
+              <Chip style={{ fontSize: "var(--fs-meta)" }}>{t("page.habits.last30", { count: h.last30 })}</Chip>
               {h.kind === "count" ? (
-                <Chip style={{ fontSize: 10 }}>{t("page.habits.perDay", { count: h.target_per_day })}</Chip>
+                <Chip style={{ fontSize: "var(--fs-meta)" }}>{t("page.habits.perDay", { count: h.target_per_day })}</Chip>
               ) : (
-                <Chip tone={h.weekDone >= h.target_per_week ? "ok" : undefined} style={{ fontSize: 10 }} title={t("page.habits.target", { count: h.target_per_week })}>
+                <Chip tone={h.weekDone >= h.target_per_week ? "ok" : undefined} style={{ fontSize: "var(--fs-meta)" }} title={t("page.habits.target", { count: h.target_per_week })}>
                   {t("page.habits.week", { done: h.weekDone, target: h.target_per_week })}
                 </Chip>
               )}

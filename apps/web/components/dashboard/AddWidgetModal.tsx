@@ -46,15 +46,15 @@ export function AddWidgetModal({ open, onClose, modules, onPick }: { open: boole
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Icon name={m.manifest.icon ?? "square"} size={16} style={{ color: "var(--accent)" }} />
+                  <Icon name={m.manifest.icon ?? "square"} size={16} style={{ color: "var(--accent-ink)" }} />
                   <span className="pixel" style={{ fontSize: 13 }}>
                     {w.name}
                   </span>
                 </div>
-                <div className="soft" style={{ fontSize: 11 }}>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>
                   {w.description ?? m.manifest.name}
                 </div>
-                <div className="soft" style={{ fontSize: 10, marginTop: "auto" }}>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)", marginTop: "auto" }}>
                   {w.defaultSize.w}×{w.defaultSize.h}
                 </div>
               </button>

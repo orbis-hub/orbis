@@ -30,12 +30,12 @@ function UpcomingWidget({ config }: WidgetProps<{ count?: number; showAge?: bool
   return (
     <div className="scroll-y" style={{ height: "100%" }}>
       {list.map((p) => (
-        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px dashed var(--line)", color: p.daysUntil === 0 ? "var(--accent)" : undefined }}>
-          <Icon name={p.daysUntil === 0 ? "cake" : "gift"} size={14} style={{ flex: "none", color: p.daysUntil <= 7 ? "var(--accent)" : "var(--ink-soft)" }} />
+        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px dashed var(--line)", color: p.daysUntil === 0 ? "var(--accent-ink)" : undefined }}>
+          <Icon name={p.daysUntil === 0 ? "cake" : "gift"} size={14} style={{ flex: "none", color: p.daysUntil <= 7 ? "var(--accent-ink)" : "var(--ink-soft)" }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* name alone on the first line so it is not truncated by the age at 3×3 */}
             <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-            <div className="soft" style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {fmt(p.next, locale)} · {when(t, p.daysUntil)}
               {config.showAge !== false && p.turns !== null ? ` · ${t("turns", { age: p.turns })}` : ""}
             </div>
@@ -63,20 +63,20 @@ function PeoplePage(_p: PageProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <Button onClick={() => setEditing({})}><Icon name="user-plus" size={12} /> {t("page.addPerson")}</Button>
-        <span className="soft" style={{ fontSize: 11 }}>{t("page.nudgeHint")}</span>
+        <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("page.nudgeHint")}</span>
       </div>
       {list.length === 0 ? <Empty icon="cake" title={t("page.empty")} /> : null}
       <Window tight>
         {list.map((p) => (
           <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderBottom: "1px dashed var(--line)", fontSize: 12 }}>
-            <Icon name={p.daysUntil === 0 ? "cake" : "gift"} size={16} style={{ color: p.daysUntil <= 7 ? "var(--accent)" : "var(--ink-soft)", flex: "none" }} />
+            <Icon name={p.daysUntil === 0 ? "cake" : "gift"} size={16} style={{ color: p.daysUntil <= 7 ? "var(--accent-ink)" : "var(--ink-soft)", flex: "none" }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <span style={{ fontSize: 13 }}>{p.name}</span>
-                {p.turns !== null ? <Chip style={{ fontSize: 10 }}>{t("turns", { age: p.turns })}</Chip> : null}
-                {p.daysUntil === 0 ? <Chip tone="accent" style={{ fontSize: 10 }}>{t("chip.today")}</Chip> : null}
+                {p.turns !== null ? <Chip style={{ fontSize: "var(--fs-meta)" }}>{t("turns", { age: p.turns })}</Chip> : null}
+                {p.daysUntil === 0 ? <Chip tone="accent" style={{ fontSize: "var(--fs-meta)" }}>{t("chip.today")}</Chip> : null}
               </div>
-              <div className="soft" style={{ fontSize: 11 }}>{fmt(p.next, locale)} · {when(t, p.daysUntil)}{p.note ? ` · ${p.note}` : ""}</div>
+              <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{fmt(p.next, locale)} · {when(t, p.daysUntil)}{p.note ? ` · ${p.note}` : ""}</div>
             </div>
             <Button icon size="sm" variant="ghost" onClick={() => setEditing(p)} aria-label={t("action.edit")}><Icon name="edit" size={12} /></Button>
             <Button icon size="sm" variant="ghost" onClick={() => confirm(t("confirm.remove", { name: p.name })) && api(`/people/${p.id}`, { method: "DELETE" }).then(() => q.refetch())} aria-label={t("action.remove")}><Icon name="trash" size={12} /></Button>
@@ -122,7 +122,7 @@ function EditModal({ p, onClose, onSave }: { p: Partial<PersonView>; onClose: ()
           )}
         </Field>
         <Field label={t("field.note")} hint={t("field.noteHint")}><Input value={v.note ?? ""} onChange={(e) => setV({ ...v, note: e.target.value })} maxLength={NOTE_MAX} /></Field>
-        {error ? <div role="alert" style={{ fontSize: 11, color: "var(--danger, #c33)" }}>{t("error.save", { message: error })}</div> : null}
+        {error ? <div role="alert" style={{ fontSize: "var(--fs-meta)", color: "var(--danger, #c33)" }}>{t("error.save", { message: error })}</div> : null}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <Button onClick={onClose}>{t("action.cancel")}</Button>
           <Button type="submit" variant="primary" disabled={busy}>{t("action.save")}</Button>

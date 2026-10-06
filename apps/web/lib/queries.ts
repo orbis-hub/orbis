@@ -13,11 +13,12 @@ export type HubSettings = {
   locale: string;
   timezone: string;
   theme: "system" | "light" | "dark";
-  registries: string[];
   location: { lat: number; lon: number; name: string } | null;
   units: "metric" | "imperial";
-  mutedModules: string[];
-  notifyChannels: {
+  /* admin-only keys: members get the safe subset from GET /api/settings (`registries: []` placeholder, no channels, no muted list) */
+  registries?: string[];
+  mutedModules?: string[];
+  notifyChannels?: {
     ntfy?: { server?: string; topic: string; token?: string; minLevel?: "info" | "warning" | "urgent" };
     telegram?: { botToken: string; chatId: string; minLevel?: "info" | "warning" | "urgent" };
   };

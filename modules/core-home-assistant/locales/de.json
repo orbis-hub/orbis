@@ -17,6 +17,8 @@
 
   "notReady.notSetup": "home assistant ist nicht eingerichtet",
   "notReady.notSetupHint": "module → home assistant → einstellungen: url + token.",
+  "notReady.notSetupShort": "nicht eingerichtet",
+  "notReady.notSetupHintShort": "einstellungen: url + token",
   "notReady.notConnected": "nicht verbunden",
   "notReady.connecting": "verbinde…",
   "notReady.pickEntity": "wähl eine entität",

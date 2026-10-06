@@ -82,24 +82,38 @@ function CountdownWidget({ config, size }: WidgetProps<Config>) {
     big = String(dayDiff);
     unit = tr("unit.days", { count: dayDiff });
   }
-  const px = Math.max(22, Math.min(size.height * 0.45, size.width / Math.max(3, big.length * 0.9)));
   const years = config.yearly ? t.getFullYear() - parseDate(config.date)![0] : null;
+  const title = config.title || tr("defaultTitle");
+  // compact below 3 columns / 2 rows (the default is 3×2 ≈ 235×70 px of content): a narrow widget drops the date from the
+  // detail line, a short one also drops the heading (the title moves into the tooltip); size is 0×0 before the first measure
+  const measured = size.width > 0 && size.height > 0;
+  const narrow = measured && size.width < 200;
+  const short = measured && size.height < 60;
+  const dateText = t.toLocaleDateString(locale, { day: "numeric", month: "short", ...(config.yearly ? {} : { year: "numeric" }) });
+  const turnsText = years !== null && years > 0 ? tr("turns", { count: years }) : "";
+  const detailFull = `${unit ? `${unit} ` : ""}${past ? tr("ago") : tr("toGo")} · ${dateText}${turnsText ? ` · ${turnsText}` : ""}`;
+  const detail = narrow || short ? `${unit ? `${unit} ` : ""}${past ? tr("ago") : tr("toGo")}` : detailFull;
+  // the number fills what is left between heading and detail line (≈17px each) and the width (pixel font ≈ 0.6em per glyph)
+  const lines = (short ? 0 : 17) + 17 + 4;
+  const px = measured ? Math.max(18, Math.min(size.height - lines, size.width / Math.max(3, big.length * 0.6))) : 30;
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, textAlign: "center" }}>
-      <div className="soft" style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}>
-        <Icon name={config.icon || "hourglass"} size={12} style={{ color: "var(--accent)" }} /> {config.title || tr("defaultTitle")}
-      </div>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, textAlign: "center", minWidth: 0 }} title={short ? `${title} · ${detailFull}` : undefined}>
+      {!short ? (
+        <div className="soft" style={{ fontSize: "var(--fs-meta)", display: "flex", alignItems: "center", gap: 6, maxWidth: "100%", minWidth: 0 }} title={title}>
+          <Icon name={config.icon || "hourglass"} size={12} style={{ color: "var(--accent-ink)", flex: "none" }} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
+        </div>
+      ) : null}
       {today ? (
         <>
-          <div className="pixel" style={{ fontSize: px * 0.8, lineHeight: 1, color: "var(--accent)" }}>{tr("today")}</div>
-          {years !== null && years > 0 ? <div className="soft" style={{ fontSize: 11 }}>{tr("turns", { count: years })}</div> : null}
+          <div className="pixel" style={{ fontSize: px * 0.8, lineHeight: 1, color: "var(--accent-ink)", whiteSpace: "nowrap" }}>{tr("today")}</div>
+          {turnsText && !short ? <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{turnsText}</div> : null}
         </>
       ) : (
         <>
-          <div className="pixel" style={{ fontSize: px, lineHeight: 1, fontVariantNumeric: "tabular-nums", color: past ? "var(--ink-soft)" : undefined }}>{big}</div>
-          <div className="soft" style={{ fontSize: 11 }}>
-            {unit ? `${unit} ` : ""}{past ? tr("ago") : tr("toGo")} · {t.toLocaleDateString(locale, { day: "numeric", month: "short", ...(config.yearly ? {} : { year: "numeric" }) })}
-            {years !== null && years > 0 ? ` · ${tr("turns", { count: years })}` : ""}
+          <div className="pixel" style={{ fontSize: px, lineHeight: 1, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", color: past ? "var(--ink-soft)" : undefined }}>{big}</div>
+          <div className="soft" style={{ fontSize: "var(--fs-meta)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={detail === detailFull ? undefined : detailFull}>
+            {detail}
           </div>
         </>
       )}

@@ -100,7 +100,7 @@ function Login() {
     <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 16 }}>
       <div style={{ width: "100%", maxWidth: 380 }} className="fade-in">
         <div className="wordmark" style={{ justifyContent: "center", fontSize: 28, marginBottom: 16 }}>
-          <span style={{ color: "var(--accent)" }}>◎</span> orbis
+          <span style={{ color: "var(--accent-ink)" }}>◎</span> orbis
         </div>
         {hub === undefined || authed ? null : step === "hub" && !hub ? (
           <Window title={t("login.connect.title")}>
@@ -139,7 +139,7 @@ function Login() {
             ) : null}
           </Window>
         ) : (
-          <Window title={step === "setup" ? t("login.setup.title") : t("login.signin.title")} right={<span className="chip" style={{ fontSize: 10 }}>{(hub ?? "").replace(/^https?:\/\//, "")}</span>}>
+          <Window title={step === "setup" ? t("login.setup.title") : t("login.signin.title")} right={<span className="chip" style={{ fontSize: "var(--fs-meta)" }}>{(hub ?? "").replace(/^https?:\/\//, "")}</span>}>
             <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {step === "setup" ? (
                 <p className="soft" style={{ fontSize: 12 }}>
@@ -147,7 +147,7 @@ function Login() {
                 </p>
               ) : null}
               {next !== "/" ? (
-                <p className="soft" style={{ fontSize: 11 }}>
+                <p className="soft" style={{ fontSize: "var(--fs-meta)" }}>
                   {t("login.nextHint", { path: next })}
                 </p>
               ) : null}
@@ -168,7 +168,7 @@ function Login() {
                 </div>
               ) : null}
               <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
-                <button type="button" className="soft" style={{ fontSize: 11, textDecoration: "underline dotted" }} onClick={changeHub}>
+                <button type="button" className="soft" style={{ fontSize: "var(--fs-meta)", textDecoration: "underline dotted" }} onClick={changeHub}>
                   {t("login.otherHub")}
                 </button>
                 <Button type="submit" variant="primary" loading={busy}>

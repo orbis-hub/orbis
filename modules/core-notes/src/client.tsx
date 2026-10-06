@@ -141,7 +141,7 @@ function ScratchWidget({ config }: WidgetProps<{ noteId?: string }>) {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
       <textarea className="input" value={ed.body} onChange={(e) => ed.setBody(e.target.value)} maxLength={MAX_BODY} placeholder={t("widget.scratch.placeholder")} style={{ flex: 1, resize: "none", minHeight: 0, fontSize: 12, lineHeight: 1.5 }} />
-      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{ed.saving ? t("common.saving") : t("common.saved")}</div>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", textAlign: "right" }}>{ed.saving ? t("common.saving") : t("common.saved")}</div>
     </div>
   );
 }
@@ -175,10 +175,10 @@ function NotesPage(_p: PageProps) {
           {(list.data ?? []).map((n) => (
             <button key={n.id} type="button" className="nav-item" aria-current={n.id === sel ? "page" : undefined} onClick={() => setSel(n.id)} style={{ flexDirection: "column", alignItems: "flex-start", gap: 0 }}>
               <span style={{ display: "flex", gap: 6, alignItems: "center", width: "100%" }}>
-                {n.pinned ? <Icon name="pin" size={11} style={{ color: "var(--accent)" }} /> : null}
+                {n.pinned ? <Icon name="pin" size={11} style={{ color: "var(--accent-ink)" }} /> : null}
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{n.title}</span>
               </span>
-              <span className="soft" style={{ fontSize: 10, fontFamily: "var(--font-mono)" }}>{new Date(n.updated_at).toLocaleDateString(locale)} · {t("page.notes.chars", { count: n.length })}</span>
+              <span className="soft" style={{ fontSize: "var(--fs-meta)", fontFamily: "var(--font-mono)" }}>{new Date(n.updated_at).toLocaleDateString(locale)} · {t("page.notes.chars", { count: n.length })}</span>
             </button>
           ))}
         </div>
@@ -188,7 +188,7 @@ function NotesPage(_p: PageProps) {
           title={<input className="input" value={ed.title} onChange={(e) => ed.setTitle(e.target.value)} maxLength={MAX_TITLE} style={{ padding: "0 4px", fontFamily: "var(--font-pixel)", fontSize: 13, background: "transparent", border: 0, width: "100%" }} aria-label={t("page.notes.titleField")} />}
           right={
             <>
-              <span className="soft" style={{ fontSize: 10 }}>{ed.saving ? t("common.saving") : t("common.saved")}</span>
+              <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{ed.saving ? t("common.saving") : t("common.saved")}</span>
               <Button size="sm" variant="ghost" aria-pressed={preview} onClick={() => setPreview((v) => !v)} title={t("page.notes.preview")}><Icon name="eye" size={12} /></Button>
               <Button size="sm" variant="ghost" aria-pressed={!!current.data.pinned} onClick={() => api(`/notes/${current.data!.id}`, { method: "PATCH", json: { pinned: !current.data!.pinned } }).then(() => list.refetch())} title={t("page.notes.pin")}><Icon name="pin" size={12} /></Button>
               <Button size="sm" variant="ghost" onClick={() => setDeleting(current.data!)} aria-label={t("common.delete")} title={t("common.delete")}><Icon name="trash" size={12} /></Button>

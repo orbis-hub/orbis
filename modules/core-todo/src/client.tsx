@@ -48,7 +48,7 @@ function useTasks(query: string) {
 }
 
 function ErrorLine({ msg }: { msg: string | null }) {
-  return msg ? <span role="alert" style={{ color: "var(--dnd)", fontSize: 11 }}>{msg}</span> : null;
+  return msg ? <span role="alert" style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{msg}</span> : null;
 }
 
 function TaskRow({ t: task, onChange, dense, showList, lists }: { t: Task; onChange: () => void; dense?: boolean; showList?: boolean; lists?: List[] }) {
@@ -79,12 +79,12 @@ function TaskRow({ t: task, onChange, dense, showList, lists }: { t: Task; onCha
         {(due || (showList && list && list.id !== "inbox") || task.notes || err) && (
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
             {due ? (
-              <Chip tone={due.tone} style={{ fontSize: 10 }}>
+              <Chip tone={due.tone} style={{ fontSize: "var(--fs-meta)" }}>
                 <Icon name="calendar" size={10} /> {due.text}
               </Chip>
             ) : null}
-            {showList && list && list.id !== "inbox" ? <Chip style={{ fontSize: 10, borderColor: list.color ?? undefined }}>{list.name}</Chip> : null}
-            {task.notes ? <span className="soft" style={{ fontSize: 10 }}>{task.notes}</span> : null}
+            {showList && list && list.id !== "inbox" ? <Chip style={{ fontSize: "var(--fs-meta)", borderColor: list.color ?? undefined }}>{list.name}</Chip> : null}
+            {task.notes ? <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{task.notes}</span> : null}
             <ErrorLine msg={err} />
           </div>
         )}
@@ -161,7 +161,7 @@ function ListWidget({ config }: WidgetProps<{ listId?: string; showDone?: boolea
         )}
       </div>
       {config.quickAdd !== false ? <QuickAdd listId={listId} onAdded={q.refetch} /> : null}
-      <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{t("widget.list.open", { count: open })}</div>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", textAlign: "right" }}>{t("widget.list.open", { count: open })}</div>
     </div>
   );
 }
@@ -224,7 +224,7 @@ function TasksPage(_props: PageProps) {
                 <i className="status-dot" style={{ background: l.color ?? "var(--line)", borderWidth: 0, width: 8, height: 8 }} />
                 {l.name}
               </span>
-              {l.open ? <Chip style={{ fontSize: 10 }}>{l.open}</Chip> : null}
+              {l.open ? <Chip style={{ fontSize: "var(--fs-meta)" }}>{l.open}</Chip> : null}
             </button>
           ))}
         </div>
@@ -233,7 +233,7 @@ function TasksPage(_props: PageProps) {
         title={current?.name ?? t("page.tasks")}
         right={
           <>
-            <Checkbox checked={showDone} onChange={(e) => setShowDone(e.target.checked)} label={<span style={{ fontSize: 11 }}>{t("page.show_done")}</span>} />
+            <Checkbox checked={showDone} onChange={(e) => setShowDone(e.target.checked)} label={<span style={{ fontSize: "var(--fs-meta)" }}>{t("page.show_done")}</span>} />
             <Menu
               trigger={<Button icon size="sm" variant="ghost" aria-label={t("page.list_menu")}><Icon name="more-vertical" size={12} /></Button>}
               items={[

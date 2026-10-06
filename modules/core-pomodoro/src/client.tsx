@@ -41,7 +41,7 @@ function TimerWidget({ config, size }: WidgetProps<Config>) {
 
   return (
     <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: compact ? 3 : 6, textAlign: "center", overflow: "hidden" }}>
-      <div className="pixel" style={{ fontSize: 12, color: focus ? "var(--accent)" : "var(--accent-2)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{focus ? t("widget.timer.focus") : st.mode === "long" ? t("widget.timer.longBreak") : t("widget.timer.break")}{st.label ? ` · ${st.label}` : ""}</div>
+      <div className="pixel" style={{ fontSize: 12, color: focus ? "var(--accent-ink)" : "var(--accent-2)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{focus ? t("widget.timer.focus") : st.mode === "long" ? t("widget.timer.longBreak") : t("widget.timer.break")}{st.label ? ` · ${st.label}` : ""}</div>
       <div className="pixel" style={{ fontSize: big, lineHeight: 1, fontVariantNumeric: "tabular-nums", color: left === 0 ? "var(--ok)" : undefined }}>{m}:{String(s).padStart(2, "0")}</div>
       <div className="progress" style={{ width: "80%", height: 6 }}><i style={{ width: `${pct}%`, background: focus ? "var(--accent)" : "var(--accent-2)", transition: "width 0.5s linear" }} /></div>
       {config.showRounds !== false ? (
@@ -59,9 +59,9 @@ function TimerWidget({ config, size }: WidgetProps<Config>) {
         <Button icon size="sm" variant="ghost" onClick={() => call("/reset")} aria-label={t("widget.timer.reset")} title={t("widget.timer.reset")}><Icon name="reload" size={14} /></Button>
       </div>
       {labelVisible ? (
-        <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} placeholder={t("widget.timer.labelPlaceholder")} style={{ maxWidth: 220, padding: "3px 6px", fontSize: 11, textAlign: "center" }} />
+        <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} placeholder={t("widget.timer.labelPlaceholder")} style={{ maxWidth: 220, padding: "3px 6px", fontSize: "var(--fs-meta)", textAlign: "center" }} />
       ) : null}
-      <div className="soft" style={{ fontSize: 10, flexShrink: 0 }}>{t("widget.timer.focusedToday", { count: st.todayFocusMinutes })}</div>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", flexShrink: 0 }}>{t("widget.timer.focusedToday", { count: st.todayFocusMinutes })}</div>
     </div>
   );
 }

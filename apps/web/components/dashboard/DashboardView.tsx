@@ -55,12 +55,13 @@ export function DashboardView() {
     setEditMode(true);
   }
 
+  // the h1 in Shell truncates with an ellipsis, but only inline text can be cut: the name gets its own shrinkable span, icon and chips stay whole
   const title = dash ? (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-      <Icon name={dash.icon ?? "home"} size={16} style={{ color: "var(--accent)" }} />
-      {dash.name}
-      {!dash.shared ? <Icon name="lock" size={12} className="soft" title={t("dashboard.private")} /> : null}
-      {!canEdit ? <span className="chip" style={{ fontSize: 10 }}>{t("dashboard.readOnly")}</span> : null}
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, maxWidth: "100%", minWidth: 0, verticalAlign: "bottom" }} title={dash.name}>
+      <Icon name={dash.icon ?? "home"} size={16} style={{ color: "var(--accent-ink)", flex: "none" }} />
+      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dash.name}</span>
+      {!dash.shared ? <Icon name="lock" size={12} className="soft" title={t("dashboard.private")} style={{ flex: "none" }} /> : null}
+      {!canEdit ? <span className="chip" style={{ fontSize: "var(--fs-meta)", flex: "none" }}>{t("dashboard.readOnly")}</span> : null}
     </span>
   ) : (
     t("common.dashboard")
@@ -69,12 +70,13 @@ export function DashboardView() {
   const actions = (
     <>
       {canEdit ? (
+        // phones show the stacked list (no editing), so add/edit are hidden there (.hide-phone in globals.css)
         <>
-          <Button size="sm" onClick={() => setAdding(true)} disabled={!dash} aria-label={t("dashboard.addWidget")} title={t("dashboard.addWidget")}>
+          <Button size="sm" className="hide-phone" onClick={() => setAdding(true)} disabled={!dash} aria-label={t("dashboard.addWidget")} title={t("dashboard.addWidget")}>
             <Icon name="plus" size={14} />
             <span className="hide-sm" aria-hidden>{t("dashboard.widget")}</span>
           </Button>
-          <Button size="sm" aria-pressed={editing} onClick={() => setEditMode(!editMode)} disabled={!dash} aria-label={editing ? t("dashboard.editDone") : t("dashboard.editLayout")} title={editing ? t("dashboard.editDone") : t("dashboard.editLayout")}>
+          <Button size="sm" className="hide-phone" aria-pressed={editing} onClick={() => setEditMode(!editMode)} disabled={!dash} aria-label={editing ? t("dashboard.editDone") : t("dashboard.editLayout")} title={editing ? t("dashboard.editDone") : t("dashboard.editLayout")}>
             <Icon name={editing ? "check" : "move"} size={14} />
             <span className="hide-sm" aria-hidden>{editing ? t("common.done") : t("common.edit")}</span>
           </Button>

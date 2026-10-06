@@ -74,13 +74,13 @@ function MealsWidget({ config }: WidgetProps<Config>) {
         const d = addDays(today, i);
         return (
           <div key={i}>
-            <div className="soft pixel" style={{ fontSize: 10, marginBottom: 2 }}>{dayLabel(d, i, t, locale)}</div>
+            <div className="soft pixel" style={{ fontSize: "var(--fs-meta)", marginBottom: 2 }}>{dayLabel(d, i, t, locale)}</div>
             {slots.map((s) => {
               const e = entries.find((x) => x.day === iso(d) && x.slot === s);
               return (
                 <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0" }}>
                   {config.showImages !== false && e?.recipe?.image ? <img src={e.recipe.image} alt="" style={{ width: 28, height: 28, objectFit: "cover", border: "1.5px solid var(--line)", imageRendering: "auto" }} /> : <span className="soft" style={{ width: 28, textAlign: "center" }}><Icon name="coffee" size={12} /></span>}
-                  <span className="soft" style={{ fontSize: 10, width: 48 }}>{s}</span>
+                  <span className="soft" style={{ fontSize: "var(--fs-meta)", width: 48 }}>{s}</span>
                   <span style={{ fontSize: 13, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", opacity: e?.recipe || e?.note ? 1 : 0.4 }}>{e?.recipe?.title ?? e?.note ?? "–"}</span>
                 </div>
               );
@@ -114,7 +114,7 @@ function SlotPicker({ day, slot, current, recipes, onClose }: { day: string; slo
             <button key={r.id} type="button" className="menu-item" onClick={() => void set(r.id)} style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {r.image ? <img src={r.image} alt="" style={{ width: 24, height: 24, objectFit: "cover" }} /> : <Icon name="coffee" size={12} />}
               <span style={{ flex: 1, textAlign: "left" }}>{r.title}</span>
-              {r.servings ? <span className="soft" style={{ fontSize: 10 }}>{r.servings}</span> : null}
+              {r.servings ? <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{r.servings}</span> : null}
             </button>
           ))}
         </div>
@@ -286,7 +286,7 @@ function PlanPage(_p: PageProps) {
             {Array.from({ length: 7 }, (_, i) => {
               const d = addDays(start, i);
               const isToday = iso(d) === todayIso;
-              return <div key={i} className="pixel" style={{ fontSize: 11, textAlign: "center", color: isToday ? "var(--accent)" : undefined }}>{d.toLocaleDateString(locale, { weekday: "short" })} {d.getDate()}</div>;
+              return <div key={i} className="pixel" style={{ fontSize: "var(--fs-meta)", textAlign: "center", color: isToday ? "var(--accent-ink)" : undefined }}>{d.toLocaleDateString(locale, { weekday: "short" })} {d.getDate()}</div>;
             })}
             {slots.map((s) => (
               <SlotRow key={s} slot={s} start={start} entries={plan.data ?? []} todayIso={todayIso} onPick={(day) => setPick({ day, slot: s })} onOpen={(id) => setOpen((recipes.data ?? []).find((r) => r.id === id) ?? null)} />
@@ -306,7 +306,7 @@ function PlanPage(_p: PageProps) {
                   {r.image ? <img src={r.image} alt="" style={{ width: "100%", height: 90, objectFit: "cover", display: "block" }} /> : <div style={{ height: 40, display: "grid", placeItems: "center", background: "var(--paper-2)" }}><Icon name="coffee" size={16} /></div>}
                   <div style={{ padding: "6px 8px" }}>
                     <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
-                    <div className="soft" style={{ fontSize: 10 }}>{t("recipe.ingredientsCount", { count: r.ingredients.length })}{r.servings ? ` · ${r.servings}` : ""}</div>
+                    <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("recipe.ingredientsCount", { count: r.ingredients.length })}{r.servings ? ` · ${r.servings}` : ""}</div>
                   </div>
                 </button>
               ))}
@@ -325,7 +325,7 @@ function SlotRow({ slot, start, entries, todayIso, onPick, onOpen }: { slot: str
   const t = useT();
   return (
     <>
-      <div className="soft pixel" style={{ fontSize: 11, alignSelf: "center" }}>{slot}</div>
+      <div className="soft pixel" style={{ fontSize: "var(--fs-meta)", alignSelf: "center" }}>{slot}</div>
       {Array.from({ length: 7 }, (_, i) => {
         const day = iso(addDays(start, i));
         const e = entries.find((x) => x.day === day && x.slot === slot);
@@ -337,7 +337,7 @@ function SlotRow({ slot, start, entries, todayIso, onPick, onOpen }: { slot: str
                 {e.recipe.image ? <img src={e.recipe.image} alt="" style={{ width: "100%", height: 36, objectFit: "cover" }} /> : null}
                 <span style={{ fontSize: 12, lineHeight: 1.2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }} onClick={(ev) => { ev.stopPropagation(); onOpen(e.recipe!.id); }} title={t("recipe.open")}>{e.recipe.title}</span>
               </>
-            ) : e?.note ? <span style={{ fontSize: 12, fontStyle: "italic" }}>{e.note}</span> : <span className="soft" style={{ fontSize: 11, margin: "auto" }}>+</span>}
+            ) : e?.note ? <span style={{ fontSize: 12, fontStyle: "italic" }}>{e.note}</span> : <span className="soft" style={{ fontSize: "var(--fs-meta)", margin: "auto" }}>+</span>}
           </div>
         );
       })}
