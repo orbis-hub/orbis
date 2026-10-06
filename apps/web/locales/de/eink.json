@@ -45,5 +45,7 @@
   "eink.tokenHint": "wird nur direkt nach dem anlegen oder rotieren komplett angezeigt",
   "eink.rotate": "rotieren",
   "eink.newToken": "neuer token – aktualisiere das gerät",
-  "eink.testTitle": "ohne hardware testen"
+  "eink.testTitle": "ohne hardware testen",
+  "eink.previewOf": "vorschau von {name}",
+  "eink.remove": "{name} entfernen"
 }

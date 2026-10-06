@@ -33,7 +33,7 @@
   "modules.store.empty.noMatch": "nichts passt zu deiner suche.",
   "modules.store.empty.noRegistry": "keine registry erreichbar oder noch keine module gelistet. du kannst unten trotzdem über eine tarball-url installieren.",
   "modules.store.fromUrl": "über url installieren",
-  "modules.store.trust": "installier nur module, denen du vertraust: modulcode läuft mit vollem zugriff in deinem hub.",
+  "modules.store.trust": "installier nur module, denen du vertraust.",
   "modules.store.needs": "braucht {deps} (wird mitinstalliert). ",
   "modules.store.worksWith": "funktioniert mit {deps}.",
   "modules.store.installed": "installiert",
@@ -41,5 +41,8 @@
   "modules.store.source": "quellcode ↗",
   "modules.settingsTitle": "{name} · einstellungen",
   "modules.settingsHint": "modul-id: {id} · v{version}",
-  "modules.settingsSaved": "einstellungen gespeichert"
+  "modules.settingsSaved": "einstellungen gespeichert",
+  "modules.store.trustCovers": "store-module laufen in einem eigenen worker-thread mit speicherlimit: hub-apis (speicher, geräte, benachrichtigungen, scheduler, fetch) sind auf die berechtigungen beschränkt, die ein modul deklariert, und hub-geheimnisse bleiben aus seiner umgebung draußen.",
+  "modules.store.trustNotCovered": "das ist keine sicherheits-sandbox: modulcode kann weiterhin node selbst nutzen (dateien, netzwerk), ein bösartiges modul kann also echten schaden anrichten. eingebaute und dev-module laufen im hub-prozess.",
+  "modules.uninstallTitle": "{name} deinstallieren"
 }

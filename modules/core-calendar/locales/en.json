@@ -88,5 +88,9 @@
   "error.401": "{host} rejected the login (401). most servers want an app password instead of your account password; check username (often the full e-mail) and password.",
   "error.principal": "could not find a caldav account at {host}. check the server url (for nextcloud the base url is enough, for others try the full caldav url your provider documents).",
   "error.unreachable": "cannot reach {host} from the hub ({message}).",
-  "error.403": "{host} answered 403 forbidden: the account is valid but may not allow caldav access or this app password lacks calendar rights."
+  "error.403": "{host} answered 403 forbidden: the account is valid but may not allow caldav access or this app password lacks calendar rights.",
+  "error.invalidUrl": "that is not a valid http(s) url",
+  "error.notCalendar": "{host} did not return a calendar ({type}, no BEGIN:VCALENDAR) – is this the web page instead of the .ics link?",
+  "error.invalidRange": "from/to must be ISO dates, from before to, at most {days} days apart",
+  "page.partial": "some accounts could not be loaded for this range."
 }

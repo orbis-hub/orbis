@@ -10,6 +10,7 @@ import type { ModuleServer, ModuleServerContext } from "@orbis/sdk/server";
 import { createTranslator } from "@orbis/sdk/server";
 import type { Device, ModuleStatus } from "@orbis/sdk";
 import type { SerializedRequest, SerializedResponse, SyncCall, SyncResult, ToHub, ToWorker, WorkerData } from "./protocol";
+import { createModuleFetch } from "../fetch-policy";
 
 const data = workerData as WorkerData;
 const port = parentPort!;
@@ -56,6 +57,15 @@ let currentStatus: ModuleStatus | null = null;
 const http = new Hono();
 
 const log = (level: "debug" | "info" | "warn" | "error") => (msg: string, ...args: unknown[]) => send({ t: "log", level, msg, args: args.length ? args : undefined });
+
+// module exceptions become json like the hub's own routes (hono's default is a text/plain "Internal Server Error")
+http.onError((err, c) => {
+  log("error")(`route ${c.req.method} ${c.req.path} failed: ${err?.message ?? String(err)}`);
+  return c.json({ error: err?.message || "internal error" }, 500);
+});
+
+// outbound http(s) behind the hub's fetch policy (private ranges need `network:lan`, size/time/redirect caps)
+const policedFetch = createModuleFetch(data.manifest, { onBlocked: ({ url, reason }) => log("warn")(`fetch blocked: ${reason}`, { url }) });
 
 const ctx: ModuleServerContext = {
   manifest: data.manifest,
@@ -138,8 +148,9 @@ const ctx: ModuleServerContext = {
       return async({ t: "call", module: id, path, init: { method: init.method, headers: [...headers.entries()], body: typeof body === "string" ? body : body == null ? null : String(body) } });
     },
   },
+  hub: { settings: perms.has("settings:read") ? () => sync("hub.settings") : denied("settings:read") },
   http,
-  fetch: perms.has("network:fetch") ? globalThis.fetch.bind(globalThis) : (denied("network:fetch") as unknown as typeof fetch),
+  fetch: perms.has("network:fetch") ? policedFetch : (denied("network:fetch") as unknown as typeof fetch),
   i18n: {
     get language() {
       return language;

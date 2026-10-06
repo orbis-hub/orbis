@@ -5,7 +5,8 @@ import { useT } from "@/lib/i18n";
 
 /**
  * Minimal JSON-schema → form renderer for module/widget settings.
- * Supports: object with properties of type string (enum, format textarea/password/color/url), number/integer, boolean, array of strings (comma separated).
+ * Supports: object with properties of type string (enum, format textarea/password/secret/color/url), number/integer, boolean, array of strings (comma separated).
+ * `format: "secret"` = a credential: rendered masked, and the hub strips it from the settings members receive.
  */
 export type JsonSchema = {
   type?: string | string[];
@@ -89,7 +90,8 @@ export function SchemaForm({ schema, value, onChange, idPrefix = "sf" }: { schem
             </Field>
           );
         }
-        const inputType = p.format === "password" ? "password" : p.format === "color" ? "color" : p.format === "url" || p.format === "uri" ? "url" : p.format === "time" ? "time" : p.format === "date" ? "date" : "text";
+        // "secret" marks credentials the hub never hands to members (#38); shown masked like "password"
+        const inputType = p.format === "password" || p.format === "secret" ? "password" : p.format === "color" ? "color" : p.format === "url" || p.format === "uri" ? "url" : p.format === "time" ? "time" : p.format === "date" ? "date" : "text";
         return (
           <Field key={k} label={label} hint={p.description} htmlFor={id}>
             <Input id={id} type={inputType} value={String(v ?? "")} onChange={(e) => set(k, e.target.value)} placeholder={p.placeholder} autoComplete={inputType === "password" ? "new-password" : undefined} />

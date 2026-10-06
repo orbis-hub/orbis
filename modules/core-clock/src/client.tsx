@@ -14,9 +14,10 @@ function useNow(tickMs: number) {
 
 function DigitalClock({ config, size }: WidgetProps<Config>) {
   const t = useT();
-  const { locale } = useModule();
+  // empty = hub default: the hub's timezone and formatting locale, not the browser's
+  const { locale, timezone } = useModule();
   const now = useNow(config.showSeconds ? 1000 : 10_000);
-  const tz = config.timezone || undefined;
+  const tz = config.timezone?.trim() || timezone || undefined;
   let time = "";
   let date = "";
   try {

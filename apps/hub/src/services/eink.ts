@@ -39,18 +39,55 @@ function toPublic(r: typeof schema.einkDisplays.$inferSelect, withToken = false)
   };
 }
 
+export function dashboardExists(id: string) {
+  return !!getDb().select({ id: schema.dashboards.id }).from(schema.dashboards).where(eq(schema.dashboards.id, id)).get();
+}
+
+/** max length of the `x-orbis-board` header a device may report */
+export const BOARD_MAX = 64;
+export function cleanBoard(v: string | null | undefined): string | null {
+  if (!v) return null;
+  // printable characters only, capped — the string ends up on the e-ink settings page
+  const s = v.replace(/[^\x20-\x7e -￿]/g, "").trim().slice(0, BOARD_MAX);
+  return s || null;
+}
+
+/**
+ * Lazy cleanup (#40): a display whose dashboard was deleted (or went away with its user) is detached
+ * the next time anyone looks at it, so the list shows `dashboardId: null` and the panel renders the
+ * "no dashboard" state instead of nothing.
+ */
+function detachIfGone(r: typeof schema.einkDisplays.$inferSelect) {
+  if (r.dashboardId && !dashboardExists(r.dashboardId)) {
+    log.info({ display: r.id, dashboardId: r.dashboardId }, "dashboard gone, detaching display");
+    getDb().update(schema.einkDisplays).set({ dashboardId: null }).where(eq(schema.einkDisplays.id, r.id)).run();
+    r.dashboardId = null;
+  }
+  return r;
+}
+
 export function listDisplays() {
-  return getDb().select().from(schema.einkDisplays).all().map((r) => toPublic(r));
+  return getDb()
+    .select()
+    .from(schema.einkDisplays)
+    .all()
+    .map((r) => toPublic(detachIfGone(r)));
 }
 
 export function getDisplay(id: string) {
   const r = getDb().select().from(schema.einkDisplays).where(eq(schema.einkDisplays.id, id)).get();
-  return r ? toPublic(r, true) : null;
+  return r ? toPublic(detachIfGone(r), true) : null;
 }
 
 export function findByToken(token: string) {
   const r = getDb().select().from(schema.einkDisplays).where(eq(schema.einkDisplays.token, token)).get();
-  return r ? toPublic(r, true) : null;
+  return r ? toPublic(detachIfGone(r), true) : null;
+}
+
+/** frame size in pixels after rotation – the coordinate space of taps and of the rendered image */
+export function frameSize(display: Pick<EinkDisplay, "width" | "height" | "rotate">) {
+  const landscape = display.rotate === 0 || display.rotate === 180;
+  return { W: landscape ? display.width : display.height, H: landscape ? display.height : display.width };
 }
 
 export function createDisplay(input: { name: string; width: number; height: number; dashboardId?: string | null; grayscale?: number; refreshMinutes?: number; rotate?: number; invert?: boolean; board?: string | null }) {
@@ -69,7 +106,7 @@ export function createDisplay(input: { name: string; width: number; height: numb
       invert: input.invert ?? false,
       grayscale: input.grayscale ?? 1,
       refreshMinutes: input.refreshMinutes ?? 10,
-      board: input.board ?? null,
+      board: cleanBoard(input.board),
       createdAt: now(),
     })
     .run();
@@ -81,6 +118,8 @@ export function updateDisplay(id: string, patch: Partial<Omit<EinkDisplay, "id" 
   for (const k of ["name", "width", "height", "dashboardId", "rotate", "invert", "grayscale", "refreshMinutes", "board"] as const) {
     if (patch[k] !== undefined) (set as Record<string, unknown>)[k] = patch[k];
   }
+  if (set.board !== undefined) set.board = cleanBoard(set.board);
+  if (!Object.keys(set).length) return getDisplay(id);
   getDb().update(schema.einkDisplays).set(set).where(eq(schema.einkDisplays.id, id)).run();
   return getDisplay(id);
 }
@@ -90,14 +129,16 @@ export function rotateToken(id: string) {
   return getDisplay(id);
 }
 
+/** true when a display was actually removed */
 export function deleteDisplay(id: string) {
-  getDb().delete(schema.einkDisplays).where(eq(schema.einkDisplays.id, id)).run();
+  return getDb().delete(schema.einkDisplays).where(eq(schema.einkDisplays.id, id)).run().changes > 0;
 }
 
 export function touchDisplay(id: string, info: { battery?: number | null; board?: string | null }) {
   const set: Partial<typeof schema.einkDisplays.$inferInsert> = { lastSeen: now() };
-  if (info.battery !== undefined) set.battery = info.battery;
-  if (info.board) set.board = info.board;
+  if (info.battery !== undefined && info.battery !== null && Number.isFinite(info.battery)) set.battery = Math.max(0, Math.min(100, Math.round(info.battery)));
+  const board = cleanBoard(info.board);
+  if (board) set.board = board;
   getDb().update(schema.einkDisplays).set(set).where(eq(schema.einkDisplays.id, id)).run();
 }
 
@@ -282,9 +323,7 @@ type Cell = { x: number; y: number; w: number; h: number; title: string; tree: E
 
 /** frame size + widget boxes for a display, shared by render and tap */
 function frameGeometry(display: EinkDisplay) {
-  const landscape = display.rotate === 0 || display.rotate === 180;
-  const W = landscape ? display.width : display.height;
-  const H = landscape ? display.height : display.width;
+  const { W, H } = frameSize(display);
   const pad = 8;
   const gap = 8;
   const dash = display.dashboardId ? getDashboard(display.dashboardId) : null;

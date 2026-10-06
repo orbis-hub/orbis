@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { defineClient, useModuleApi, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModule, useModuleApi, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
 import type { Translator } from "@orbis/sdk/client";
 import { Button, Chip, Empty, Icon, Input, Window, cx } from "@orbis/ui";
 import type { Feed, Item } from "./server";
@@ -39,7 +39,9 @@ function FeedsPage(_p: PageProps) {
   const api = useModuleApi();
   const t = useT();
   const feeds = useModuleQuery<Array<Feed & { unread: number }>>("/feeds", { refetchOn: ["changed"] });
+  const { locale } = useModule();
   const [sel, setSel] = useState<string | null>(null);
+  const selFeed = sel ? feeds.data?.find((f) => f.id === sel) : undefined;
   const [unread, setUnread] = useState(true);
   const items = useModuleQuery<Item[]>(`/items?limit=100${sel ? `&feed=${sel}` : ""}${unread ? "&unread=1" : ""}`, { refetchOn: ["changed"] });
   const [url, setUrl] = useState("");
@@ -56,7 +58,7 @@ function FeedsPage(_p: PageProps) {
               <span>{t("page.all")}</span><Chip style={{ fontSize: 10 }}>{(feeds.data ?? []).reduce((a, f) => a + f.unread, 0)}</Chip>
             </button>
             {(feeds.data ?? []).map((f) => (
-              <button key={f.id} type="button" className={cx("nav-item")} aria-current={sel === f.id ? "page" : undefined} onClick={() => setSel(f.id)} style={{ justifyContent: "space-between" }} title={f.error ?? f.url}>
+              <button key={f.id} type="button" className={cx("nav-item")} aria-current={sel === f.id ? "page" : undefined} onClick={() => setSel(f.id)} style={{ justifyContent: "space-between" }} title={f.error ? `${f.url}\n${t("page.last_error", { time: new Date(f.last_error_at ?? f.last_fetched ?? Date.now()).toLocaleString(locale), error: f.error })}` : `${f.url}\n${t("page.last_ok", { time: f.last_ok ? new Date(f.last_ok).toLocaleString(locale) : t("page.never") })}`}>
                 <span style={{ display: "inline-flex", gap: 6, alignItems: "center", minWidth: 0 }}>
                   {f.favicon ? <img src={f.favicon} alt="" width={12} height={12} /> : <Icon name={f.error ? "warning-diamond" : "radio"} size={12} style={{ color: f.error ? "var(--dnd)" : undefined }} />}
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</span>
@@ -104,6 +106,12 @@ function FeedsPage(_p: PageProps) {
           </>
         }
       >
+        {selFeed ? (
+          <div className="soft" style={{ fontSize: 10, display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6, color: selFeed.error ? "var(--dnd)" : undefined }}>
+            <span>{t("page.last_ok", { time: selFeed.last_ok ? new Date(selFeed.last_ok).toLocaleString(locale) : t("page.never") })}</span>
+            {selFeed.error ? <span>· {t("page.last_error", { time: new Date(selFeed.last_error_at ?? selFeed.last_fetched ?? Date.now()).toLocaleString(locale), error: selFeed.error })}</span> : null}
+          </div>
+        ) : null}
         {items.data?.length === 0 ? <Empty icon="radio" title={unread ? t("page.all_read") : t("page.nothing")} /> : null}
         {(items.data ?? []).map((it) => <Row key={it.id} it={it} onRead={(id) => read([id])} />)}
       </Window>

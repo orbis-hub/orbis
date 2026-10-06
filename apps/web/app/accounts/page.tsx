@@ -2,6 +2,7 @@
 
 import { Button, Chip, Empty, Field, Icon, Input, Menu, Modal, Select, Switch, useToast, Window } from "@orbis/ui";
 import { useState, type FormEvent } from "react";
+import { useConfirm, usePrompt } from "@/components/Confirm";
 import { Shell } from "@/components/Shell";
 import { setToken } from "@/lib/hub";
 import { useT } from "@/lib/i18n";
@@ -51,6 +52,8 @@ function Profile() {
         onSuccess: () => {
           toast(t("accounts.pwChanged"), "ok");
           setToken(null);
+          // full reload on purpose: the hub ended every session of this user, nothing cached may survive
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
           setTimeout(() => (window.location.href = "/login/"), 800);
         },
         onError: (err) => toast(err.message, "bad"),
@@ -121,6 +124,8 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
   const toast = useToast();
   const [creating, setCreating] = useState(false);
   const [resetFor, setResetFor] = useState<PublicUser | null>(null);
+  const confirm = useConfirm();
+  const prompt = usePrompt();
   const isOwner = meRole === "owner";
   const err = (e: Error) => toast(e.message, "bad");
 
@@ -167,25 +172,25 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
                       {u.role === "owner" ? (
                         <RoleChip role="owner" />
                       ) : (
-                        <Select value={u.role} disabled={locked || (isMe && !isOwner)} onChange={(e) => m.update.mutate({ id: u.id, role: e.target.value as Role }, { onError: err })} style={{ padding: "2px 24px 2px 6px", fontSize: 11, minWidth: 100 }}>
+                        <Select value={u.role} disabled={locked || (isMe && !isOwner)} aria-label={t("accounts.roleOf", { name: u.name })} onChange={(e) => m.update.mutate({ id: u.id, role: e.target.value as Role }, { onError: err })} style={{ padding: "2px 24px 2px 6px", fontSize: 11, minWidth: 100 }}>
                           <option value="member">{t("accounts.role.member")}</option>
                           <option value="admin" disabled={!isOwner}>{t("accounts.role.admin")}</option>
                         </Select>
                       )}
                     </td>
                     <td style={td}>
-                      <Switch checked={!u.disabled} disabled={locked || isMe} onChange={(e) => m.update.mutate({ id: u.id, disabled: !e.target.checked }, { onError: err })} aria-label={t("accounts.col.active")} />
+                      <Switch checked={!u.disabled} disabled={locked || isMe} onChange={(e) => m.update.mutate({ id: u.id, disabled: !e.target.checked }, { onError: err })} aria-label={t("accounts.activeOf", { name: u.name })} />
                     </td>
                     <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{u.sessions}</td>
                     <td style={{ ...td, width: 30 }}>
                       <Menu
-                        trigger={<Button icon size="sm" variant="ghost" aria-label={t("accounts.userMenu")}><Icon name="more-vertical" size={12} /></Button>}
+                        trigger={<Button icon size="sm" variant="ghost" aria-label={t("accounts.userMenuOf", { name: u.name })} title={t("accounts.userMenuOf", { name: u.name })}><Icon name="more-vertical" size={12} /></Button>}
                         items={[
-                          { label: t("common.rename"), icon: "edit", disabled: locked && !isMe, onSelect: () => { const name = prompt(t("accounts.newNamePrompt"), u.name); if (name && name !== u.name) m.update.mutate({ id: u.id, name }, { onError: err }); } },
+                          { label: t("common.rename"), icon: "edit", disabled: locked && !isMe, onSelect: async () => { const name = await prompt({ title: t("accounts.renameTitle", { name: u.name }), label: t("accounts.newNamePrompt"), initial: u.name, maxLength: 64, confirmLabel: t("common.rename") }); if (name && name !== u.name) m.update.mutate({ id: u.id, name }, { onError: err }); } },
                           { label: t("accounts.resetPassword"), icon: "key", disabled: (u.role === "owner" && !isOwner) || (u.role === "admin" && !isOwner && !isMe), onSelect: () => setResetFor(u) },
                           { label: t("accounts.signOutEverywhere"), icon: "power", disabled: u.sessions === 0, onSelect: () => m.logoutAll.mutate(u.id, { onSuccess: () => toast(t("accounts.signedOut", { name: u.name }), "ok"), onError: err }) },
                           { sep: true, label: "" },
-                          { label: t("accounts.deleteUser"), icon: "trash", danger: true, disabled: u.role === "owner" || isMe || locked, onSelect: () => { if (confirm(t("accounts.deleteConfirm", { name: u.name }))) m.remove.mutate(u.id, { onError: err }); } },
+                          { label: t("accounts.deleteUser"), icon: "trash", danger: true, disabled: u.role === "owner" || isMe || locked, onSelect: async () => { if (await confirm({ title: t("accounts.deleteUser"), body: t("accounts.deleteConfirm", { name: u.name }), confirmLabel: t("common.delete"), danger: true })) m.remove.mutate(u.id, { onError: err }); } },
                         ]}
                       />
                     </td>
@@ -199,6 +204,8 @@ function UserManager({ meId, meRole }: { meId: string; meRole: Role }) {
       <div className="soft" style={{ fontSize: 11, lineHeight: 1.7 }}>
         <b className="pixel">{t("accounts.roles.title")}</b> · <b>{t("accounts.role.owner")}</b>: {t("accounts.roles.owner")} · <b>{t("accounts.role.admin")}</b>: {t("accounts.roles.admin")} ·{" "}
         <b>{t("accounts.role.member")}</b>: {t("accounts.roles.member")}
+        <br />
+        <b className="pixel">{t("accounts.shared.title")}</b> · {t("accounts.shared.body")}
       </div>
 
       <CreateUserModal open={creating} onClose={() => setCreating(false)} isOwner={isOwner} />
@@ -218,7 +225,7 @@ function CreateUserModal({ open, onClose, isOwner }: { open: boolean; onClose: (
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("member");
   return (
-    <Modal open={open} onClose={onClose} title={t("accounts.newUser")}>
+    <Modal open={open} onClose={onClose} title={t("accounts.newUser")} closeLabel={t("common.close")}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -266,7 +273,7 @@ function ResetPasswordModal({ user, onClose }: { user: PublicUser | null; onClos
   const [password, setPassword] = useState("");
   if (!user) return null;
   return (
-    <Modal open onClose={onClose} title={t("accounts.resetTitle", { name: user.name })}>
+    <Modal open onClose={onClose} title={t("accounts.resetTitle", { name: user.name })} closeLabel={t("common.close")}>
       <form
         onSubmit={(e) => {
           e.preventDefault();

@@ -177,7 +177,7 @@
       "token": {
         "type": "string",
         "title": "Long-lived access token",
-        "format": "password",
+        "format": "secret",
         "description": "HA → your profile → security → long-lived access tokens"
       },
       "mqttEnabled": {
@@ -198,7 +198,7 @@
       "mqttPass": {
         "type": "string",
         "title": "MQTT password",
-        "format": "password"
+        "format": "secret"
       },
       "mqttPrefix": {
         "type": "string",
@@ -214,6 +214,7 @@
   },
   "permissions": [
     "network:fetch",
+    "network:lan",
     "storage",
     "scheduler",
     "devices:read",

@@ -6,18 +6,40 @@ import { Button, Checkbox, Chip, Empty, Icon, Input, Menu, Modal, Field, Select,
 type List = { id: string; name: string; color: string | null; sort: number; open: number };
 type Task = { id: string; list_id: string; title: string; notes: string | null; done: number; due: string | null; sort: number; created_at: string; done_at: string | null };
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
-function dueLabel(due: string | null, t: Translator, locale: string) {
+
+/* `due` is a calendar day (YYYY-MM-DD) with no time; "today" is the hub's timezone, not the browser's */
+const DAY_FMT = new Map<string, Intl.DateTimeFormat>();
+function todayKey(timezone: string): string {
+  let f = DAY_FMT.get(timezone);
+  if (!f) {
+    try {
+      f = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" });
+    } catch {
+      f = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" });
+    }
+    DAY_FMT.set(timezone, f);
+  }
+  const p = Object.fromEntries(f.formatToParts(new Date()).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+/** day key → Date at utc midnight: safe for day arithmetic and for formatting with timeZone "UTC" */
+const utcOf = (key: string) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!));
+};
+const addDays = (key: string, n: number) => utcOf(key).getTime() + n * 86400_000;
+const keyOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+function dueLabel(due: string | null, t: Translator, locale: string, timezone: string) {
   if (!due) return null;
-  const d = new Date(due);
-  const now = new Date();
-  const dayDiff = Math.round((new Date(d.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / 86400_000);
+  const dayDiff = Math.round((utcOf(due).getTime() - utcOf(todayKey(timezone)).getTime()) / 86400_000);
+  if (Number.isNaN(dayDiff)) return { text: due, tone: undefined };
   if (dayDiff < 0) return { text: dayDiff === -1 ? t("due.yesterday") : t("due.overdue", { count: -dayDiff }), tone: "bad" as const };
   if (dayDiff === 0) return { text: t("due.today"), tone: "accent" as const };
   if (dayDiff === 1) return { text: t("due.tomorrow"), tone: undefined };
-  if (dayDiff < 7) return { text: d.toLocaleDateString(locale, { weekday: "short" }), tone: undefined };
-  return { text: d.toLocaleDateString(locale, { day: "numeric", month: "short" }), tone: undefined };
+  if (dayDiff < 7) return { text: utcOf(due).toLocaleDateString(locale, { weekday: "short", timeZone: "UTC" }), tone: undefined };
+  return { text: utcOf(due).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" }), tone: undefined };
 }
 
 function useTasks(query: string) {
@@ -32,9 +54,9 @@ function ErrorLine({ msg }: { msg: string | null }) {
 function TaskRow({ t: task, onChange, dense, showList, lists }: { t: Task; onChange: () => void; dense?: boolean; showList?: boolean; lists?: List[] }) {
   const api = useModuleApi();
   const t = useT();
-  const { locale } = useModule();
+  const { locale, timezone } = useModule();
   const [err, setErr] = useState<string | null>(null);
-  const due = dueLabel(task.due, t, locale);
+  const due = dueLabel(task.due, t, locale, timezone);
   const list = lists?.find((l) => l.id === task.list_id);
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: dense ? "3px 0" : "5px 0", borderBottom: "1px dashed var(--line)", opacity: task.done ? 0.55 : 1 }}>
@@ -74,6 +96,7 @@ function TaskRow({ t: task, onChange, dense, showList, lists }: { t: Task; onCha
 function QuickAdd({ listId, onAdded, placeholder }: { listId: string; onAdded: () => void; placeholder?: string }) {
   const api = useModuleApi();
   const t = useT();
+  const { timezone } = useModule();
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -83,15 +106,14 @@ function QuickAdd({ listId, onAdded, placeholder }: { listId: string; onAdded: (
     setBusy(true);
     setErr(null);
     try {
-      // "buy milk !tomorrow" / "!today" shortcuts
+      // "buy milk !tomorrow" / "!today" / "!2026-12-24" shortcuts
       let text = title.trim();
       let due: string | null = null;
       const m = text.match(/\s!(today|tomorrow|\d{4}-\d{2}-\d{2})$/i);
       if (m) {
         text = text.slice(0, m.index).trim();
-        const d = new Date();
-        if (m[1]!.toLowerCase() === "tomorrow") d.setDate(d.getDate() + 1);
-        due = m[1]!.match(/^\d{4}/) ? new Date(m[1]!).toISOString() : new Date(d.toDateString()).toISOString();
+        const word = m[1]!.toLowerCase();
+        due = word === "today" ? todayKey(timezone) : word === "tomorrow" ? keyOf(addDays(todayKey(timezone), 1)) : word;
       }
       await api("/tasks", { method: "POST", json: { title: text, listId, due } });
       setTitle("");
@@ -175,6 +197,8 @@ function TasksPage(_props: PageProps) {
   const q = useTasks(`?list=${encodeURIComponent(listId)}${showDone ? "&done=1" : ""}`);
   const [editing, setEditing] = useState<Task | null>(null);
   const [newList, setNewList] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [deletingList, setDeletingList] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const current = lists.data?.find((l) => l.id === listId);
   useEffect(() => {
@@ -214,9 +238,9 @@ function TasksPage(_props: PageProps) {
               trigger={<Button icon size="sm" variant="ghost" aria-label={t("page.list_menu")}><Icon name="more-vertical" size={12} /></Button>}
               items={[
                 { label: t("menu.clear_completed"), icon: "check-double", onSelect: () => run(async () => { await api("/tasks/clear-done", { method: "POST", json: { listId } }); q.refetch(); }) },
-                { label: t("menu.rename"), icon: "edit", disabled: listId === "inbox", onSelect: () => run(async () => { const name = prompt(t("menu.rename_prompt"), current?.name); if (name) await api(`/lists/${listId}`, { method: "PATCH", json: { name } }); }) },
+                { label: t("menu.rename"), icon: "sliders", disabled: listId === "inbox", onSelect: () => setRenaming(true) },
                 { sep: true, label: "" },
-                { label: t("menu.delete"), icon: "trash", danger: true, disabled: listId === "inbox", onSelect: () => run(async () => { if (confirm(t("menu.delete_confirm", { name: current?.name }))) { await api(`/lists/${listId}`, { method: "DELETE" }); setListId("inbox"); } }) },
+                { label: t("menu.delete"), icon: "trash", danger: true, disabled: listId === "inbox", onSelect: () => setDeletingList(true) },
               ]}
             />
           </>
@@ -233,7 +257,7 @@ function TasksPage(_props: PageProps) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <TaskRow t={x} onChange={q.refetch} />
                 </div>
-                <Button icon size="sm" variant="ghost" onClick={() => setEditing(x)} aria-label={t("common.edit")}><Icon name="edit" size={12} /></Button>
+                <Button icon size="sm" variant="ghost" onClick={() => setEditing(x)} aria-label={t("common.edit")}><Icon name="sliders" size={12} /></Button>
               </div>
             ))
           )}
@@ -241,13 +265,65 @@ function TasksPage(_props: PageProps) {
       </Window>
       <TaskModal task={editing} lists={lists.data ?? []} onClose={() => setEditing(null)} onSaved={q.refetch} />
       <NewListModal open={newList} onClose={() => setNewList(false)} onCreated={(id) => { setListId(id); lists.refetch(); }} />
+      <RenameListModal open={renaming} list={current ?? null} onClose={() => setRenaming(false)} onSaved={() => lists.refetch()} />
+      <Modal open={deletingList} onClose={() => setDeletingList(false)} title={t("menu.delete")}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <span style={{ fontSize: 13 }}>{t("menu.delete_confirm", { name: current?.name ?? "" })}</span>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={() => setDeletingList(false)}>{t("common.cancel")}</Button>
+            <Button variant="danger" onClick={() => { setDeletingList(false); run(async () => { await api(`/lists/${listId}`, { method: "DELETE" }); setListId("inbox"); }); }}><Icon name="trash" size={12} /> {t("common.delete")}</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
+  );
+}
+
+function RenameListModal({ open, list, onClose, onSaved }: { open: boolean; list: List | null; onClose: () => void; onSaved: () => void }) {
+  const api = useModuleApi();
+  const t = useT();
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    if (open) {
+      setName(list?.name ?? "");
+      setErr(null);
+    }
+  }, [open, list]);
+  if (!list) return null;
+  return (
+    <Modal open={open} onClose={onClose} title={t("menu.rename")}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setBusy(true);
+          setErr(null);
+          api(`/lists/${list.id}`, { method: "PATCH", json: { name } })
+            .then(() => {
+              onSaved();
+              onClose();
+            })
+            .catch((ex) => setErr(t("modal.save_failed", { error: errMsg(ex) })))
+            .finally(() => setBusy(false));
+        }}
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
+      >
+        <Field label={t("menu.rename_prompt")}><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus maxLength={200} /></Field>
+        <ErrorLine msg={err} />
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          <Button type="submit" variant="primary" loading={busy} disabled={!name.trim()}>{t("common.save")}</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
 function TaskModal({ task, lists, onClose, onSaved }: { task: Task | null; lists: List[]; onClose: () => void; onSaved: () => void }) {
   const api = useModuleApi();
   const t = useT();
+  const { timezone } = useModule();
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [due, setDue] = useState("");
@@ -280,14 +356,14 @@ function TaskModal({ task, lists, onClose, onSaved }: { task: Task | null; lists
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          attempt("modal.save_failed", () => api(`/tasks/${task.id}`, { method: "PATCH", json: { title, notes: notes || null, due: due ? new Date(due).toISOString() : null, listId } }));
+          attempt("modal.save_failed", () => api(`/tasks/${task.id}`, { method: "PATCH", json: { title, notes: notes || null, due: due || null, listId } }));
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <Field label={t("field.title")}><Input value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus /></Field>
-        <Field label={t("field.notes")}><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+        <Field label={t("field.title")}><Input value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus maxLength={200} /></Field>
+        <Field label={t("field.notes")}><Input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={10000} /></Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Field label={t("field.due")}><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} min={todayKey()} /></Field>
+          <Field label={t("field.due")}><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} min={todayKey(timezone)} /></Field>
           <Field label={t("field.list")}>
             <Select value={listId} onChange={(e) => setListId(e.target.value)}>
               {lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -332,7 +408,7 @@ function NewListModal({ open, onClose, onCreated }: { open: boolean; onClose: ()
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <Field label={t("field.name")}><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus /></Field>
+        <Field label={t("field.name")}><Input value={name} onChange={(e) => setName(e.target.value)} required autoFocus maxLength={200} /></Field>
         <Field label={t("field.color")}>
           <div style={{ display: "flex", gap: 6 }}>
             {["#e2789b", "#8b7fd6", "#4fc47f", "#f0b232", "#f23f43", "#4f93d6", "#9a9a9a"].map((c) => (

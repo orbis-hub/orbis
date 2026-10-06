@@ -37,7 +37,41 @@ export default defineModule<Settings>({
 
     const base = () => (settings.get().url ?? "").trim().replace(/\/+$/, "");
     const token = () => (settings.get().token ?? "").trim();
+    const configured = () => !!(base() && token());
     const errorText = () => (lastError ? ctx.i18n.t(lastError.key, lastError.vars) : null);
+    /** the configured url parsed, or null when it is not an http(s) url (the raw "Invalid URL" / "expected a ws: url" is no help to anyone) */
+    const baseUrl = (): URL | null => {
+      try {
+        const u = new URL(base());
+        return u.protocol === "http:" || u.protocol === "https:" ? u : null;
+      } catch {
+        return null;
+      }
+    };
+    /** typed failures for the http layer: `status` + a translated message instead of the raw error text */
+    class HaError extends Error {
+      constructor(
+        public status: 400 | 502 | 503 | 504,
+        key: string,
+        vars?: Record<string, string>,
+      ) {
+        super(ctx.i18n.t(key, vars));
+      }
+    }
+    const notReady = (): HaError | null => {
+      if (!configured()) return new HaError(400, "error.notConfigured");
+      if (!baseUrl()) return new HaError(400, "error.badUrl", { url: base() });
+      if (!connected) return new HaError(503, "error.notConnected", { detail: errorText() ?? ctx.i18n.t("status.connecting") });
+      return null;
+    };
+    const fail = (c: { json: (body: unknown, status: number) => Response }, err: unknown) => {
+      if (err instanceof HaError) return c.json({ error: err.message }, err.status);
+      const m = String((err as { message?: string } | null)?.message ?? err);
+      if (/did not answer/i.test(m)) return c.json({ error: ctx.i18n.t("error.timeout") }, 504);
+      if (/not connected|connection closed/i.test(m)) return c.json({ error: ctx.i18n.t("error.notConnected", { detail: errorText() ?? m }) }, 503);
+      if (/fetch failed|ECONNREFUSED|ENOTFOUND|getaddrinfo|timeout|aborted/i.test(m)) return c.json({ error: ctx.i18n.t("error.unreachable", { url: base() }) }, 502);
+      return c.json({ error: ctx.i18n.t("error.haError", { message: m }) }, 502);
+    };
 
     const toEntity = (s: HaState): Entity => ({
       id: s.entity_id,
@@ -80,7 +114,14 @@ export default defineModule<Settings>({
         reportStatus();
         return;
       }
-      const url = base().replace(/^http/, "ws") + "/api/websocket";
+      const parsed = baseUrl();
+      if (!parsed) {
+        // "http://homeassistant.local:8123" style only; a bare host or a typo must not surface as "expected a ws: or wss: url"
+        lastError = { key: "error.badUrl", vars: { url: base() } };
+        reportStatus();
+        return;
+      }
+      const url = parsed.toString().replace(/\/+$/, "").replace(/^http/, "ws") + "/api/websocket";
       try {
         ws = new WebSocket(url);
       } catch (err) {
@@ -163,8 +204,17 @@ export default defineModule<Settings>({
 
     /* ---- rest helper (history) ---- */
     async function rest<T>(path: string): Promise<T> {
-      const res = await ctx.fetch(`${base()}/api${path}`, { headers: { authorization: `Bearer ${token()}` }, signal: AbortSignal.timeout(15_000) });
-      if (!res.ok) throw new Error(`home assistant HTTP ${res.status}`);
+      if (!configured()) throw new HaError(400, "error.notConfigured");
+      const u = baseUrl();
+      if (!u) throw new HaError(400, "error.badUrl", { url: base() });
+      let res: Response;
+      try {
+        res = await ctx.fetch(`${u.toString().replace(/\/+$/, "")}/api${path}`, { headers: { authorization: `Bearer ${token()}` }, signal: AbortSignal.timeout(15_000) });
+      } catch (err) {
+        throw new HaError(502, "error.unreachable", { url: base() });
+      }
+      if (res.status === 401) throw new HaError(502, "error.tokenRejected");
+      if (!res.ok) throw new HaError(502, "error.haError", { message: `HTTP ${res.status}` });
       return (await res.json()) as T;
     }
 
@@ -188,11 +238,13 @@ export default defineModule<Settings>({
     http.post("/call", async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { domain?: string; service?: string; entity?: string; data?: Record<string, unknown> };
       if (!b.domain || !b.service) return c.json({ error: "domain and service required" }, 400);
+      const nr = notReady();
+      if (nr) return fail(c, nr);
       try {
         await send({ type: "call_service", domain: b.domain, service: b.service, service_data: { ...(b.data ?? {}), ...(b.entity ? { entity_id: b.entity } : {}) } });
         return c.json({ ok: true });
       } catch (err) {
-        return c.json({ error: (err as Error).message }, 502);
+        return fail(c, err);
       }
     });
     http.post("/toggle", async (c) => {
@@ -201,11 +253,13 @@ export default defineModule<Settings>({
       if (!e) return c.json({ error: "unknown entity" }, 404);
       const domain = ["light", "switch", "fan", "input_boolean", "automation", "media_player", "cover", "lock"].includes(e.domain) ? e.domain : "homeassistant";
       const service = e.domain === "cover" ? (e.state === "open" ? "close_cover" : "open_cover") : e.domain === "lock" ? (e.state === "locked" ? "unlock" : "lock") : "toggle";
+      const nr = notReady();
+      if (nr) return fail(c, nr);
       try {
         await send({ type: "call_service", domain, service, service_data: { entity_id: e.id } });
         return c.json({ ok: true });
       } catch (err) {
-        return c.json({ error: (err as Error).message }, 502);
+        return fail(c, err);
       }
     });
     http.get("/history/:id", async (c) => {
@@ -218,7 +272,7 @@ export default defineModule<Settings>({
         const step = Math.max(1, Math.floor(pts.length / 96));
         return c.json(pts.filter((_, i) => i % step === 0));
       } catch (err) {
-        return c.json({ error: (err as Error).message }, 502);
+        return fail(c, err);
       }
     });
 

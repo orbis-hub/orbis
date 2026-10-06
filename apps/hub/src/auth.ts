@@ -1,5 +1,5 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { eq, lt } from "drizzle-orm";
+import { eq, lt, sql } from "drizzle-orm";
 import type { Context, MiddlewareHandler } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { nanoid } from "nanoid";
@@ -24,6 +24,12 @@ export function verifyPassword(password: string, stored: string) {
 
 const tokenId = (token: string) => createHash("sha256").update(token).digest("hex");
 
+/** Hash to verify against when the account does not exist, so unknown names cost the same scrypt as wrong passwords. */
+const DUMMY_HASH = hashPassword(randomBytes(16).toString("hex"));
+export function burnPasswordCheck(password: string) {
+  verifyPassword(password, DUMMY_HASH);
+}
+
 export function hasUsers() {
   return getDb().select({ id: schema.users.id }).from(schema.users).limit(1).all().length > 0;
 }
@@ -34,8 +40,9 @@ export function createUser(name: string, password: string, role = "owner") {
   return user;
 }
 
+/** Case-insensitive: names are unique ignoring case (see services/users nameTaken). */
 export function findUserByName(name: string) {
-  return getDb().select().from(schema.users).where(eq(schema.users.name, name)).get() ?? null;
+  return getDb().select().from(schema.users).where(eq(sql`lower(${schema.users.name})`, name.toLowerCase())).get() ?? null;
 }
 
 export function createSession(userId: string, userAgent?: string | null, label?: string | null) {
@@ -72,19 +79,39 @@ export function resolveToken(token: string): AuthUser | null {
   return { id: user.id, name: user.name, role: user.role };
 }
 
-export function tokenFromRequest(c: Context): string | null {
+/**
+ * Session token from the request: `authorization: Bearer`, then the cookie.
+ * `?token=` is only honoured where the caller passes `allowQuery` – websocket upgrades and e-ink devices,
+ * which cannot set headers. Everywhere else the query string is ignored (it ends up in logs and history).
+ */
+export function tokenFromRequest(c: Context, opts: { allowQuery?: boolean } = {}): string | null {
   const auth = c.req.header("authorization");
   if (auth?.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
   const cookie = getCookie(c, SESSION_COOKIE);
   if (cookie) return cookie;
-  // websocket upgrades from the browser can't set headers; allow ?token=
-  const q = c.req.query("token");
-  return q ?? null;
+  if (opts.allowQuery) return c.req.query("token") ?? null;
+  return null;
 }
 
-export function setSessionCookie(c: Context, token: string, expires: Date) {
-  const secure = new URL(c.req.url).protocol === "https:";
-  setCookie(c, SESSION_COOKIE, token, { httpOnly: true, sameSite: "Lax", path: "/", expires, secure });
+/** true when the client reached us over https, directly or through a tls-terminating proxy */
+export function requestIsHttps(c: Context) {
+  const fwd = c.req.header("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  if (fwd) return fwd === "https";
+  return new URL(c.req.url).protocol === "https:";
+}
+
+/** best-effort client ip for rate limiting; x-forwarded-for is trusted only when the hop is a local proxy */
+export function clientIp(c: Context, remote?: string | null): string {
+  const addr = remote ?? "";
+  const local = !addr || addr === "::1" || addr === "127.0.0.1" || addr.startsWith("::ffff:127.") || /^(10.|192.168.|172.(1[6-9]|2d|3[01]).)/.test(addr.replace(/^::ffff:/, ""));
+  const fwd = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  return local && fwd ? fwd : addr || "unknown";
+}
+
+export function setSessionCookie(c: Context, token: string, expires: Date, opts: { remember?: boolean } = {}) {
+  const secure = requestIsHttps(c);
+  // remember=false → browser-session cookie; the token itself still expires with the session row
+  setCookie(c, SESSION_COOKIE, token, { httpOnly: true, sameSite: "Lax", path: "/", ...(opts.remember === false ? {} : { expires }), secure });
 }
 
 export function clearSessionCookie(c: Context) {

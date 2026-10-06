@@ -88,7 +88,7 @@ function Sidebar() {
           );
         })}
         <div className="nav-group">{t("shell.nav.system")}</div>
-        <NavLink href="/modules/" icon="blocks" label={t("shell.nav.modulesPage")} pathname={pathname} onClick={close} badge={(modules.data ?? []).filter((m) => m.enabled && (m.error || (m.status && m.status.state !== "ok"))).length || undefined} />
+        <NavLink href="/modules/" icon="blocks" label={t("shell.nav.modulesPage")} pathname={pathname} onClick={close} badge={(modules.data ?? []).filter((m) => m.enabled && (m.error || m.status?.state === "warning" || m.status?.state === "error")).length || undefined} />
         <NavLink href="/devices/" icon="wifi" label={t("shell.nav.devices")} pathname={pathname} onClick={close} />
         <NavLink href="/eink/" icon="tv" label={t("shell.nav.eink")} pathname={pathname} onClick={close} />
         <NavLink href="/accounts/" icon="users" label={t("shell.nav.accounts")} pathname={pathname} onClick={close} />
@@ -97,7 +97,7 @@ function Sidebar() {
       <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: sidebarCollapsed ? "center" : "space-between" }}>
         {!sidebarCollapsed ? (
           <span className="pixel soft" title={`${me?.name ?? ""} · ${me?.role ?? ""} · ${t("shell.hubConnection", { status: ws })}`} style={{ fontSize: 10, display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-            <i className="status-dot" style={{ background: ws === "open" ? "var(--ok)" : ws === "connecting" ? "var(--idle)" : "var(--dnd)", width: 7, height: 7, borderWidth: 0 }} />
+            <i className="status-dot" role="img" aria-label={t("shell.hubConnection", { status: ws })} style={{ background: ws === "open" ? "var(--ok)" : ws === "connecting" ? "var(--idle)" : "var(--dnd)", width: 7, height: 7, borderWidth: 0 }} />
             {t("shell.by")}{" "}
             <a href="https://vensin.dev" target="_blank" rel="noreferrer" style={{ color: "var(--accent-2)" }}>
               vensin
@@ -160,6 +160,8 @@ function LogoutButton() {
           /* ignore */
         }
         setToken(null);
+        // full reload on purpose: drops every cache, module bundle and the websocket of the old session
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/login/";
       }}
     >

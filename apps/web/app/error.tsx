@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useT } from "@/lib/i18n";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -28,9 +29,9 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
             <button type="button" className="btn" onClick={() => window.location.reload()}>
               {t("common.reload")}
             </button>
-            <a className="btn" href="/">
+            <Link className="btn" href="/">
               {t("common.dashboard")}
-            </a>
+            </Link>
           </div>
           <p className="soft" style={{ fontSize: 11 }}>
             {t("error.issueHint")}{" "}

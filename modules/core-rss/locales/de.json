@@ -36,5 +36,11 @@
   "error.url_required": "url fehlt",
   "error.already_added": "feed ist schon drin",
 
-  "eink.empty": "noch keine einträge"
+  "eink.empty": "noch keine einträge",
+  "error.invalid_url": "das ist keine gültige http(s)-url",
+  "error.unknown_feed": "unbekannter feed",
+  "error.unknown_item": "unbekannter eintrag",
+  "page.last_ok": "zuletzt ok {time}",
+  "page.last_error": "fehlerhaft seit {time}: {error}",
+  "page.never": "nie"
 }

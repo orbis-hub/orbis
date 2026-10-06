@@ -88,5 +88,9 @@
   "error.401": "{host} hat die anmeldung abgelehnt (401). die meisten server wollen ein app-passwort statt deines konto-passworts; prüf benutzername (oft die komplette e-mail) und passwort.",
   "error.principal": "bei {host} wurde kein caldav-konto gefunden. prüf die server-url (bei nextcloud reicht die basis-url, bei anderen probier die komplette caldav-url aus der doku deines anbieters).",
   "error.unreachable": "{host} ist vom hub aus nicht erreichbar ({message}).",
-  "error.403": "{host} hat mit 403 forbidden geantwortet: das konto ist gültig, erlaubt aber womöglich keinen caldav-zugriff oder dem app-passwort fehlen kalenderrechte."
+  "error.403": "{host} hat mit 403 forbidden geantwortet: das konto ist gültig, erlaubt aber womöglich keinen caldav-zugriff oder dem app-passwort fehlen kalenderrechte.",
+  "error.invalidUrl": "das ist keine gültige http(s)-url",
+  "error.notCalendar": "{host} hat keinen kalender geliefert ({type}, kein BEGIN:VCALENDAR) – ist das die webseite statt des .ics-links?",
+  "error.invalidRange": "from/to müssen iso-daten sein, from vor to, höchstens {days} tage auseinander",
+  "page.partial": "ein paar konten konnten für diesen zeitraum nicht geladen werden."
 }

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { subscribeHub } from "@/lib/hub";
 import { useT } from "@/lib/i18n";
-import { useModules, useNotificationMutations, useNotifications } from "@/lib/queries";
+import { useAuthStatus, useModules, useNotificationMutations, useNotifications } from "@/lib/queries";
 
 type T = ReturnType<typeof useT>;
 
@@ -21,17 +21,20 @@ export function Bell() {
   const m = useNotificationMutations();
   const modules = useModules();
   const toast = useToast();
+  const me = useAuthStatus().data?.user?.id;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const unread = q.data?.unread ?? 0;
 
-  // urgent ones pop up as a toast as well
+  // urgent ones pop up as a toast as well; notifications addressed to another account are not ours
   useEffect(
     () =>
       subscribeHub((ev: HubEvent) => {
-        if (ev.type === "notification" && ev.notification.level === "urgent") toast(t("notifications.urgent", { title: ev.notification.title }), "bad");
+        if (ev.type !== "notification") return;
+        if (ev.notification.userId && ev.notification.userId !== me) return;
+        if (ev.notification.level === "urgent") toast(t("notifications.urgent", { title: ev.notification.title }), "bad");
       }),
-    [toast, t],
+    [toast, t, me],
   );
   useEffect(() => {
     if (!open) return;

@@ -7,33 +7,60 @@ export type WeatherData = {
   location: Location;
   units: "metric" | "imperial";
   fetchedAt: string;
+  /** iana zone of the location (open-meteo `timezone=auto`) and its utc offset at fetch time */
+  timezone: string;
+  utcOffsetSeconds: number;
   current: { temp: number; feelsLike: number; humidity: number; wind: number; windDir: number; code: number; isDay: boolean; precipitation: number };
-  hourly: Array<{ time: string; temp: number; code: number; precipProb: number }>;
+  /** `time` is the location's wall clock ("2026-10-05T08:00", no zone) for display, `at` the ISO instant */
+  hourly: Array<{ time: string; at: string; temp: number; code: number; precipProb: number }>;
+  /** `date`, `sunrise`, `sunset` are the location's wall clock, like `hourly.time` */
   daily: Array<{ date: string; min: number; max: number; code: number; precipProb: number; sunrise: string; sunset: string }>;
 };
 
+/** `id=Name@lat,lon` with lat ∈ [-90, 90], lon ∈ [-180, 180] */
+export const LOCATION_LINE = /^\s*([a-z0-9_-]+)\s*=\s*(.+?)\s*@\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/i;
+export function parseLocationLine(raw: string): Location | null {
+  const m = String(raw).match(LOCATION_LINE);
+  if (!m) return null;
+  const lat = Number(m[3]);
+  const lon = Number(m[4]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { id: m[1]!.toLowerCase(), name: m[2]!, lat, lon };
+}
 function parseLocations(s: Settings): Location[] {
   const out: Location[] = [];
   for (const raw of s.locations ?? []) {
-    const m = String(raw).match(/^\s*([a-z0-9_-]+)\s*=\s*(.+?)\s*@\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/i);
-    if (m) out.push({ id: m[1]!.toLowerCase(), name: m[2]!, lat: Number(m[3]), lon: Number(m[4]) });
+    const l = parseLocationLine(raw);
+    if (l && !out.some((x) => x.id === l.id)) out.push(l);
   }
   return out;
 }
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "home";
+/** wall clock "YYYY-MM-DDTHH:MM" of a unix time in a zone with the given offset */
+const wallClock = (unixSec: number, offsetSec: number) => new Date((unixSec + offsetSec) * 1000).toISOString().slice(0, 16);
 
 export default defineModule<Settings>({
   setup(ctx) {
     const cache = new Map<string, WeatherData>();
     let inflight = new Map<string, Promise<WeatherData>>();
 
+    /** hub-wide defaults (settings page → location / units); unavailable in a worker without `settings:read` */
+    const hub = () => {
+      try {
+        return ctx.hub.settings();
+      } catch {
+        return null;
+      }
+    };
     const locations = (): Location[] => {
       const list = parseLocations(ctx.settings.get());
       if (list.length) return list;
-      // fall back to the hub's default location if the user never configured one
-      const hubLoc = ctx.storage.get<Location>("hubLocation");
-      return hubLoc ? [hubLoc] : [{ id: "default", name: "Würzburg", lat: 49.79, lon: 9.95 }];
+      // nothing configured here: use the hub's default location, then a built-in fallback
+      const h = hub()?.location;
+      if (h && Number.isFinite(h.lat) && Number.isFinite(h.lon) && Math.abs(h.lat) <= 90 && Math.abs(h.lon) <= 180) return [{ id: slug(h.name || "home"), name: h.name || "home", lat: h.lat, lon: h.lon }];
+      return [{ id: "default", name: "Würzburg", lat: 49.79, lon: 9.95 }];
     };
-    const units = () => ctx.settings.get().units ?? "metric";
+    const units = (): "metric" | "imperial" => ctx.settings.get().units ?? hub()?.units ?? "metric";
 
     async function fetchWeather(loc: Location): Promise<WeatherData> {
       const u = units();
@@ -44,6 +71,8 @@ export default defineModule<Settings>({
         hourly: "temperature_2m,weather_code,precipitation_probability",
         daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
         timezone: "auto",
+        // unix times: the "now" slice must not depend on the hub's zone (open-meteo's iso strings carry no offset)
+        timeformat: "unixtime",
         forecast_days: "7",
         temperature_unit: u === "imperial" ? "fahrenheit" : "celsius",
         wind_speed_unit: u === "imperial" ? "mph" : "kmh",
@@ -52,15 +81,24 @@ export default defineModule<Settings>({
       const res = await ctx.fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(15_000) });
       if (!res.ok) throw new Error(`open-meteo HTTP ${res.status}`);
       const j = (await res.json()) as {
+        timezone?: string;
+        utc_offset_seconds?: number;
         current: Record<string, number>;
-        hourly: { time: string[]; temperature_2m: number[]; weather_code: number[]; precipitation_probability: number[] };
-        daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; sunrise: string[]; sunset: string[] };
+        hourly: { time: number[]; temperature_2m: number[]; weather_code: number[]; precipitation_probability: number[] };
+        daily: { time: number[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; sunrise: number[]; sunset: number[] };
       };
-      const nowIdx = Math.max(0, j.hourly.time.findIndex((t) => new Date(t).getTime() > Date.now()) - 1);
+      if (!j.hourly?.time || !j.daily?.time || !j.current) throw new Error("open-meteo answered without forecast data");
+      const offset = Number(j.utc_offset_seconds ?? 0);
+      const nowSec = Date.now() / 1000;
+      // the hour that contains "now": last entry that started at or before now
+      let nowIdx = j.hourly.time.findIndex((t) => t > nowSec) - 1;
+      if (nowIdx < 0) nowIdx = j.hourly.time.length && j.hourly.time[j.hourly.time.length - 1]! <= nowSec ? j.hourly.time.length - 1 : 0;
       const data: WeatherData = {
         location: loc,
         units: u,
         fetchedAt: new Date().toISOString(),
+        timezone: j.timezone ?? "UTC",
+        utcOffsetSeconds: offset,
         current: {
           temp: j.current.temperature_2m!,
           feelsLike: j.current.apparent_temperature!,
@@ -71,8 +109,8 @@ export default defineModule<Settings>({
           isDay: j.current.is_day === 1,
           precipitation: j.current.precipitation!,
         },
-        hourly: j.hourly.time.slice(nowIdx, nowIdx + 24).map((time, i) => ({ time, temp: j.hourly.temperature_2m[nowIdx + i]!, code: j.hourly.weather_code[nowIdx + i]!, precipProb: j.hourly.precipitation_probability[nowIdx + i] ?? 0 })),
-        daily: j.daily.time.map((date, i) => ({ date, min: j.daily.temperature_2m_min[i]!, max: j.daily.temperature_2m_max[i]!, code: j.daily.weather_code[i]!, precipProb: j.daily.precipitation_probability_max[i] ?? 0, sunrise: j.daily.sunrise[i]!, sunset: j.daily.sunset[i]! })),
+        hourly: j.hourly.time.slice(nowIdx, nowIdx + 24).map((t, i) => ({ time: wallClock(t, offset), at: new Date(t * 1000).toISOString(), temp: j.hourly.temperature_2m[nowIdx + i]!, code: j.hourly.weather_code[nowIdx + i]!, precipProb: j.hourly.precipitation_probability[nowIdx + i] ?? 0 })),
+        daily: j.daily.time.map((t, i) => ({ date: wallClock(t, offset).slice(0, 10), min: j.daily.temperature_2m_min[i]!, max: j.daily.temperature_2m_max[i]!, code: j.daily.weather_code[i]!, precipProb: j.daily.precipitation_probability_max[i] ?? 0, sunrise: wallClock(j.daily.sunrise[i]!, offset), sunset: wallClock(j.daily.sunset[i]!, offset) })),
       };
       cache.set(loc.id, data);
       ctx.storage.set(`cache:${loc.id}`, data);
@@ -80,12 +118,18 @@ export default defineModule<Settings>({
       return data;
     }
 
-    function get(locId: string | undefined, force = false): Promise<WeatherData> {
+    /** resolve a location id; `null` when it is unknown (callers decide between 404 and the default) */
+    const resolve = (locId: string | undefined): Location | null => {
       const locs = locations();
-      const loc = (locId && locs.find((l) => l.id === locId)) || locs[0]!;
+      if (!locId) return locs[0]!;
+      return locs.find((l) => l.id === locId) ?? null;
+    };
+
+    function get(loc: Location, force = false): Promise<WeatherData> {
       const hit = cache.get(loc.id) ?? ctx.storage.get<WeatherData>(`cache:${loc.id}`);
       const maxAge = (ctx.settings.get().refreshMinutes ?? 15) * 60_000;
-      if (hit && !force && Date.now() - new Date(hit.fetchedAt).getTime() < maxAge && hit.units === units() && hit.location.lat === loc.lat && hit.location.lon === loc.lon) {
+      // older cache entries (pre unixtime) have no `at`: refetch them
+      if (hit && !force && hit.hourly?.[0]?.at && Date.now() - new Date(hit.fetchedAt).getTime() < maxAge && hit.units === units() && hit.location.lat === loc.lat && hit.location.lon === loc.lon) {
         cache.set(loc.id, hit);
         return Promise.resolve(hit);
       }
@@ -100,7 +144,7 @@ export default defineModule<Settings>({
     const refreshAll = async () => {
       for (const l of locations()) {
         try {
-          await get(l.id, true);
+          await get(l, true);
         } catch (err) {
           ctx.logger.warn(`refresh failed for ${l.id}: ${(err as Error).message}`);
         }
@@ -114,21 +158,32 @@ export default defineModule<Settings>({
       schedule();
     });
 
-    ctx.http.get("/locations", (c) => c.json(locations()));
+    ctx.http.get("/locations", (c) => {
+      const configured = parseLocations(ctx.settings.get()).length > 0;
+      const invalid = (ctx.settings.get().locations ?? []).filter((raw) => !parseLocationLine(raw));
+      return c.json(locations().map((l, i) => ({ ...l, source: configured ? "module" : hub()?.location && i === 0 ? "hub" : "builtin", ...(i === 0 && invalid.length ? { invalid } : {}) })));
+    });
     ctx.http.get("/now", async (c) => {
+      const loc = resolve(c.req.query("location") || undefined);
+      if (!loc) return c.json({ error: ctx.i18n.t("error.unknown_location", { id: c.req.query("location") ?? "" }) }, 404);
       try {
-        return c.json(await get(c.req.query("location") || undefined, c.req.query("force") === "1"));
+        return c.json(await get(loc, c.req.query("force") === "1"));
       } catch (err) {
         return c.json({ error: (err as Error).message }, 502);
       }
     });
     ctx.http.get("/geocode", async (c) => {
-      const q = c.req.query("q");
-      if (!q) return c.json([]);
+      const q = (c.req.query("q") ?? "").trim().slice(0, 100);
+      if (q.length < 2) return c.json([]);
       const lang = ctx.i18n.language.split("-")[0] || "en";
-      const res = await ctx.fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=${encodeURIComponent(lang)}&format=json`, { signal: AbortSignal.timeout(10_000) });
-      const j = (await res.json()) as { results?: Array<{ name: string; country: string; admin1?: string; latitude: number; longitude: number }> };
-      return c.json((j.results ?? []).map((r) => ({ name: r.name, country: r.country, region: r.admin1, lat: r.latitude, lon: r.longitude })));
+      try {
+        const res = await ctx.fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=${encodeURIComponent(lang)}&format=json`, { signal: AbortSignal.timeout(10_000) });
+        if (!res.ok) throw new Error(`open-meteo HTTP ${res.status}`);
+        const j = (await res.json()) as { results?: Array<{ name: string; country: string; admin1?: string; latitude: number; longitude: number }> };
+        return c.json((j.results ?? []).map((r) => ({ name: r.name, country: r.country, region: r.admin1, lat: r.latitude, lon: r.longitude })));
+      } catch (err) {
+        return c.json({ error: ctx.i18n.t("error.geocode", { message: (err as Error).message }) }, 502);
+      }
     });
 
     ctx.logger.info("weather ready");
@@ -137,7 +192,8 @@ export default defineModule<Settings>({
     einkRender = async (req) => {
       const t = ctx.i18n.t;
       const cfg = req.config as { location?: string; days?: number; details?: boolean };
-      const d = await get(cfg.location || undefined);
+      // widgets: an unknown configured id falls back to the default location instead of failing the render
+      const d = await get(resolve(cfg.location || undefined) ?? locations()[0]!);
       const deg = d.units === "imperial" ? "°F" : "°C";
       const icon = (code: number, day = true) => {
         if (code === 0 || code === 1) return day ? "sun" : "moon";

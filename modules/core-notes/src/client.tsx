@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { defineClient, useModule, useModuleApi, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
-import { Button, Empty, Icon, Input, Window, cx } from "@orbis/ui";
+import { Button, Empty, Icon, Input, Modal, Window, cx } from "@orbis/ui";
 import type { Note } from "./server";
 
+const MAX_TITLE = 200;
+const MAX_BODY = 10_000;
+
 /* ---------- tiny markdown: headings, bold, italic, code, links, lists, checkboxes, rules ---------- */
+
+/** only http(s) and mailto become links; `javascript:` & co render as plain text */
+export function safeHref(href: string): string | null {
+  const h = href.trim();
+  return /^(https?:\/\/|mailto:)/i.test(h) && !/[\s<>"']/.test(h) ? h : null;
+}
 
 function inline(text: string): ReactNode[] {
   const out: ReactNode[] = [];
@@ -14,7 +23,10 @@ function inline(text: string): ReactNode[] {
     if (m[2]) out.push(<b key={k++}>{m[2]}</b>);
     else if (m[4]) out.push(<i key={k++}>{m[4]}</i>);
     else if (m[6]) out.push(<code key={k++} style={{ background: "var(--paper-2)", padding: "0 3px" }}>{m[6]}</code>);
-    else if (m[8]) out.push(<a key={k++} href={m[9]} target="_blank" rel="noreferrer">{m[8]}</a>);
+    else if (m[8]) {
+      const href = safeHref(m[9]!);
+      out.push(href ? <a key={k++} href={href} target="_blank" rel="noreferrer noopener">{m[8]}</a> : <span key={k++}>{m[8]}</span>);
+    }
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));
@@ -107,14 +119,28 @@ function NoteWidget({ config }: WidgetProps<{ noteId?: string; showTitle?: boole
   );
 }
 
+const SCRATCH_TITLE = "scratchpad";
+
 function ScratchWidget({ config }: WidgetProps<{ noteId?: string }>) {
+  const api = useModuleApi();
   const t = useT();
-  const q = useModuleQuery<Note>(config.noteId ? `/notes/${config.noteId}` : "/notes/by-title/scratchpad", { refetchOn: ["changed"] });
+  const q = useModuleQuery<Note>(config.noteId ? `/notes/${config.noteId}` : `/notes/by-title/${SCRATCH_TITLE}`, { refetchOn: ["changed"] });
   const ed = useAutosave(q.data, q.refetch);
-  if (!q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
+  // no scratchpad note yet (404) → create it once, explicitly; a configured noteId that is gone stays an error
+  const creating = useRef(false);
+  const missing = !config.noteId && !q.data && (q.error as { status?: number } | null)?.status === 404;
+  useEffect(() => {
+    if (!missing || creating.current) return;
+    creating.current = true;
+    api("/notes", { method: "POST", json: { title: SCRATCH_TITLE, body: "" } })
+      .then(() => q.refetch())
+      .catch(() => undefined)
+      .finally(() => { creating.current = false; });
+  }, [missing, api, q]);
+  if (!q.data) return <span className={cx("soft pixel")} style={{ fontSize: 12, color: q.error && !missing ? "var(--dnd)" : undefined }}>{q.error && !missing ? q.error.message : t("common.loading")}</span>;
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
-      <textarea className="input" value={ed.body} onChange={(e) => ed.setBody(e.target.value)} placeholder={t("widget.scratch.placeholder")} style={{ flex: 1, resize: "none", minHeight: 0, fontSize: 12, lineHeight: 1.5 }} />
+      <textarea className="input" value={ed.body} onChange={(e) => ed.setBody(e.target.value)} maxLength={MAX_BODY} placeholder={t("widget.scratch.placeholder")} style={{ flex: 1, resize: "none", minHeight: 0, fontSize: 12, lineHeight: 1.5 }} />
       <div className="soft" style={{ fontSize: 10, textAlign: "right" }}>{ed.saving ? t("common.saving") : t("common.saved")}</div>
     </div>
   );
@@ -129,6 +155,7 @@ function NotesPage(_p: PageProps) {
   const list = useModuleQuery<Array<Note & { length: number }>>("/notes", { refetchOn: ["changed"] });
   const [sel, setSel] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
+  const [deleting, setDeleting] = useState<Note | null>(null);
   const current = useModuleQuery<Note>(`/notes/${sel ?? ""}`, { enabled: !!sel, refetchOn: ["changed"] });
   const ed = useAutosave(current.data, current.refetch);
   useEffect(() => {
@@ -158,13 +185,13 @@ function NotesPage(_p: PageProps) {
       </Window>
       {current.data ? (
         <Window
-          title={<input className="input" value={ed.title} onChange={(e) => ed.setTitle(e.target.value)} style={{ padding: "0 4px", fontFamily: "var(--font-pixel)", fontSize: 13, background: "transparent", border: 0, width: "100%" }} aria-label={t("page.notes.titleField")} />}
+          title={<input className="input" value={ed.title} onChange={(e) => ed.setTitle(e.target.value)} maxLength={MAX_TITLE} style={{ padding: "0 4px", fontFamily: "var(--font-pixel)", fontSize: 13, background: "transparent", border: 0, width: "100%" }} aria-label={t("page.notes.titleField")} />}
           right={
             <>
               <span className="soft" style={{ fontSize: 10 }}>{ed.saving ? t("common.saving") : t("common.saved")}</span>
               <Button size="sm" variant="ghost" aria-pressed={preview} onClick={() => setPreview((v) => !v)} title={t("page.notes.preview")}><Icon name="eye" size={12} /></Button>
               <Button size="sm" variant="ghost" aria-pressed={!!current.data.pinned} onClick={() => api(`/notes/${current.data!.id}`, { method: "PATCH", json: { pinned: !current.data!.pinned } }).then(() => list.refetch())} title={t("page.notes.pin")}><Icon name="pin" size={12} /></Button>
-              <Button size="sm" variant="ghost" onClick={() => { if (confirm(t("page.notes.confirmDelete", { title: current.data!.title }))) api(`/notes/${current.data!.id}`, { method: "DELETE" }).then(() => { setSel(null); list.refetch(); }); }} aria-label={t("common.delete")}><Icon name="trash" size={12} /></Button>
+              <Button size="sm" variant="ghost" onClick={() => setDeleting(current.data!)} aria-label={t("common.delete")} title={t("common.delete")}><Icon name="trash" size={12} /></Button>
             </>
           }
         >
@@ -173,12 +200,21 @@ function NotesPage(_p: PageProps) {
               <Markdown text={ed.body} onToggle={(i, c) => ed.setBody(toggleLine(ed.body, i, c))} />
             </div>
           ) : (
-            <textarea className={cx("input")} value={ed.body} onChange={(e) => ed.setBody(e.target.value)} style={{ minHeight: 360, width: "100%", resize: "vertical", fontSize: 13, lineHeight: 1.55 }} placeholder={t("page.notes.bodyPlaceholder")} />
+            <textarea className={cx("input")} value={ed.body} onChange={(e) => ed.setBody(e.target.value)} maxLength={MAX_BODY} style={{ minHeight: 360, width: "100%", resize: "vertical", fontSize: 13, lineHeight: 1.55 }} placeholder={t("page.notes.bodyPlaceholder")} />
           )}
         </Window>
       ) : (
         <Empty icon="note" title={t("page.notes.pick")} />
       )}
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title={t("page.notes.deleteTitle")}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <span style={{ fontSize: 13 }}>{t("page.notes.confirmDelete", { title: deleting?.title ?? "" })}</span>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={() => setDeleting(null)}>{t("common.cancel")}</Button>
+            <Button variant="danger" onClick={() => { const id = deleting?.id; setDeleting(null); if (id) void api(`/notes/${id}`, { method: "DELETE" }).then(() => { setSel(null); list.refetch(); }); }}><Icon name="trash" size={12} /> {t("common.delete")}</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

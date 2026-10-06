@@ -141,6 +141,8 @@ export type NotificationInput = {
   icon?: string;
   /** same module + key replaces the previous notification instead of adding one (e.g. "task-due:<id>") */
   key?: string;
+  /** deliver to one account only (hub user id); omitted = everyone on the hub */
+  userId?: string;
 };
 
 export type Notification = {
@@ -153,5 +155,8 @@ export type Notification = {
   level: NotificationLevel;
   icon: string | null;
   createdAt: string;
+  /** read state of the requesting user (read state is per account) */
   readAt: string | null;
+  /** null = shared with everyone on the hub */
+  userId: string | null;
 };

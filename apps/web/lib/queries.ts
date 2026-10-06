@@ -3,7 +3,7 @@
 import type { Dashboard, Device, EinkDisplay, HubEvent, InstalledModule, Notification, RegistryEntry, WidgetInstance } from "@orbis/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { hubFetch, subscribeHub } from "./hub";
+import { hubFetch, isUnauthorized, subscribeHub } from "./hub";
 
 export type AuthStatus = { setup: boolean; authenticated: boolean; user: { id: string; name: string; role: string } | null; hubVersion: string; language?: string; locale?: string };
 export type HubSettings = {
@@ -210,7 +210,13 @@ export function useUserMutations() {
 /* ---------- e-ink displays ---------- */
 
 export function useEinkDisplays() {
-  return useQuery({ queryKey: qk.eink, queryFn: () => hubFetch<EinkDisplay[]>("/api/eink/displays"), staleTime: 30_000, refetchInterval: 60_000 });
+  return useQuery({
+    queryKey: qk.eink,
+    queryFn: () => hubFetch<EinkDisplay[]>("/api/eink/displays"),
+    staleTime: 30_000,
+    // stop polling once the session is gone (every further tick would be another 401)
+    refetchInterval: (query) => (isUnauthorized(query.state.error) ? false : 60_000),
+  });
 }
 
 export function useEinkMutations() {

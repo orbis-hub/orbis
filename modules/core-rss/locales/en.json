@@ -36,5 +36,11 @@
   "error.url_required": "url required",
   "error.already_added": "feed already added",
 
-  "eink.empty": "no items yet"
+  "eink.empty": "no items yet",
+  "error.invalid_url": "that is not a valid http(s) url",
+  "error.unknown_feed": "unknown feed",
+  "error.unknown_item": "unknown item",
+  "page.last_ok": "last ok {time}",
+  "page.last_error": "failing since {time}: {error}",
+  "page.never": "never"
 }

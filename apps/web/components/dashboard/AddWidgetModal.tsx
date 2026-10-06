@@ -18,9 +18,9 @@ export function AddWidgetModal({ open, onClose, modules, onPick }: { open: boole
     [modules, q],
   );
   return (
-    <Modal open={open} onClose={onClose} title={t("dashboard.addWidget")} width={560}>
+    <Modal open={open} onClose={onClose} title={t("dashboard.addWidget")} width={560} closeLabel={t("common.close")}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Input placeholder={t("dashboard.searchWidgets")} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        <Input type="search" placeholder={t("dashboard.searchWidgets")} aria-label={t("dashboard.searchWidgets")} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
         {items.length === 0 ? (
           <Empty icon="blocks" title={t("dashboard.noWidgetsFound")}>
             {modules.length === 0 ? (
@@ -38,6 +38,7 @@ export function AddWidgetModal({ open, onClose, modules, onPick }: { open: boole
                 key={`${m.id}/${w.id}`}
                 type="button"
                 className="win win-flat"
+                aria-label={t("dashboard.addWidgetNamed", { widget: w.name, module: m.manifest.name })}
                 style={{ textAlign: "left", padding: 10, cursor: "pointer", gap: 6 }}
                 onClick={() => {
                   onPick(m, w);

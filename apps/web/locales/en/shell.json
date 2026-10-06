@@ -25,5 +25,6 @@
   "shell.unreachable.hint2": "same network / vpn as the hub?",
   "shell.unreachable.hint3": "https page but http hub? browsers block that.",
   "shell.unreachable.retry": "retry",
-  "shell.unreachable.changeHub": "change hub url"
+  "shell.unreachable.changeHub": "change hub url",
+  "shell.sessionExpired": "signed out, please sign in again"
 }

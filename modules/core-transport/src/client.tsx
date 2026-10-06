@@ -11,6 +11,10 @@ type QueryError = Error & { data?: { retryAt?: string } };
 const PRODUCTS = ["bus", "tram", "subway", "suburban", "regional", "national"];
 const MAP_MIN_COLS = 4;
 
+/** server error strings that have a translation (one per provider family) */
+const ERROR_KEYS: Record<string, string> = { "transport api unavailable": "error.unavailable", "vgn api unavailable": "error.vgnUnavailable" };
+const errorLabel = (t: (k: string) => string, msg: string): string => (ERROR_KEYS[msg] ? t(ERROR_KEYS[msg]!) : msg);
+
 const minsUntil = (iso: string | null, now: number) => (iso ? Math.round((new Date(iso).getTime() - now) / 60_000) : null);
 
 /** translated product name, or the raw hafas product when we have no string for it */
@@ -37,7 +41,7 @@ function useErrorText() {
     if (!msg) return null;
     const retryAt = err?.data?.retryAt ?? (data as { retryAt?: string } | undefined)?.retryAt;
     const secs = retryAt ? Math.max(0, Math.ceil((new Date(retryAt).getTime() - now) / 1000)) : null;
-    const base = msg === "transport api unavailable" ? t("error.unavailable") : msg;
+    const base = errorLabel(t, msg);
     return secs ? `${base} · ${t("retryIn", { count: secs })}` : base;
   };
 }
@@ -288,7 +292,7 @@ function StopSearch({ onPick, initial, autoFocus }: { onPick: (s: Stop) => void;
       } catch (err) {
         if (id !== seq.current) return;
         setRes([]);
-        setNote((err as Error).message === "transport api unavailable" ? t("error.unavailable") : (err as Error).message);
+        setNote(errorLabel(t, (err as Error).message));
         setOpen(true);
       } finally {
         if (id === seq.current) setBusy(false);
@@ -366,7 +370,11 @@ function StopSearch({ onPick, initial, autoFocus }: { onPick: (s: Stop) => void;
                     {s.distanceKm != null ? `${label ? " · " : ""}${t("search.distance", { distance: formatKm(s.distanceKm) })}` : ""}
                   </span>
                 </span>
-                <span className="soft" style={{ fontSize: 10, marginTop: 3 }}>{s.products.slice(0, 3).map((p) => productName(t, p)).join(" ")}</span>
+                {s.products.length ? (
+                  <span style={{ display: "flex", gap: 3, marginTop: 2, flexShrink: 0 }}>
+                    {s.products.slice(0, 3).map((p) => <Chip key={p} style={{ fontSize: 9, padding: "0 4px", lineHeight: "14px" }}>{productName(t, p)}</Chip>)}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -561,11 +569,16 @@ function DeparturesPage(_p: PageProps) {
 function TransportSettings({ value, onChange }: SettingsProps) {
   const t = useT();
   const providers = useModuleQuery<Array<{ id: string; name: string }>>("/providers");
+  /** translated label when we have one (`provider.<id>`), else the server's name */
+  const providerLabel = (p: { id: string; name: string }) => {
+    const v = t(`provider.${p.id}`);
+    return v === `provider.${p.id}` ? p.name : v;
+  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Field label={t("settings.provider")}>
         <Select value={String(value.provider ?? "db")} onChange={(e) => onChange({ ...value, provider: e.target.value })}>
-          {(providers.data ?? [{ id: "db", name: "Deutsche Bahn" }]).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {(providers.data ?? [{ id: "db", name: "Deutsche Bahn" }, { id: "vgn", name: "VGN" }]).map((p) => <option key={p.id} value={p.id}>{providerLabel(p)}</option>)}
         </Select>
       </Field>
       <Field label={t("settings.refresh")}><Input type="number" min={30} max={600} value={Number(value.refreshSeconds ?? 60)} onChange={(e) => onChange({ ...value, refreshSeconds: Number(e.target.value) })} /></Field>

@@ -51,7 +51,7 @@ function OverviewWidget({ config }: WidgetProps<{ showModules?: boolean }>) {
   if (!s) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
-      <Metric label={t("metric.cpu")} value={`${s.cpuPercent}%`} pct={s.cpuPercent} sub={`${t("sub.cores", { count: s.cores })} · ${t("sub.load", { load: load(s.load[0]) })}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`} />
+      <Metric label={t("metric.cpu")} value={`${s.cpuPercent}%`} pct={s.cpuPercent} sub={`${t("sub.cores", { count: s.cores })}${s.load ? ` · ${t("sub.load", { load: load(s.load[0]) })}` : ""}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`} />
       <Metric label={t("metric.memory")} value={`${s.memPercent}%`} pct={s.memPercent} sub={`${t("sub.of", { used: gb(s.memUsed), total: gb(s.memTotal) })} · ${t("sub.hub", { size: mb(s.processRss) })}`} />
       {s.diskPercent !== null ? <Metric label={t("metric.disk")} value={`${s.diskPercent}%`} pct={s.diskPercent} sub={t("sub.of", { used: gb(s.diskUsed ?? 0), total: gb(s.diskTotal ?? 0) })} /> : null}
       <div className="soft" style={{ fontSize: 11, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -74,7 +74,7 @@ function GaugeWidget({ config, size }: WidgetProps<{ metric?: string }>) {
     disk: { label: t("metric.disk"), value: s.diskPercent !== null ? `${s.diskPercent}%` : "–", pct: s.diskPercent, icon: "hdd" },
     uptime: { label: t("metric.uptime"), value: up(s.uptimeSec), pct: null, icon: "clock" },
     temperature: { label: t("metric.cpuTemp"), value: s.tempC !== null ? `${s.tempC}°C` : t("common.na"), pct: s.tempC !== null ? Math.min(100, s.tempC) : null, icon: "thermometer" },
-    load: { label: t("metric.load1m"), value: load(s.load[0]), pct: Math.min(100, (s.load[0] / s.cores) * 100), icon: "zap" },
+    load: { label: t("metric.load1m"), value: s.load ? load(s.load[0]) : t("common.na"), pct: s.load ? Math.min(100, (s.load[0] / s.cores) * 100) : null, icon: "zap" },
   };
   const g = map[m] ?? map.cpu!;
   const big = Math.max(20, Math.min(size.height * 0.4, size.width / Math.max(3, g.value.length * 0.7)));
@@ -116,7 +116,7 @@ function StatusPage(_p: PageProps) {
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             <Chip>{s.hostname}</Chip><Chip>{s.platform} {s.arch}</Chip><Chip>node {s.node}</Chip><Chip>orbis {s.hubVersion}</Chip>
           </div>
-          <Metric label={t("metric.cpu")} value={`${s.cpuPercent}%`} pct={s.cpuPercent} sub={`${t("sub.cores", { count: s.cores })} · ${t("sub.load", { load: s.load.map(load).join(" / ") })}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`} />
+          <Metric label={t("metric.cpu")} value={`${s.cpuPercent}%`} pct={s.cpuPercent} sub={`${t("sub.cores", { count: s.cores })}${s.load ? ` · ${t("sub.load", { load: s.load.map(load).join(" / ") })}` : ""}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`} />
           <Metric label={t("metric.memory")} value={`${s.memPercent}%`} pct={s.memPercent} sub={`${t("sub.of", { used: gb(s.memUsed), total: gb(s.memTotal) })} · ${t("sub.hubProcess", { size: mb(s.processRss) })}`} />
           {s.diskPercent !== null ? <Metric label={t("metric.diskDataDir")} value={`${s.diskPercent}%`} pct={s.diskPercent} sub={t("sub.of", { used: gb(s.diskUsed ?? 0), total: gb(s.diskTotal ?? 0) })} /> : null}
           <div className="soft" style={{ fontSize: 12 }}>{t("page.status.systemUp", { system: up(s.uptimeSec), hub: up(s.processUptimeSec) })} · {t("page.status.modulesLoaded", { count: s.modules })}{s.dbBytes ? ` · ${t("page.status.database", { size: mb(s.dbBytes) })}` : ""}</div>

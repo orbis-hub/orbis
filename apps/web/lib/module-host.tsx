@@ -8,7 +8,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as jsxRuntime from "react/jsx-runtime";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { getHubUrl, getToken, hubAbs, hubFetch, subscribeHub } from "./hub";
+import { getHubUrl, getToken, hubAbs, hubFetch, isUnauthorized, subscribeHub } from "./hub";
 import { useLanguage, useLocale } from "./i18n";
 import { useDevices, useModuleDetail, useModuleMutations, useSettings } from "./queries";
 
@@ -29,7 +29,9 @@ function useModuleApi() {
 function useModuleEvents(name: string | null, cb: (payload: unknown) => void) {
   const { subscribe } = useModule();
   const ref = useRef(cb);
-  ref.current = cb;
+  useEffect(() => {
+    ref.current = cb; // latest-callback pattern: written after render, read in the subscription
+  });
   useEffect(() => {
     if (name === null) return;
     return subscribe((ev) => {
@@ -53,38 +55,35 @@ function useT(): Translator {
 
 function useModuleQuery<T>(path: string, opts: { refetchOn?: string[]; intervalMs?: number; enabled?: boolean } = {}) {
   const { api, subscribe } = useModule();
-  const [data, setData] = useState<T>();
-  const [error, setError] = useState<Error | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<{ data?: T; error: Error | null; loading: boolean }>({ error: null, loading: true });
   const enabled = opts.enabled ?? true;
-  const refetch = useCallback(async () => {
-    if (!enabled) return;
-    try {
-      setData(await api<T>(path));
-      setError(null);
-    } catch (e) {
-      setError(e as Error);
-    } finally {
-      setLoading(false);
-    }
+  // state is only ever written from the promise callbacks (never synchronously in an effect body)
+  const refetch = useCallback((): Promise<void> => {
+    if (!enabled) return Promise.resolve();
+    return api<T>(path).then(
+      (data) => setState({ data, error: null, loading: false }),
+      (error: Error) => setState((s) => ({ data: s.data, error, loading: false })),
+    );
   }, [api, path, enabled]);
+  // a lost session (401) means every further poll would fail the same way: stop until the hook remounts
+  const dead = isUnauthorized(state.error);
   useEffect(() => {
     void refetch();
   }, [refetch]);
   useEffect(() => {
-    if (!opts.intervalMs) return;
+    if (!opts.intervalMs || dead) return;
     const t = setInterval(() => void refetch(), opts.intervalMs);
     return () => clearInterval(t);
-  }, [opts.intervalMs, refetch]);
+  }, [opts.intervalMs, refetch, dead]);
   const on = opts.refetchOn?.join("|") ?? "";
   useEffect(() => {
-    if (!on) return;
+    if (!on || dead) return;
     const names = new Set(on.split("|"));
     return subscribe((ev) => {
       if (ev.type === "module:event" && names.has(ev.name)) void refetch();
     });
-  }, [on, subscribe, refetch]);
-  return { data, error, loading, refetch };
+  }, [on, subscribe, refetch, dead]);
+  return { data: state.data, error: state.error, loading: state.loading, refetch };
 }
 
 const sdk: ClientSdk = { ModuleContext, useModule, useModuleApi, useModuleEvents, useModuleSettings, useModuleDevices, useModuleQuery, useT };

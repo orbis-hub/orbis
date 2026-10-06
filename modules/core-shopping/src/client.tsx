@@ -193,6 +193,8 @@ function ShoppingPage(_p: PageProps) {
   const all = useItems(list, true);
   const aisles = useAisles(list);
   const [picking, setPicking] = useState<ShopItem | null>(null);
+  const [newList, setNewList] = useState(false);
+  const [newName, setNewName] = useState("");
   const bought = (all.data ?? []).filter((i) => i.done).slice(0, 40);
   const refetch = () => { void open.refetch(); void all.refetch(); };
   const toggle = (i: ShopItem) => void api(`/items/${i.id}`, { method: "PATCH", json: { done: !i.done } }).then(refetch);
@@ -204,10 +206,10 @@ function ShoppingPage(_p: PageProps) {
         title={
           <span style={{ display: "inline-flex", gap: 6 }}>
             {names.map((n) => <button key={n} type="button" className={cx("tab")} aria-selected={n === list} onClick={() => setList(n)} style={{ top: 0, padding: "0 8px", fontSize: 12 }}>{n}{(lists.data ?? []).find((l) => l.list === n)?.open ? ` (${(lists.data ?? []).find((l) => l.list === n)!.open})` : ""}</button>)}
-            <button type="button" className="tab" style={{ top: 0, padding: "0 8px", fontSize: 12 }} onClick={() => { const n = prompt(t("list.new")); if (n) setList(n.trim().toLowerCase()); }}>+</button>
+            <button type="button" className="tab" style={{ top: 0, padding: "0 8px", fontSize: 12 }} aria-label={t("list.new")} title={t("list.new")} onClick={() => { setNewName(""); setNewList(true); }}>+</button>
           </span>
         }
-        right={<Button size="sm" variant="ghost" onClick={() => api("/clear-done", { method: "POST", json: { list } }).then(() => all.refetch())}>{t("list.tidy")}</Button>}
+        right={<Button size="sm" variant="ghost" title={t("list.tidyHint", { days: 90 })} onClick={() => api("/clear-done", { method: "POST", json: { list } }).then(() => all.refetch())}>{t("list.tidy")}</Button>}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <QuickAdd list={list} onAdded={refetch} big />
@@ -247,6 +249,25 @@ function ShoppingPage(_p: PageProps) {
           onPick={(aisle) => { const id = picking.id; setPicking(null); void api(`/items/${id}`, { method: "PATCH", json: { aisle } }).then(refetch); }}
         />
       ) : null}
+      <Modal open={newList} onClose={() => setNewList(false)} title={t("list.new")} width={360}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const n = newName.trim().toLowerCase();
+            if (!n) return;
+            setList(n);
+            setNewList(false);
+          }}
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+        >
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus maxLength={100} placeholder={t("list.newPlaceholder")} />
+          <span className="soft" style={{ fontSize: 11 }}>{t("list.newHint")}</span>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={() => setNewList(false)}>{t("list.cancel")}</Button>
+            <Button type="submit" variant="primary" disabled={!newName.trim()}>{t("list.create")}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

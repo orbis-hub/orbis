@@ -4,6 +4,7 @@ import type { Translator } from "./i18n";
 
 export type { Messages, Translator, TranslateVars } from "./i18n";
 export { createTranslator, localizeManifest, languageChain, pickLanguage } from "./i18n";
+export * from "./validate";
 
 /** Translations for the hub's current language (see `locales/<lang>.json` and `manifest.languages`). */
 export type ModuleI18n = {
@@ -80,6 +81,26 @@ export type ModuleModules = {
   onChange(cb: (loaded: string[]) => void): () => void;
 };
 
+/** Hub-wide settings a module may read (`settings:read`): what the settings page calls the hub default. */
+export type PublicHubSettings = {
+  hubName: string;
+  /** ui language, e.g. "de" */
+  language: string;
+  /** formatting locale, e.g. "de-DE" */
+  locale: string;
+  /** iana zone, e.g. "Europe/Berlin" */
+  timezone: string;
+  units: "metric" | "imperial";
+  /** default location for location-aware modules; null until the user sets one */
+  location: { lat: number; lon: number; name: string } | null;
+};
+
+export type ModuleFetchInit = RequestInit & {
+  /** Response body cap in bytes (default 5 MB, hard max 50 MB). */
+  maxBytes?: number;
+};
+export type ModuleFetch = (input: string | URL | Request, init?: ModuleFetchInit) => Promise<Response>;
+
 export type ModuleServerContext<TSettings = Record<string, unknown>> = {
   manifest: ModuleManifest;
   /** Absolute path to the module's installed directory. */
@@ -96,6 +117,8 @@ export type ModuleServerContext<TSettings = Record<string, unknown>> = {
   /** Report setup state: `ctx.status.set({ state: "needs-setup", message: "add an account", action: { label: "open calendar", page: "calendar" } })`. */
   status: { set(status: ModuleStatus | null): void; get(): ModuleStatus | null };
   modules: ModuleModules;
+  /** `ctx.hub.settings().location` – hub-wide defaults (needs the `settings:read` permission). */
+  hub: { settings(): PublicHubSettings };
   /**
    * Tell the user something: bell in the app, toast for urgent ones, and whatever channels they configured (ntfy, telegram).
    * Users can mute a module. Use `key` for things that update (replace) and `dismiss(key)` when they resolve.
@@ -107,7 +130,13 @@ export type ModuleServerContext<TSettings = Record<string, unknown>> = {
    * Example: ctx.http.get("/items", (c) => c.json(items))
    */
   http: Hono;
-  fetch: typeof fetch;
+  /**
+   * Outbound http(s) with the hub's fetch policy: the hostname is resolved first and loopback / link-local / private
+   * (rfc1918, ula) / cloud-metadata addresses are refused unless the manifest declares `network:lan`; only `http:` and
+   * `https:`; 20 s default timeout (pass your own `signal` to shorten it); at most 5 redirects, each hop re-checked;
+   * response bodies are capped at 5 MB (`maxBytes`, up to 50 MB) – reading past the cap rejects with "response too large".
+   */
+  fetch: ModuleFetch;
   /** `ctx.i18n.t("notify.due", { title })` for notifications and e-ink text in the user's language. */
   i18n: ModuleI18n;
 };

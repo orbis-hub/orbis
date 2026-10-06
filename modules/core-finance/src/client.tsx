@@ -39,7 +39,7 @@ function OverviewWidget({ config, size }: WidgetProps<Config>) {
   return (
     <div className="finance-widget" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
       <style>{`.finance-widget:hover .amount{filter:none!important}`}</style>
-      <div className="soft" style={{ fontSize: 11 }}>{config.mode === "total" ? t("label.total") : t("label.left")}</div>
+      <div className="soft" style={{ fontSize: 11 }} title={config.mode === "total" ? undefined : t("label.leftHint")}>{config.mode === "total" ? t("label.total") : t("label.left")}</div>
       <div className="pixel" style={{ fontSize: compact ? 22 : 30, lineHeight: 1, fontWeight: 600, color: big < 0 ? "var(--dnd)" : undefined, ...blur(o.hideAmounts) }}>{fmt(big, o.currency, loc, 0)}</div>
       <div className="soft" style={{ fontSize: 11 }}>
         {config.mode === "total" ? t("overview.stillDueThisMonth", { amount: fmt(o.upcomingExpenses, o.currency, loc, 0) }) : t("overview.perDay", { amount: fmt(o.perDay, o.currency, loc, 0), count: o.daysLeft })}
@@ -111,28 +111,56 @@ function FinancePage(_p: PageProps) {
   const [editRec, setEditRec] = useState<Partial<Recurring> | null>(null);
   const [csv, setCsv] = useState<"accounts" | "recurring" | null>(null);
   const [csvText, setCsvText] = useState("");
+  /** delete asks first: which row, shown in a modal instead of window.confirm */
+  const [confirmDel, setConfirmDel] = useState<{ what: "accounts" | "recurring"; id: string; name: string } | null>(null);
   const o = ov.data;
   const cur = o?.currency ?? "EUR";
   const loc = useLoc(o);
   const hide = !!o?.hideAmounts;
+  const fail = (err: unknown) => toast((err as Error).message, "bad");
 
   const saveAcc = async () => {
     if (!editAcc?.name?.trim()) return;
-    if (editAcc.id) await api(`/accounts/${editAcc.id}`, { method: "PATCH", json: editAcc });
-    else await api("/accounts", { method: "POST", json: editAcc });
-    setEditAcc(null);
+    const { id, ...body } = editAcc;
+    try {
+      if (id) await api(`/accounts/${id}`, { method: "PATCH", json: body });
+      else await api("/accounts", { method: "POST", json: body });
+      setEditAcc(null);
+    } catch (err) {
+      fail(err);
+    }
   };
   const saveRec = async () => {
     if (!editRec?.name?.trim()) return;
-    if (editRec.id) await api(`/recurring/${editRec.id}`, { method: "PATCH", json: editRec });
-    else await api("/recurring", { method: "POST", json: editRec });
-    setEditRec(null);
+    const { id, ...body } = editRec;
+    try {
+      if (id) await api(`/recurring/${id}`, { method: "PATCH", json: body });
+      else await api("/recurring", { method: "POST", json: body });
+      setEditRec(null);
+    } catch (err) {
+      fail(err);
+    }
   };
   const importCsv = async () => {
-    const r = await api<{ imported: number }>("/import", { method: "POST", json: { csv: csvText, what: csv } });
-    toast(t("toast.imported", { count: r.imported }));
-    setCsv(null);
-    setCsvText("");
+    try {
+      const r = await api<{ imported: number; skipped: number }>("/import", { method: "POST", json: { csv: csvText, what: csv } });
+      toast(r.skipped ? t("toast.importedSkipped", { count: r.imported, skipped: r.skipped }) : t("toast.imported", { count: r.imported }), r.imported ? undefined : "warn");
+      setCsv(null);
+      setCsvText("");
+    } catch (err) {
+      fail(err);
+    }
+  };
+  const doDelete = async () => {
+    if (!confirmDel) return;
+    try {
+      await api(`/${confirmDel.what}/${confirmDel.id}`, { method: "DELETE" });
+      setConfirmDel(null);
+      if (confirmDel.what === "accounts") setEditAcc(null);
+      else setEditRec(null);
+    } catch (err) {
+      fail(err);
+    }
   };
 
   return (
@@ -143,7 +171,7 @@ function FinancePage(_p: PageProps) {
         <div className="win-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
           {o ? (
             <>
-              <Stat label={t("label.left")} value={fmt(o.left, cur, loc, 0)} hint={t("stat.perDayFor", { amount: fmt(o.perDay, cur, loc, 0), count: o.daysLeft })} hide={hide} bad={o.left < 0} />
+              <Stat label={t("label.left")} value={fmt(o.left, cur, loc, 0)} hint={`${t("label.leftHint")} · ${t("stat.perDayFor", { amount: fmt(o.perDay, cur, loc, 0), count: o.daysLeft })}`} hide={hide} bad={o.left < 0} />
               <Stat label={t("label.total")} value={fmt(o.total, cur, loc, 0)} hint={t("stat.accounts", { count: acc.data?.length ?? 0 })} hide={hide} bad={o.total < 0} />
               <Stat label={t("stat.stillDue")} value={fmt(o.upcomingExpenses, cur, loc, 0)} hint={t("stat.ofRecurring", { amount: fmt(o.monthlyExpenses, cur, loc, 0) })} hide={hide} />
               <Stat label={t("stat.stillComingIn")} value={fmt(o.upcomingIncome, cur, loc, 0)} hint={t("stat.ofRecurring", { amount: fmt(o.monthlyIncome, cur, loc, 0) })} hide={hide} />
@@ -203,7 +231,7 @@ function FinancePage(_p: PageProps) {
             </div>
             <Field label={t("field.type")}><Select value={editAcc.kind ?? "checking"} onChange={(e) => setEditAcc({ ...editAcc, kind: e.target.value as Account["kind"] })}>{KINDS.map((k) => <option key={k} value={k}>{t(`kind.${k}`)}</option>)}</Select></Field>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              {editAcc.id ? <Button type="button" size="sm" variant="ghost" onClick={() => void api(`/accounts/${editAcc.id}`, { method: "DELETE" }).then(() => setEditAcc(null))}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
+              {editAcc.id ? <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDel({ what: "accounts", id: editAcc.id!, name: editAcc.name ?? "" })}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
               <Button type="submit" size="sm" variant="primary">{t("action.save")}</Button>
             </div>
           </form>
@@ -221,10 +249,21 @@ function FinancePage(_p: PageProps) {
             <Field label={t("field.account")}><Select value={editRec.account_id ?? ""} onChange={(e) => setEditRec({ ...editRec, account_id: e.target.value || null })}><option value="">{t("field.firstAccount")}</option>{acc.data?.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
             {editRec.id ? <Checkbox label={t("field.active")} checked={!!editRec.active} onChange={(e) => setEditRec({ ...editRec, active: e.target.checked ? 1 : 0 })} /> : null}
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              {editRec.id ? <Button type="button" size="sm" variant="ghost" onClick={() => void api(`/recurring/${editRec.id}`, { method: "DELETE" }).then(() => setEditRec(null))}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
+              {editRec.id ? <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDel({ what: "recurring", id: editRec.id!, name: editRec.name ?? "" })}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
               <Button type="submit" size="sm" variant="primary">{t("action.save")}</Button>
             </div>
           </form>
+        </Modal>
+      ) : null}
+      {confirmDel ? (
+        <Modal open onClose={() => setConfirmDel(null)} title={t("confirm.deleteTitle")} width={360}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <span style={{ fontSize: 13 }}>{t(confirmDel.what === "accounts" ? "confirm.deleteAccount" : "confirm.deleteRecurring", { name: confirmDel.name })}</span>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmDel(null)}>{t("action.cancel")}</Button>
+              <Button size="sm" variant="danger" autoFocus onClick={() => void doDelete()}><Icon name="trash" size={12} /> {t("action.delete")}</Button>
+            </div>
+          </div>
         </Modal>
       ) : null}
       {csv ? (

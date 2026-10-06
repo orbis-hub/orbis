@@ -1,7 +1,8 @@
 "use client";
 
-import { Button, Chip, Field, Icon, Input, Select, useToast, Window } from "@orbis/ui";
-import { useEffect, useState } from "react";
+import { Button, Chip, Field, Icon, Input, Select, Textarea, useStableId, useToast, Window } from "@orbis/ui";
+import { useState } from "react";
+import { useConfirm } from "@/components/Confirm";
 import { Shell, ThemeToggle } from "@/components/Shell";
 import { getHubUrl, setHubUrl } from "@/lib/hub";
 import { LANGUAGES, useT } from "@/lib/i18n";
@@ -13,23 +14,28 @@ export default function SettingsPage() {
   const status = useAuthStatus();
   const patch = usePatchSettings();
   const toast = useToast();
+  // local edits are a patch on top of the loaded settings; nothing is copied into state when the data arrives
   const [form, setForm] = useState<Partial<HubSettings>>({});
-  const [registries, setRegistries] = useState("");
-  const [hub, setHub] = useState("");
+  const [registriesEdit, setRegistriesEdit] = useState<string | null>(null);
+  const [hub, setHub] = useState(() => (typeof window === "undefined" ? "" : (getHubUrl() ?? "")));
   const t = useT();
-  useEffect(() => {
-    if (settings.data) {
-      setForm(settings.data);
-      setRegistries(settings.data.registries.join("\n"));
-    }
-  }, [settings.data]);
-  useEffect(() => setHub(getHubUrl() ?? ""), []);
+  const registriesId = useStableId("registries");
+  const tzId = useStableId("tz");
+  const hubId = useStableId("hub-url");
 
   const s = { ...settings.data, ...form } as HubSettings;
+  const registries = registriesEdit ?? (settings.data?.registries ?? []).join("\n");
   const save = () =>
     patch.mutate(
-      { ...form, registries: registries.split(/\s+/).map((x) => x.trim()).filter(Boolean) },
-      { onSuccess: () => toast(t("settings.saved"), "ok"), onError: (e) => toast(e.message, "bad") },
+      { ...form, ...(registriesEdit !== null ? { registries: registriesEdit.split(/\s+/).map((x) => x.trim()).filter(Boolean) } : {}) },
+      {
+        onSuccess: () => {
+          toast(t("settings.saved"), "ok");
+          setForm({});
+          setRegistriesEdit(null);
+        },
+        onError: (e) => toast(e.message, "bad"),
+      },
     );
 
   return (
@@ -58,8 +64,8 @@ export default function SettingsPage() {
             <Field label={t("settings.hub.locale")} hint={t("settings.hub.localeHint")}>
               <Input value={s.locale ?? ""} onChange={(e) => setForm({ ...form, locale: e.target.value })} />
             </Field>
-            <Field label={t("settings.hub.timezone")}>
-              <Input value={s.timezone ?? ""} onChange={(e) => setForm({ ...form, timezone: e.target.value })} list="tz" />
+            <Field label={t("settings.hub.timezone")} htmlFor={tzId}>
+              <Input id={tzId} value={s.timezone ?? ""} onChange={(e) => setForm({ ...form, timezone: e.target.value })} list="tz" />
               <datalist id="tz">
                 {["Europe/Berlin", "Europe/London", "Europe/Vienna", "Europe/Zurich", "UTC", "America/New_York", "America/Los_Angeles", "Asia/Tokyo"].map((t) => (
                   <option key={t} value={t} />
@@ -126,7 +132,9 @@ export default function SettingsPage() {
           <p className="soft" style={{ fontSize: 12, marginBottom: 10 }}>
             {t("settings.registries.intro")}
           </p>
-          <textarea className="input" value={registries} onChange={(e) => setRegistries(e.target.value)} rows={3} placeholder="https://raw.githubusercontent.com/you/orbis-registry/main/index.json" />
+          <Field label={t("settings.registries.label")} htmlFor={registriesId}>
+            <Textarea id={registriesId} value={registries} onChange={(e) => setRegistriesEdit(e.target.value)} rows={3} placeholder="https://raw.githubusercontent.com/you/orbis-registry/main/index.json" />
+          </Field>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
             <Button variant="primary" onClick={save} loading={patch.isPending}>
               {t("settings.save")}
@@ -143,13 +151,15 @@ export default function SettingsPage() {
               <Chip>{t("settings.device.hub", { version: status.data?.hubVersion ?? "?" })}</Chip>
               <Chip>{t("settings.device.user", { name: status.data?.user?.name ?? "" })}</Chip>
             </div>
-            <Field label={t("settings.device.hubUrl")} hint={t("settings.device.hubUrlHint")}>
+            <Field label={t("settings.device.hubUrl")} hint={t("settings.device.hubUrlHint")} htmlFor={hubId}>
               <div style={{ display: "flex", gap: 6 }}>
-                <Input value={hub} onChange={(e) => setHub(e.target.value)} />
+                <Input id={hubId} value={hub} onChange={(e) => setHub(e.target.value)} inputMode="url" />
                 <Button
                   size="sm"
                   onClick={() => {
                     setHubUrl(hub || null);
+                    // full reload on purpose: a different hub means fresh module bundles, caches and websocket
+                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                     window.location.href = "/login/";
                   }}
                 >
@@ -167,6 +177,7 @@ export default function SettingsPage() {
 function BackupWindow() {
   const toast = useToast();
   const t = useT();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const hub = getHubUrl() ?? "";
   async function download() {
@@ -188,7 +199,7 @@ function BackupWindow() {
     }
   }
   async function restore(file: File) {
-    if (!confirm(t("settings.backup.confirm", { name: file.name }))) return;
+    if (!(await confirm({ title: t("settings.backup.restore"), body: t("settings.backup.confirm", { name: file.name }), confirmLabel: t("settings.backup.restore"), danger: true }))) return;
     setBusy(true);
     try {
       const fd = new FormData();
@@ -214,11 +225,11 @@ function BackupWindow() {
           </Button>
           <label className="btn" style={{ cursor: "pointer" }}>
             <Icon name="upload" size={12} /> {t("settings.backup.restore")}
-            <input type="file" accept=".tgz,.tar.gz,application/gzip" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} disabled={busy} />
+            <input type="file" accept=".tgz,.tar.gz,application/gzip" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void restore(f); }} disabled={busy} />
           </label>
         </div>
         <p className="soft" style={{ fontSize: 11 }}>
-          {t("settings.backup.note", { folder: "data-before-restore" })} <code>curl -H "authorization: Bearer …" {hub}/api/backup -o backup.tgz</code>
+          {t("settings.backup.note", { folder: "before-restore-<timestamp>/" })} <code>{`curl -H "authorization: Bearer …" ${hub}/api/backup -o backup.tgz`}</code>
         </p>
       </div>
     </Window>
@@ -232,15 +243,23 @@ function NotifyWindow() {
   const nm = useNotificationMutations();
   const toast = useToast();
   const t = useT();
-  const [ch, setCh] = useState<HubSettings["notifyChannels"]>({});
-  const [muted, setMuted] = useState<string[]>([]);
-  useEffect(() => {
-    if (settings.data) {
-      setCh(settings.data.notifyChannels ?? {});
-      setMuted(settings.data.mutedModules ?? []);
-    }
-  }, [settings.data]);
-  const save = () => patch.mutate({ notifyChannels: ch, mutedModules: muted }, { onSuccess: () => toast(t("settings.saved"), "ok"), onError: (e) => toast(e.message, "bad") });
+  // edits start as null = "show what the hub has"; the first keystroke forks a local copy
+  const [chEdit, setCh] = useState<HubSettings["notifyChannels"] | null>(null);
+  const [mutedEdit, setMuted] = useState<string[] | null>(null);
+  const ch = chEdit ?? settings.data?.notifyChannels ?? {};
+  const muted = mutedEdit ?? settings.data?.mutedModules ?? [];
+  const save = () =>
+    patch.mutate(
+      { notifyChannels: ch, mutedModules: muted },
+      {
+        onSuccess: () => {
+          toast(t("settings.saved"), "ok");
+          setCh(null);
+          setMuted(null);
+        },
+        onError: (e) => toast(e.message, "bad"),
+      },
+    );
   const ntfy = ch.ntfy ?? { topic: "" };
   const tg = ch.telegram ?? { botToken: "", chatId: "" };
   return (

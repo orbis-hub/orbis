@@ -1,11 +1,11 @@
 {
   "manifest.name": "Departures",
-  "manifest.description": "Next departures from a stop near you. Germany first (DB / HAFAS via transport.rest, no key); other providers can be added.",
+  "manifest.description": "Next departures from a stop near you. Germany-wide via DB / HAFAS (transport.rest, no key), Nürnberg region via the VGN / VAG departure monitor; other providers can be added.",
   "widget.departures.name": "Departures",
   "widget.departures.description": "Next departures with delays for one stop.",
   "page.departures.name": "Departures",
 
-  "search.placeholder": "stop name, e.g. Würzburg Hbf",
+  "search.placeholder": "stop name, e.g. Würzburg Hbf or Stein Schloss",
   "search.nearMe": "near me",
   "search.locating": "locating…",
   "search.noGeo": "location not available in this browser",
@@ -27,6 +27,7 @@
   "retryIn": { "one": "retry in {count} s", "other": "retry in {count} s" },
 
   "error.unavailable": "transport api unavailable",
+  "error.vgnUnavailable": "vgn api unavailable",
 
   "widget.pickStop": "pick a stop",
   "widget.configureHint": "⋯ → configure",
@@ -44,7 +45,7 @@
 
   "page.searchTitle": "search a stop",
   "page.searchHint": "then add it as a widget with the stop search in the widget config.",
-  "page.footer": "data from the public transport.rest apis (hafas). germany-wide via db, plus vbb/bvg/öbb under module settings. places via openstreetmap nominatim. be nice to the apis: the hub caches every board for a minute.",
+  "page.footer": "data from the public transport.rest apis (hafas) — germany-wide via db, plus vbb/bvg/öbb — and from the vag departure monitor for the vgn (nürnberg region); pick the provider under module settings. places via openstreetmap nominatim. be nice to the apis: the hub caches every board for a minute.",
 
   "config.stop": "stop",
   "config.selected": "selected: {name}",
@@ -69,6 +70,12 @@
 
   "settings.provider": "provider",
   "settings.refresh": "refresh every (seconds)",
+
+  "provider.db": "Germany – Deutsche Bahn (all local transport)",
+  "provider.vbb": "Berlin/Brandenburg – VBB",
+  "provider.bvg": "Berlin – BVG",
+  "provider.oebb": "Austria – ÖBB",
+  "provider.vgn": "Nürnberg region – VGN (VAG departure monitor)",
 
   "eink.noStop": "no stop configured"
 }

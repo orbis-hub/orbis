@@ -4,12 +4,13 @@ import type { InstalledModule } from "@orbis/sdk";
 import type { SettingsProps } from "@orbis/sdk/client";
 import { Button, Chip, Empty, Field, Icon, Input, Modal, Switch, Tab, Tabs, useToast, Window } from "@orbis/ui";
 import Link from "next/link";
-import { useEffect, useState, type ComponentType } from "react";
+import { useState, type ComponentType } from "react";
+import { useConfirm } from "@/components/Confirm";
 import { SchemaForm, schemaDefaults, type JsonSchema } from "@/components/SchemaForm";
 import { Shell } from "@/components/Shell";
 import { useT } from "@/lib/i18n";
 import { evictModuleClient, ModuleProvider, useModuleClient } from "@/lib/module-host";
-import { useModuleDetail, useModuleMutations, useModules, useRegistry, type RegistryModule } from "@/lib/queries";
+import { isAdminRole, useAuthStatus, useModuleDetail, useModuleMutations, useModules, useRegistry, type RegistryModule } from "@/lib/queries";
 
 export default function ModulesPage() {
   const t = useT();
@@ -42,7 +43,10 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
   const t = useT();
   const modules = useModules();
   const m = useModuleMutations();
+  // module settings (incl. secrets) are admin-only on the hub (#38); members do not get a form they cannot save
+  const admin = isAdminRole(useAuthStatus().data?.user?.role);
   const toast = useToast();
+  const confirm = useConfirm();
   const list = modules.data ?? [];
   if (modules.isPending) return null;
   if (list.length === 0)
@@ -107,7 +111,7 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
             ) : null}
             <DepsLine mod={mod} all={list} />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-              <Button size="sm" onClick={() => onSettings(mod)} disabled={!mod.enabled}>
+              <Button size="sm" onClick={() => onSettings(mod)} disabled={!mod.enabled || !admin}>
                 <Icon name="sliders" size={12} /> {t("common.settings")}
               </Button>
               <Button
@@ -124,8 +128,8 @@ function Installed({ onSettings }: { onSettings: (m: InstalledModule) => void })
                 <Button
                   size="sm"
                   variant="danger"
-                  onClick={() => {
-                    if (!confirm(t("modules.uninstallConfirm", { name: mod.manifest.name }))) return;
+                  onClick={async () => {
+                    if (!(await confirm({ title: t("modules.uninstallTitle", { name: mod.manifest.name }), body: t("modules.uninstallConfirm", { name: mod.manifest.name }), confirmLabel: t("common.remove"), danger: true }))) return;
                     m.uninstall.mutate(mod.id, { onError: (err) => toast(err.message, "bad") });
                   }}
                 >
@@ -209,7 +213,7 @@ function Store() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <Input placeholder={t("modules.store.search")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 320 }} />
+        <Input type="search" placeholder={t("modules.store.search")} aria-label={t("modules.store.search")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 320 }} />
         <Button size="sm" onClick={() => setRefresh((v) => !v)} loading={reg.isFetching}>
           <Icon name="reload" size={12} /> {t("common.refresh")}
         </Button>
@@ -245,13 +249,13 @@ function Store() {
           }}
           style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
         >
-          <Input placeholder="https://github.com/you/module-x/releases/download/v0.1.0/module.tgz" value={url} onChange={(e) => setUrl(e.target.value)} style={{ flex: 1, minWidth: 240 }} />
+          <Input type="url" inputMode="url" placeholder="https://github.com/you/module-x/releases/download/v0.1.0/module.tgz" aria-label={t("modules.store.fromUrl")} value={url} onChange={(e) => setUrl(e.target.value)} style={{ flex: 1, minWidth: 240 }} />
           <Button type="submit" loading={m.install.isPending && !!m.install.variables?.url} disabled={!url}>
             <Icon name="download" size={12} /> {t("common.install")}
           </Button>
         </form>
         <p className="soft" style={{ fontSize: 11, marginTop: 8 }}>
-          {t("modules.store.trust")}
+          {t("modules.store.trust")} {t("modules.store.trustCovers")} <b>{t("modules.store.trustNotCovered")}</b>
         </p>
       </Window>
     </div>
@@ -307,18 +311,31 @@ function StoreCard({ entry, busy, onInstall }: { entry: RegistryModule; busy: bo
 function ModuleSettingsModal({ mod, onClose }: { mod: InstalledModule | null; onClose: () => void }) {
   const t = useT();
   const detail = useModuleDetail(mod?.id ?? null);
+  if (!mod) return null;
+  return (
+    <Modal open onClose={onClose} title={t("modules.settingsTitle", { name: mod.manifest.name })} closeLabel={t("common.close")}>
+      {detail.data ? (
+        <ModuleSettingsForm key={mod.id} mod={mod} initial={detail.data.settings} onClose={onClose} />
+      ) : detail.error ? (
+        <div style={{ color: "var(--dnd)", fontSize: 12 }}>{detail.error.message}</div>
+      ) : (
+        <div className="soft pixel" style={{ fontSize: 12 }}>
+          {t("common.loading")}<span className="blink">…</span>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function ModuleSettingsForm({ mod, initial, onClose }: { mod: InstalledModule; initial: Record<string, unknown>; onClose: () => void }) {
+  const t = useT();
   const m = useModuleMutations();
   const toast = useToast();
-  const [value, setValue] = useState<Record<string, unknown>>({});
-  const { client } = useModuleClient(mod ?? undefined);
-  useEffect(() => {
-    if (detail.data) setValue({ ...schemaDefaults(mod?.manifest.settingsSchema as JsonSchema | undefined), ...detail.data.settings });
-  }, [detail.data, mod]);
-  if (!mod) return null;
+  const [value, setValue] = useState<Record<string, unknown>>(() => ({ ...schemaDefaults(mod.manifest.settingsSchema as JsonSchema | undefined), ...initial }));
+  const { client } = useModuleClient(mod);
   const Custom = client?.settings as ComponentType<SettingsProps> | undefined;
   const schema = (mod.manifest.settingsSchema ?? { type: "object", properties: {} }) as JsonSchema;
   return (
-    <Modal open onClose={onClose} title={t("modules.settingsTitle", { name: mod.manifest.name })}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <ModuleProvider mod={mod}>
           {Custom ? <Custom value={value} onChange={setValue} /> : <SchemaForm schema={schema} value={value} onChange={setValue} idPrefix={`ms-${mod.id}`} />}
@@ -346,6 +363,5 @@ function ModuleSettingsModal({ mod, onClose }: { mod: InstalledModule | null; on
           </Button>
         </div>
       </div>
-    </Modal>
   );
 }

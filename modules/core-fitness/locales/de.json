@@ -82,5 +82,6 @@
 
   "eink.empty": "noch keine workouts",
   "eink.thisWeek": "diese woche",
-  "eink.last": "letzte {value}"
+  "eink.last": "letzte {value}",
+  "source.secretHidden": "secret verborgen – nur admins sehen es; erneuern zeigt ein neues einmalig an"
 }

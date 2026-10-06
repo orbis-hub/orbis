@@ -26,7 +26,7 @@ export function WidgetFrame({ instance, mod, editing, onConfigure, onRemove }: P
   const menu = editing ? (
     <Menu
       trigger={
-        <Button icon size="sm" variant="ghost" aria-label={t("dashboard.widgetMenu")} onMouseDown={(e) => e.stopPropagation()}>
+        <Button icon size="sm" variant="ghost" aria-label={t("dashboard.widgetMenuFor", { title })} title={t("dashboard.widgetMenuFor", { title })} onMouseDown={(e) => e.stopPropagation()}>
           <Icon name="more-horizontal" size={14} />
         </Button>
       }

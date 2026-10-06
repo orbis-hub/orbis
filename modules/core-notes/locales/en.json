@@ -11,6 +11,7 @@
   "common.saving": "saving…",
   "common.saved": "saved",
   "common.delete": "delete",
+  "common.cancel": "cancel",
 
   "widget.note.empty": "no note",
   "widget.note.emptyHint": "write one on the notes page and pin it.",
@@ -23,6 +24,7 @@
   "page.notes.titleField": "title",
   "page.notes.preview": "preview",
   "page.notes.pin": "pin to dashboard widget",
+  "page.notes.deleteTitle": "delete note",
   "page.notes.confirmDelete": "delete \"{title}\"?",
   "page.notes.bodyPlaceholder": "# heading\n- list\n- [ ] checkbox\n**bold** *italic* `code` [link](https://…)",
   "page.notes.pick": "pick or create a note",

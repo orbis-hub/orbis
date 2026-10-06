@@ -57,6 +57,24 @@ export function getAllSettings(): HubSettings {
   return out as HubSettings;
 }
 
+/** keys every signed-in user may read; the rest (registries, notification channels with their tokens, muted modules) is admin-only */
+export const MEMBER_SETTINGS_KEYS = ["hubName", "language", "locale", "timezone", "units", "location", "theme"] as const satisfies readonly (keyof HubSettings)[];
+export type MemberSettings = Pick<HubSettings, (typeof MEMBER_SETTINGS_KEYS)[number]> & { registries: [] };
+
+/** the member view of the settings: safe keys only. `registries: []` keeps the client shape (the settings page joins it) without disclosing the list. */
+export function getMemberSettings(): MemberSettings {
+  const all = getAllSettings();
+  const out = {} as Record<string, unknown>;
+  for (const k of MEMBER_SETTINGS_KEYS) out[k] = all[k];
+  out.registries = [];
+  return out as MemberSettings;
+}
+
+/** full settings for admins, the safe subset for everyone else */
+export function getSettingsFor(role: string): HubSettings | MemberSettings {
+  return role === "owner" || role === "admin" ? getAllSettings() : getMemberSettings();
+}
+
 const listeners = new Set<(key: keyof HubSettings, value: unknown) => void>();
 
 /** in-process hook for hub code that wants to react to a setting (module contexts use it for the language) */

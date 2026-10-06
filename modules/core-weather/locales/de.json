@@ -45,8 +45,11 @@
   "settings.units_metric": "metrisch",
   "settings.units_imperial": "imperial",
   "settings.refresh": "aktualisieren (min)",
-  "settings.no_location": "ohne ort wird der standard des hubs (Würzburg) genommen.",
+  "settings.no_location": "ohne ort hier wird der ort des hubs aus den einstellungen genommen (Würzburg, solange keiner gesetzt ist).",
 
   "eink.feels": "{name} · gefühlt {temp}°",
-  "eink.details": "{min}° / {max}° · {wind} {unit} · {humidity}% rf"
+  "eink.details": "{min}° / {max}° · {wind} {unit} · {humidity}% rf",
+  "error.unknown_location": "unbekannte orts-id \"{id}\" – siehe /locations",
+  "error.geocode": "die ortssuche ist gerade nicht erreichbar ({message})",
+  "settings.invalid_line": "keine gültige zeile: id=Name@lat,lon mit lat −90…90 und lon −180…180"
 }

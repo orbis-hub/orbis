@@ -23,5 +23,9 @@
   "login.error.short": "das passwort braucht mindestens 6 zeichen",
   "login.error.generic": "da ist etwas schiefgelaufen",
   "login.error.unreachable": "hub nicht erreichbar",
-  "login.error.wrong": "name oder passwort falsch"
+  "login.error.wrong": "name oder passwort falsch",
+  "login.error.name": "der name braucht 1–64 zeichen",
+  "login.error.invalid": "prüf den namen (1–64 zeichen) und das passwort (mindestens 6 zeichen)",
+  "login.nameHint": "1–64 zeichen, für alle auf diesem hub sichtbar",
+  "login.nextHint": "nach dem anmelden geht es zurück zu {path}"
 }

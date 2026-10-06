@@ -24,6 +24,11 @@ function conditionKey(code: number): string {
   return "condition.cloudy";
 }
 
+/** `id=Name@lat,lon` with lat ∈ [-90, 90] and lon ∈ [-180, 180] (same rule as the server and module.json) */
+function validLine(raw: string): boolean {
+  const m = raw.match(/^\s*([a-z0-9_-]+)\s*=\s*(.+?)\s*@\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/i);
+  return !!m && Math.abs(Number(m[3])) <= 90 && Math.abs(Number(m[4])) <= 180;
+}
 const deg = (u: string) => (u === "imperial" ? "°F" : "°C");
 const spd = (u: string) => (u === "imperial" ? "mph" : "km/h");
 const r = (n: number) => Math.round(n);
@@ -175,6 +180,7 @@ function WeatherSettings({ value, onChange }: SettingsProps) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Array<{ name: string; country: string; region?: string; lat: number; lon: number }>>([]);
   const [busy, setBusy] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const locations = (Array.isArray(value.locations) ? value.locations : []) as string[];
   const set = (patch: Record<string, unknown>) => onChange({ ...value, ...patch });
   return (
@@ -182,9 +188,12 @@ function WeatherSettings({ value, onChange }: SettingsProps) {
       <Field label={t("settings.locations")} hint={t("settings.locations_hint")}>
         {locations.length === 0 ? <div className="soft" style={{ fontSize: 12 }}>{t("settings.locations_empty")}</div> : null}
         {locations.map((l, i) => (
-          <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <Input value={l} onChange={(e) => set({ locations: locations.map((x, j) => (j === i ? e.target.value : x)) })} />
-            <Button icon size="sm" variant="ghost" onClick={() => set({ locations: locations.filter((_, j) => j !== i) })} aria-label={t("common.remove")}><Icon name="close" size={12} /></Button>
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <Input value={l} onChange={(e) => set({ locations: locations.map((x, j) => (j === i ? e.target.value : x)) })} aria-invalid={!validLine(l) || undefined} style={!validLine(l) ? { borderColor: "var(--dnd)" } : undefined} />
+              <Button icon size="sm" variant="ghost" onClick={() => set({ locations: locations.filter((_, j) => j !== i) })} aria-label={t("common.remove")}><Icon name="close" size={12} /></Button>
+            </div>
+            {!validLine(l) ? <span style={{ color: "var(--dnd)", fontSize: 10 }}>{t("settings.invalid_line")}</span> : null}
           </div>
         ))}
       </Field>
@@ -194,7 +203,11 @@ function WeatherSettings({ value, onChange }: SettingsProps) {
             e.preventDefault();
             setBusy(true);
             try {
+              setGeoError(null);
               setResults(await api(`/geocode?q=${encodeURIComponent(q)}`));
+            } catch (err) {
+              setResults([]);
+              setGeoError((err as Error).message);
             } finally {
               setBusy(false);
             }
@@ -204,6 +217,7 @@ function WeatherSettings({ value, onChange }: SettingsProps) {
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("settings.city_placeholder")} />
           <Button type="submit" size="sm" loading={busy}><Icon name="search" size={12} /></Button>
         </form>
+        {geoError ? <span style={{ color: "var(--dnd)", fontSize: 11 }}>{geoError}</span> : null}
         {results.length ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
             {results.map((r2, i) => (

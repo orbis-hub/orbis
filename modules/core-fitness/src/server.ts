@@ -1,5 +1,6 @@
-import { randomBytes } from "node:crypto";
-import { defineModule } from "@orbis/sdk/server";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { defineModule, parseBody, z } from "@orbis/sdk/server";
+import type { Context } from "hono";
 
 export type Activity = {
   id: string;
@@ -14,7 +15,8 @@ export type Activity = {
   elevation_m: number | null;
   created_at: string;
 };
-export type Source = { id: string; name: string; secret: string; created_at: string; last_at: string | null; count: number };
+/** `secret` is only present for admins (and in the create / rotate response) */
+export type Source = { id: string; name: string; secret?: string; created_at: string; last_at: string | null; count: number };
 export type WeekStats = {
   weekStart: string;
   days: string[]; // 7 ISO dates
@@ -27,6 +29,22 @@ type Tokens = { access: string; refresh: string; expiresAt: number; athlete?: { 
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const now = () => new Date().toISOString();
+/** the hub sets x-orbis-role for session-authenticated calls; in-process calls (ctx.modules.call) carry none */
+const isAdmin = (c: Context) => ["owner", "admin"].includes(c.req.header("x-orbis-role") ?? "");
+const forbidden = (c: Context) => c.json({ error: "forbidden: admin role required" }, 403);
+/** constant-time secret comparison (hash first so lengths never leak) */
+const sameSecret = (a: string, b: string) => timingSafeEqual(createHash("sha256").update(a).digest(), createHash("sha256").update(b).digest());
+/** origin as the browser sees it: behind a tls proxy the Host header is the internal one, x-forwarded-* carry the public one */
+export function publicOrigin(c: Context): string {
+  const u = new URL(c.req.url);
+  const first = (v: string | undefined) => v?.split(",")[0]?.trim() ?? "";
+  const proto = first(c.req.header("x-forwarded-proto")).replace(/:$/, "") || u.protocol.replace(/:$/, "");
+  const host = first(c.req.header("x-forwarded-host")) || c.req.header("host") || u.host;
+  return /^https?$/.test(proto) && /^[a-z0-9.-]+(:\d+)?$/i.test(host) ? `${proto}://${host}` : u.origin;
+}
+/** sane bounds for one workout: anything outside is garbage, not a record */
+const MAX_DURATION_S = 30 * 86400;
+const MAX_DISTANCE_M = 5_000_000;
 const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /** strava sport_type → short lowercase type */
@@ -52,17 +70,27 @@ export function normalizeIngest(body: unknown, source: string): Array<Omit<Activ
   for (const raw of list) {
     if (!raw || typeof raw !== "object") continue;
     const w = raw as Record<string, unknown>;
+    // numbers, numeric strings ("5,2", "300"), health-auto-export {qty, units}; anything non-finite is ignored
     const num = (...keys: string[]) => {
       for (const k of keys) {
         const v = w[k];
         if (v == null) continue;
-        if (typeof v === "number") return v;
-        if (typeof v === "object" && v && "qty" in v) return Number((v as { qty: unknown }).qty); // health auto export {qty, units}
-        const n = parseFloat(String(v).replace(",", "."));
+        if (typeof v === "number") {
+          if (Number.isFinite(v)) return v;
+          continue;
+        }
+        if (typeof v === "object" && v && "qty" in v) {
+          const n = Number((v as { qty: unknown }).qty);
+          if (Number.isFinite(n)) return n;
+          continue;
+        }
+        const n = parseFloat(String(v).trim().replace(",", "."));
         if (Number.isFinite(n)) return n;
       }
       return null;
     };
+    /** unit written into a distance string ("5.2 km", "3 mi") */
+    const strUnit = (v: unknown): string | null => (typeof v === "string" ? (v.trim().match(/[\d.,]\s*(km|mi|m)\s*$/i)?.[1]?.toLowerCase() ?? null) : null);
     const str = (...keys: string[]) => {
       for (const k of keys) if (w[k] != null && w[k] !== "") return String(w[k]);
       return null;
@@ -79,11 +107,17 @@ export function normalizeIngest(body: unknown, source: string): Array<Omit<Activ
     if (duration == null && endRaw) duration = Math.max(0, (new Date(endRaw).getTime() - start.getTime()) / 1000);
     let distance = num("distance_m", "distanceMeters", "meters", "distance");
     const km = num("distanceKm", "distance_km", "km");
+    const mi = num("distanceMi", "distance_mi", "miles");
+    // units: explicit field ({qty, units} / distanceUnit) or a suffix in the string; plain numbers and bare numeric strings are metres
+    const unitsStr = String((w.distance as { units?: string })?.units ?? w.distanceUnit ?? strUnit(w.distance) ?? "").toLowerCase();
     if (km != null) distance = km * 1000;
-    else if (distance != null && distance < 500 && distance > 0 && w.distance != null && typeof w.distance !== "number") distance = distance * 1000; // "5,2" km as string
-    const unitsStr = String((w.distance as { units?: string })?.units ?? w.distanceUnit ?? "").toLowerCase();
-    if (unitsStr === "km") distance = (num("distance") ?? 0) * 1000;
-    if (unitsStr === "mi") distance = (num("distance") ?? 0) * 1609.344;
+    else if (mi != null) distance = mi * 1609.344;
+    else if (unitsStr === "km") distance = (num("distance") ?? 0) * 1000;
+    else if (unitsStr === "mi") distance = (num("distance") ?? 0) * 1609.344;
+    // garbage, not a workout: negative / absurd values are dropped rather than stored
+    if (duration != null && (duration < 0 || duration > MAX_DURATION_S)) continue;
+    if (distance != null && (distance < 0 || distance > MAX_DISTANCE_M)) continue;
+    const nonNeg = (v: number | null) => (v != null && v >= 0 ? v : null);
     out.push({
       source,
       ext_id: str("id", "uuid", "ext_id", "workoutId"),
@@ -92,8 +126,8 @@ export function normalizeIngest(body: unknown, source: string): Array<Omit<Activ
       start: start.toISOString(),
       duration_s: Math.round(duration ?? 0),
       distance_m: Math.round(distance ?? 0),
-      calories: num("calories", "activeEnergy", "activeEnergyBurned", "kcal", "energy"),
-      elevation_m: num("elevation_m", "elevation", "total_elevation_gain", "elevationGain"),
+      calories: nonNeg(num("calories", "activeEnergy", "activeEnergyBurned", "kcal", "energy")),
+      elevation_m: nonNeg(num("elevation_m", "elevation", "total_elevation_gain", "elevationGain")),
     });
   }
   return out;
@@ -184,7 +218,7 @@ export default defineModule<Settings>({
     http.get("/strava/login", (c) => {
       if (!clientId() || !clientSecret()) return c.json({ error: t("error.noClient") }, 400);
       const stateKey = randomBytes(12).toString("hex");
-      const origin = new URL(c.req.url).origin;
+      const origin = publicOrigin(c);
       const redirectUri = `${origin}/api/m/fitness/strava/callback`;
       storage.set(`strava:state:${stateKey}`, { redirectUri, back: c.req.query("return") ?? `${origin}/m/?id=fitness`, at: Date.now() });
       const u = new URL("https://www.strava.com/oauth/authorize");
@@ -220,33 +254,42 @@ export default defineModule<Settings>({
     scheduler.every("strava-sync", (settings.get().syncMinutes ?? 30) * 60_000, () => void syncStrava(false));
 
     /* ---------- ingest sources (apple health shortcut, scripts, …) ---------- */
-    const sources = () => storage.sql<Source>(`SELECT * FROM {{t:sources}} ORDER BY created_at`);
-    http.get("/sources", (c) => c.json(sources()));
+    type SourceRow = Source & { secret: string };
+    const sources = () => storage.sql<SourceRow>(`SELECT * FROM {{t:sources}} ORDER BY created_at`);
+    /** members see the sources but never the secrets */
+    const forRole = (c: Context, s: SourceRow): Source => (isAdmin(c) ? s : { id: s.id, name: s.name, created_at: s.created_at, last_at: s.last_at, count: s.count });
+    http.get("/sources", (c) => c.json(sources().map((s) => forRole(c, s))));
     http.post("/sources", async (c) => {
-      const b = (await c.req.json().catch(() => ({}))) as { name?: string };
-      const id = (b.name ?? "source").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 24) || "source";
+      if (!isAdmin(c)) return forbidden(c);
+      const b = await parseBody(c, z.object({ name: z.string().trim().max(60).optional() }));
+      if (!b.ok) return b.res;
+      const id = (b.data.name ?? "source").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 24) || "source";
       const finalId = storage.sql(`SELECT id FROM {{t:sources}} WHERE id = ?`, [id]).length ? `${id}-${uid().slice(0, 4)}` : id;
-      storage.run(`INSERT INTO {{t:sources}} (id, name, secret, created_at) VALUES (?, ?, ?, ?)`, [finalId, b.name?.trim() || finalId, randomBytes(24).toString("base64url"), now()]);
+      storage.run(`INSERT INTO {{t:sources}} (id, name, secret, created_at) VALUES (?, ?, ?, ?)`, [finalId, b.data.name || finalId, randomBytes(24).toString("base64url"), now()]);
       reportStatus();
       changed();
-      return c.json(storage.sql<Source>(`SELECT * FROM {{t:sources}} WHERE id = ?`, [finalId])[0], 201);
+      return c.json(storage.sql<SourceRow>(`SELECT * FROM {{t:sources}} WHERE id = ?`, [finalId])[0], 201);
     });
     http.delete("/sources/:id", (c) => {
-      storage.run(`DELETE FROM {{t:sources}} WHERE id = ?`, [c.req.param("id")]);
+      if (!isAdmin(c)) return forbidden(c);
+      const r = storage.run(`DELETE FROM {{t:sources}} WHERE id = ?`, [c.req.param("id")]);
+      if (!r.changes) return c.json({ error: "unknown source" }, 404);
       reportStatus();
       changed();
       return c.json({ ok: true });
     });
     http.post("/sources/:id/rotate", (c) => {
-      storage.run(`UPDATE {{t:sources}} SET secret = ? WHERE id = ?`, [randomBytes(24).toString("base64url"), c.req.param("id")]);
+      if (!isAdmin(c)) return forbidden(c);
+      const r = storage.run(`UPDATE {{t:sources}} SET secret = ? WHERE id = ?`, [randomBytes(24).toString("base64url"), c.req.param("id")]);
+      if (!r.changes) return c.json({ error: "unknown source" }, 404);
       changed();
-      return c.json(storage.sql<Source>(`SELECT * FROM {{t:sources}} WHERE id = ?`, [c.req.param("id")])[0] ?? { ok: true });
+      return c.json(storage.sql<SourceRow>(`SELECT * FROM {{t:sources}} WHERE id = ?`, [c.req.param("id")])[0]);
     });
-    /** public: POST /api/m/fitness/ingest/<source> with `Authorization: Bearer <secret>` (or ?key=) */
+    /** public: POST /api/m/fitness/ingest/<source> with `Authorization: Bearer <secret>` (?key= still works for clients that cannot set headers, but ends up in logs) */
     http.post("/ingest/:id", async (c) => {
-      const src = storage.sql<Source>(`SELECT * FROM {{t:sources}} WHERE id = ?`, [c.req.param("id")])[0];
+      const src = storage.sql<SourceRow>(`SELECT * FROM {{t:sources}} WHERE id = ?`, [c.req.param("id")])[0];
       const key = c.req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? c.req.query("key") ?? "";
-      if (!src || !key || key !== src.secret) return c.json({ error: "unknown source or bad key" }, 401);
+      if (!src || !key || !sameSecret(key, src.secret)) return c.json({ error: "unknown source or bad key" }, 401);
       let body: unknown;
       try {
         body = await c.req.json();
@@ -254,18 +297,21 @@ export default defineModule<Settings>({
         // shortcuts sometimes send form fields; accept those too
         body = Object.fromEntries(new URLSearchParams(await c.req.text()));
       }
+      const list = Array.isArray(body) ? body : body && typeof body === "object" && Array.isArray((body as { workouts?: unknown }).workouts) ? (body as { workouts: unknown[] }).workouts : body && typeof body === "object" && Array.isArray((body as { data?: { workouts?: unknown } }).data?.workouts) ? (body as { data: { workouts: unknown[] } }).data.workouts : [body];
+      if (list.length > 1000) return c.json({ error: "at most 1000 workouts per request" }, 400);
       const acts = normalizeIngest(body, src.id);
       let added = 0;
       for (const a of acts) if (upsert(a)) added++;
       storage.run(`UPDATE {{t:sources}} SET last_at = ?, count = count + ? WHERE id = ?`, [now(), added, src.id]);
       if (added) changed();
-      return c.json({ ok: true, received: acts.length, added });
+      return c.json({ ok: true, received: list.length, accepted: acts.length, rejected: list.length - acts.length, added });
     });
 
     /* ---------- read ---------- */
     const query = (from: string, to: string, types?: string[]) => storage.sql<Activity>(`SELECT * FROM {{t:activities}} WHERE start >= ? AND start < ?${types?.length ? ` AND type IN (${types.map(() => "?").join(",")})` : ""} ORDER BY start DESC`, [from, to, ...(types ?? [])]);
     http.get("/activities", (c) => {
-      const limit = Math.min(200, Number(c.req.query("limit") ?? 50));
+      const rawLimit = Number(c.req.query("limit") ?? 50);
+      const limit = Number.isFinite(rawLimit) ? Math.min(200, Math.max(1, Math.floor(rawLimit))) : 50;
       const types = c.req.query("types")?.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
       const rows = storage.sql<Activity>(`SELECT * FROM {{t:activities}} ${types?.length ? `WHERE type IN (${types.map(() => "?").join(",")})` : ""} ORDER BY start DESC LIMIT ?`, [...(types ?? []), limit]);
       return c.json(rows);

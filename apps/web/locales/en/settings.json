@@ -38,7 +38,7 @@
   "settings.backup.restored": "restored. {note}",
   "settings.backup.failed": "backup failed: {error}",
   "settings.backup.restoreFailed": "restore failed: {error}",
-  "settings.backup.note": "restoring keeps a copy of the current data next to the data folder ({folder}). scripted:",
+  "settings.backup.note": "before a restore the hub copies the current data into {folder} inside its data folder (the last 3 copies are kept, uploads up to 200 MB). to roll back: stop the hub, move that folder's contents back into the data folder, start again. scripted:",
   "settings.notify.title": "notifications",
   "settings.notify.intro": "modules ring the bell in the app. forward them to your phone with one of these:",
   "settings.notify.ntfyHint": "· free, install the ntfy app and subscribe to the same topic",
@@ -57,5 +57,6 @@
   "settings.notify.mutedHint": "their notifications are dropped entirely",
   "settings.notify.test": "send a test",
   "settings.notify.testSent": "test sent",
-  "settings.notify.webpush": "web push (browser notifications) is not wired yet; ntfy on the phone is the closest thing and takes two minutes."
+  "settings.notify.webpush": "web push (browser notifications) is not wired yet; ntfy on the phone is the closest thing and takes two minutes.",
+  "settings.registries.label": "registry urls"
 }

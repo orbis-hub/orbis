@@ -35,7 +35,7 @@ export default function DevicesPage() {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <Input placeholder={t("devices.filter")} value={filter} onChange={(e) => setFilter(e.target.value)} style={{ maxWidth: 260 }} />
+          <Input type="search" placeholder={t("devices.filter")} aria-label={t("devices.filter")} value={filter} onChange={(e) => setFilter(e.target.value)} style={{ maxWidth: 260 }} />
           <span className="soft" style={{ fontSize: 11 }}>
             {t("devices.count", { count: list.length })} · {t("devices.onlineCount", { count: list.filter((d) => d.online).length })}
           </span>
@@ -84,8 +84,8 @@ export default function DevicesPage() {
             }}
             style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
           >
-            <Input placeholder="192.168.1.50" value={ip} onChange={(e) => setIp(e.target.value)} style={{ maxWidth: 180 }} required />
-            <Input placeholder={t("devices.labelPlaceholder")} value={label} onChange={(e) => setLabel(e.target.value)} style={{ maxWidth: 220 }} />
+            <Input placeholder="192.168.1.50" aria-label={t("devices.col.ip")} inputMode="decimal" value={ip} onChange={(e) => setIp(e.target.value)} style={{ maxWidth: 180 }} required />
+            <Input placeholder={t("devices.labelPlaceholder")} aria-label={t("devices.labelPlaceholder")} value={label} onChange={(e) => setLabel(e.target.value)} style={{ maxWidth: 220 }} />
             <Button type="submit" loading={m.add.isPending}>
               <Icon name="plus" size={12} /> {t("common.add")}
             </Button>
@@ -109,7 +109,7 @@ function DeviceRow({ d, claimable }: { d: Device; claimable: Array<{ id: string;
   return (
     <tr>
       <td style={{ ...td, width: 20 }}>
-        <i className="status-dot" title={d.online ? t("devices.online") : t("devices.offline")} style={{ background: d.online ? "var(--ok)" : "var(--off)" }} />
+        <i className="status-dot" role="img" aria-label={d.online ? t("devices.online") : t("devices.offline")} title={d.online ? t("devices.online") : t("devices.offline")} style={{ background: d.online ? "var(--ok)" : "var(--off)" }} />
       </td>
       <td style={td}>
         {editing ? (
@@ -120,7 +120,7 @@ function DeviceRow({ d, claimable }: { d: Device; claimable: Array<{ id: string;
             }}
             style={{ display: "flex", gap: 4 }}
           >
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} autoFocus style={{ padding: "2px 6px" }} />
+            <Input value={label} onChange={(e) => setLabel(e.target.value)} autoFocus aria-label={t("common.rename")} style={{ padding: "2px 6px" }} />
             <Button size="sm" type="submit">
               {t("common.ok")}
             </Button>
@@ -153,7 +153,7 @@ function DeviceRow({ d, claimable }: { d: Device; claimable: Array<{ id: string;
         </div>
       </td>
       <td style={td}>
-        <Select value={d.claimedBy ?? ""} onChange={(e) => m.update.mutate({ id: d.id, claimedBy: e.target.value || null }, { onError: (err) => toast(err.message, "bad") })} style={{ padding: "2px 24px 2px 6px", fontSize: 11, minWidth: 110 }}>
+        <Select value={d.claimedBy ?? ""} aria-label={`${t("devices.col.module")}: ${name}`} onChange={(e) => m.update.mutate({ id: d.id, claimedBy: e.target.value || null }, { onError: (err) => toast(err.message, "bad") })} style={{ padding: "2px 24px 2px 6px", fontSize: 11, minWidth: 110 }}>
           <option value="">{t("devices.unassigned")}</option>
           {claimable.map((c) => (
             <option key={c.id} value={c.id}>

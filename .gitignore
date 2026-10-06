@@ -4,6 +4,8 @@ out/
 .next/
 .turbo/
 *.tsbuildinfo
+# next rewrites this on every build; it is generated, not source
+apps/web/next-env.d.ts
 .env
 .env.*
 !.env.example
@@ -17,3 +19,4 @@ apps/mobile/ios/
 # never commit a restore copy or a stray tmpdir
 data-before-restore/
 undefined/
+before-restore-*/

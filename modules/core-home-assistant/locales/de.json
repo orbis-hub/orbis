@@ -49,5 +49,10 @@
   "error.tokenRejected": "home assistant hat den token abgelehnt",
   "error.unreachable": "{url} ist nicht erreichbar",
 
-  "eink.noEntity": "keine entität"
+  "eink.noEntity": "keine entität",
+  "error.notConfigured": "home assistant ist noch nicht eingerichtet: url und token in den modul-einstellungen eintragen",
+  "error.badUrl": "\"{url}\" ist keine gültige home-assistant-url – nimm http://host:8123 oder https://…",
+  "error.notConnected": "nicht mit home assistant verbunden ({detail})",
+  "error.timeout": "home assistant hat nicht rechtzeitig geantwortet",
+  "error.haError": "home assistant hat mit einem fehler geantwortet: {message}"
 }

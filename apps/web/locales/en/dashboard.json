@@ -46,5 +46,9 @@
   "dashboard.widgetNotFound": "widget \"{id}\" not found in {name}",
   "dashboard.widgetCrashed": "widget crashed: {error}",
   "form.nothing": "nothing to configure",
-  "form.commaSeparated": "comma separated"
+  "form.commaSeparated": "comma separated",
+  "dashboard.editLayout": "edit layout",
+  "dashboard.editDone": "done editing",
+  "dashboard.widgetMenuFor": "menu: {title}",
+  "dashboard.addWidgetNamed": "add {widget} ({module})"
 }

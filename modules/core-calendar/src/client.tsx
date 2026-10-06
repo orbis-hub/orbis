@@ -3,7 +3,7 @@ import { defineClient, useModule, useModuleApi, useModuleQuery, useT, type PageP
 import { Button, Chip, Empty, Field, Icon, Input, Modal, Select, Switch, Window, cx } from "@orbis/ui";
 import type { Account, CalEvent, Calendar } from "./server";
 
-type EventsResponse = { events: CalEvent[]; fetchedAt: string; errors: Record<string, string> };
+type EventsResponse = { events: CalEvent[]; fetchedAt: string; errors: Record<string, string>; partial?: boolean; covered?: { from: string; to: string } };
 type AccountView = Omit<Account, "password"> & { password?: string; hasPassword: boolean };
 
 /* ---------- helpers ---------- */
@@ -215,6 +215,7 @@ function MonthWidget({ config, size }: WidgetProps<{ calendars?: string[]; weekS
       <div style={{ flex: 1, minHeight: 0 }}>
         <MonthGrid month={month} events={q.data?.events ?? []} weekStartsMonday={config.weekStartsMonday !== false} compact={size.height < 320} />
       </div>
+      {q.error ? <div style={{ color: "var(--dnd)", fontSize: 10 }}>{q.error.message}</div> : q.data?.partial ? <div style={{ color: "var(--dnd)", fontSize: 10 }}>⚠ {t("page.partial")} <button type="button" style={{ textDecoration: "underline dotted" }} onClick={() => void q.refetch()}>{t("action.refresh")}</button></div> : null}
     </div>
   );
 }
@@ -258,6 +259,7 @@ function CalendarPage(_p: PageProps) {
         <div style={{ height: 520 }}>
           <MonthGrid month={month} events={q.data?.events ?? []} weekStartsMonday selected={dayKey(selected)} onSelect={setSelected} />
         </div>
+        {q.error ? <div style={{ color: "var(--dnd)", fontSize: 11, marginTop: 6 }}>{q.error.message}</div> : q.data?.partial ? <div style={{ color: "var(--dnd)", fontSize: 11, marginTop: 6 }}>⚠ {t("page.partial")} {Object.values(q.data.errors ?? {}).join(" · ")} <button type="button" style={{ textDecoration: "underline dotted" }} onClick={() => void q.refetch()}>{t("action.refresh")}</button></div> : null}
       </Window>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Window title={dayLabel(selected, t, locale)}>

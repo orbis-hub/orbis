@@ -1,11 +1,11 @@
 {
   "manifest.name": "Abfahrten",
-  "manifest.description": "Die nächsten Abfahrten an einer Haltestelle in deiner Nähe. Deutschland zuerst (DB / HAFAS über transport.rest, ohne Schlüssel); weitere Anbieter lassen sich ergänzen.",
+  "manifest.description": "Die nächsten Abfahrten an einer Haltestelle in deiner Nähe. Deutschlandweit über DB / HAFAS (transport.rest, ohne Schlüssel), Raum Nürnberg über den VGN / VAG-Abfahrtsmonitor; weitere Anbieter lassen sich ergänzen.",
   "widget.departures.name": "Abfahrten",
   "widget.departures.description": "Nächste Abfahrten mit Verspätungen für eine Haltestelle.",
   "page.departures.name": "Abfahrten",
 
-  "search.placeholder": "haltestelle, z. b. Würzburg Hbf",
+  "search.placeholder": "haltestelle, z. b. Würzburg Hbf oder Stein Schloss",
   "search.nearMe": "in meiner nähe",
   "search.locating": "orte dich…",
   "search.noGeo": "standort in diesem browser nicht verfügbar",
@@ -27,6 +27,7 @@
   "retryIn": { "one": "neuer versuch in {count} s", "other": "neuer versuch in {count} s" },
 
   "error.unavailable": "verkehrs-api nicht erreichbar",
+  "error.vgnUnavailable": "vgn-api nicht erreichbar",
 
   "widget.pickStop": "wähl eine haltestelle",
   "widget.configureHint": "⋯ → konfigurieren",
@@ -44,7 +45,7 @@
 
   "page.searchTitle": "such eine haltestelle",
   "page.searchHint": "dann füg sie als widget hinzu — die haltestellensuche findest du in der widget-konfiguration.",
-  "page.footer": "daten von den öffentlichen transport.rest-apis (hafas). deutschlandweit über db, dazu vbb/bvg/öbb in den modul-einstellungen. orte über openstreetmap nominatim. sei nett zu den apis: der hub cacht jede tafel eine minute.",
+  "page.footer": "daten von den öffentlichen transport.rest-apis (hafas) — deutschlandweit über db, dazu vbb/bvg/öbb — und vom vag-abfahrtsmonitor für den vgn (raum nürnberg); den anbieter wählst du in den modul-einstellungen. orte über openstreetmap nominatim. sei nett zu den apis: der hub cacht jede tafel eine minute.",
 
   "config.stop": "haltestelle",
   "config.selected": "ausgewählt: {name}",
@@ -69,6 +70,12 @@
 
   "settings.provider": "anbieter",
   "settings.refresh": "aktualisieren alle (sekunden)",
+
+  "provider.db": "Deutschland – Deutsche Bahn (gesamter nahverkehr)",
+  "provider.vbb": "Berlin/Brandenburg – VBB",
+  "provider.bvg": "Berlin – BVG",
+  "provider.oebb": "Österreich – ÖBB",
+  "provider.vgn": "Raum Nürnberg – VGN (VAG Abfahrtsmonitor)",
 
   "eink.noStop": "keine haltestelle eingestellt"
 }

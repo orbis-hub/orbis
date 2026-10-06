@@ -1,11 +1,11 @@
 "use client";
 
 import type { Dashboard, InstalledModule, WidgetDef, WidgetInstance } from "@orbis/sdk";
-import { ACCENTS, accentStyle, Button, cx, Empty, Icon, Input, isDarkTheme, Menu, Modal, useToast, iconNames } from "@orbis/ui";
+import { ACCENTS, accentStyle, Button, cx, Empty, Field, Icon, Input, isDarkTheme, Menu, Modal, useStableId, useToast, iconNames } from "@orbis/ui";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSyncExternalStore } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import GridLayout, { useContainerWidth, verticalCompactor, type Layout } from "react-grid-layout";
+import { useConfirm } from "@/components/Confirm";
 import { useT } from "@/lib/i18n";
 import { isAdminRole, useAuthStatus, useDashboardMutations, useDashboards, useModules, useUsers } from "@/lib/queries";
 import { useShell } from "@/lib/store";
@@ -29,6 +29,7 @@ export function DashboardView() {
   const toast = useToast();
   const auth = useAuthStatus();
   const admin = isAdminRole(auth.data?.user?.role);
+  const confirm = useConfirm();
 
   const list = dashboards.data ?? [];
   const requested = params.get("d");
@@ -69,13 +70,13 @@ export function DashboardView() {
     <>
       {canEdit ? (
         <>
-          <Button size="sm" onClick={() => setAdding(true)} disabled={!dash}>
+          <Button size="sm" onClick={() => setAdding(true)} disabled={!dash} aria-label={t("dashboard.addWidget")} title={t("dashboard.addWidget")}>
             <Icon name="plus" size={14} />
-            <span className="hide-sm">{t("dashboard.widget")}</span>
+            <span className="hide-sm" aria-hidden>{t("dashboard.widget")}</span>
           </Button>
-          <Button size="sm" aria-pressed={editing} onClick={() => setEditMode(!editMode)} disabled={!dash}>
+          <Button size="sm" aria-pressed={editing} onClick={() => setEditMode(!editMode)} disabled={!dash} aria-label={editing ? t("dashboard.editDone") : t("dashboard.editLayout")} title={editing ? t("dashboard.editDone") : t("dashboard.editLayout")}>
             <Icon name={editing ? "check" : "move"} size={14} />
-            <span className="hide-sm">{editing ? t("common.done") : t("common.edit")}</span>
+            <span className="hide-sm" aria-hidden>{editing ? t("common.done") : t("common.edit")}</span>
           </Button>
         </>
       ) : null}
@@ -97,7 +98,8 @@ export function DashboardView() {
             danger: true,
             disabled: !canEdit || list.length <= 1,
             onSelect: async () => {
-              if (!dash || !confirm(t("dashboard.deleteConfirm", { name: dash.name, count: dash.widgets.length }))) return;
+              if (!dash) return;
+              if (!(await confirm({ title: t("dashboard.delete"), body: t("dashboard.deleteConfirm", { name: dash.name, count: dash.widgets.length }), confirmLabel: t("common.delete"), danger: true }))) return;
               await m.remove.mutateAsync(dash.id);
               router.replace("/");
             },
@@ -150,23 +152,24 @@ export function DashboardView() {
           await m.updateWidget.mutateAsync({ dashboardId: dash.id, id: configuring.id, config });
         }}
       />
-      <ShareModal open={sharing} dash={dash ?? null} admin={admin} onClose={() => setSharing(false)} />
-      <DashboardFormModal
-        open={creating || renaming}
-        admin={admin}
-        initial={renaming && dash ? { name: dash.name, icon: dash.icon ?? "home", shared: dash.shared, accent: dash.accent } : undefined}
-        onClose={() => {
-          setCreating(false);
-          setRenaming(false);
-        }}
-        onSave={async (v) => {
-          if (renaming && dash) await m.update.mutateAsync({ id: dash.id, ...v });
-          else {
-            const d = await m.create.mutateAsync(v);
-            router.push(`/?d=${d.id}`);
-          }
-        }}
-      />
+      {sharing && dash ? <ShareModal dash={dash} admin={admin} onClose={() => setSharing(false)} /> : null}
+      {creating || renaming ? (
+        <DashboardFormModal
+          admin={admin}
+          initial={renaming && dash ? { name: dash.name, icon: dash.icon ?? "home", shared: dash.shared, accent: dash.accent } : undefined}
+          onClose={() => {
+            setCreating(false);
+            setRenaming(false);
+          }}
+          onSave={async (v) => {
+            if (renaming && dash) await m.update.mutateAsync({ id: dash.id, ...v });
+            else {
+              const d = await m.create.mutateAsync(v);
+              router.push(`/?d=${d.id}`);
+            }
+          }}
+        />
+      ) : null}
     </Shell>
   );
 }
@@ -246,24 +249,19 @@ export function Grid({ dash, modMap, editing, onConfigure, onRemove, onLayout }:
   );
 }
 
-function DashboardFormModal({ open, initial, admin, onClose, onSave }: { open: boolean; admin: boolean; initial?: { name: string; icon: string; shared: boolean; accent: string | null }; onClose: () => void; onSave: (v: { name: string; icon: string; shared: boolean; accent: string | null }) => Promise<void> }) {
+/** mounted only while open (see DashboardView), so the initial values are read once */
+function DashboardFormModal({ initial, admin, onClose, onSave }: { admin: boolean; initial?: { name: string; icon: string; shared: boolean; accent: string | null }; onClose: () => void; onSave: (v: { name: string; icon: string; shared: boolean; accent: string | null }) => Promise<void> }) {
   const t = useT();
-  const [name, setName] = useState("");
-  const [icon, setIcon] = useState("home");
-  const [shared, setShared] = useState(true);
-  const [accent, setAccent] = useState<string | null>(null);
+  const [name, setName] = useState(initial?.name ?? "");
+  const [icon, setIcon] = useState(initial?.icon ?? "home");
+  const [shared, setShared] = useState(initial?.shared ?? admin);
+  const [accent, setAccent] = useState<string | null>(initial?.accent ?? null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    if (open) {
-      setName(initial?.name ?? "");
-      setIcon(initial?.icon ?? "home");
-      setShared(initial?.shared ?? admin);
-      setAccent(initial?.accent ?? null);
-    }
-  }, [open, initial, admin]);
   const icons = useMemo(() => iconNames(), []);
+  const iconsId = useStableId("dash-icons");
+  const accentId = useStableId("dash-accent");
   return (
-    <Modal open={open} onClose={onClose} title={initial ? t("dashboard.rename") : t("dashboard.new")}>
+    <Modal open onClose={onClose} title={initial ? t("dashboard.rename") : t("dashboard.new")} closeLabel={t("common.close")}>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -278,28 +276,28 @@ function DashboardFormModal({ open, initial, admin, onClose, onSave }: { open: b
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <div className="field">
-          <label>{t("common.name")}</label>
+        <Field label={t("common.name")}>
           <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus required maxLength={64} />
-        </div>
-        <div className="field">
-          <label>{t("dashboard.icon")}</label>
+        </Field>
+        <div className="field" role="group" aria-labelledby={iconsId}>
+          <label id={iconsId}>{t("dashboard.icon")}</label>
           <div className="scroll-y" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 30px)", gap: 4, maxHeight: 160, padding: 2 }}>
             {icons.map((n) => (
-              <button key={n} type="button" title={n} className={cx("btn btn-icon", n === icon && "btn-primary")} style={{ boxShadow: "none" }} onClick={() => setIcon(n)}>
+              <button key={n} type="button" title={n} aria-label={n} aria-pressed={n === icon} className={cx("btn btn-icon", n === icon && "btn-primary")} style={{ boxShadow: "none" }} onClick={() => setIcon(n)}>
                 <Icon name={n} size={14} />
               </button>
             ))}
           </div>
         </div>
-        <div className="field">
-          <label>{t("dashboard.accent")}</label>
+        <div className="field" role="group" aria-labelledby={accentId}>
+          <label id={accentId}>{t("dashboard.accent")}</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {ACCENTS.map((a) => (
               <button
                 key={a.id}
                 type="button"
                 title={a.name}
+                aria-label={a.name}
                 aria-pressed={(accent ?? "sakura") === a.id}
                 onClick={() => setAccent(a.id === "sakura" ? null : a.id)}
                 className="btn btn-icon"
@@ -327,26 +325,21 @@ function DashboardFormModal({ open, initial, admin, onClose, onSave }: { open: b
   );
 }
 
-function ShareModal({ open, dash, admin, onClose }: { open: boolean; dash: Dashboard | null; admin: boolean; onClose: () => void }) {
+/** mounted only while open (see DashboardView), so the dashboard's current sharing is read once */
+function ShareModal({ dash, admin, onClose }: { dash: Dashboard; admin: boolean; onClose: () => void }) {
   const t = useT();
-  const users = useUsers(open && admin);
+  const users = useUsers(admin);
   const m = useDashboardMutations();
   const toast = useToast();
   const auth = useAuthStatus();
-  const [shared, setShared] = useState(true);
-  const [access, setAccess] = useState<string[]>([]);
-  const [owner, setOwner] = useState<string | null>(null);
-  useEffect(() => {
-    if (open && dash) {
-      setShared(dash.shared);
-      setAccess(dash.access);
-      setOwner(dash.ownerId);
-    }
-  }, [open, dash]);
-  if (!dash) return null;
+  const [shared, setShared] = useState(dash.shared);
+  const [access, setAccess] = useState<string[]>(dash.access);
+  const [owner, setOwner] = useState<string | null>(dash.ownerId);
+  const whoId = useStableId("share-who");
+  const ownerId = useStableId("share-owner");
   const others = (users.data ?? []).filter((u) => u.id !== (owner ?? "") && u.role !== "owner" && u.role !== "admin");
   return (
-    <Modal open={open} onClose={onClose} title={t("dashboard.sharingTitle", { name: dash.name })}>
+    <Modal open onClose={onClose} title={t("dashboard.sharingTitle", { name: dash.name })} closeLabel={t("common.close")}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <label className="check" style={{ fontSize: 13 }}>
           <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
@@ -355,8 +348,8 @@ function ShareModal({ open, dash, admin, onClose }: { open: boolean; dash: Dashb
         </label>
         {!shared ? (
           admin ? (
-            <div className="field">
-              <label>{t("dashboard.whoElse")}</label>
+            <div className="field" role="group" aria-labelledby={whoId}>
+              <label id={whoId}>{t("dashboard.whoElse")}</label>
               {others.length === 0 ? (
                 <div className="soft" style={{ fontSize: 12 }}>{t("dashboard.noOtherMembers")}</div>
               ) : (
@@ -378,8 +371,8 @@ function ShareModal({ open, dash, admin, onClose }: { open: boolean; dash: Dashb
         ) : null}
         {admin ? (
           <div className="field">
-            <label>{t("dashboard.owner")}</label>
-            <select className="input" value={owner ?? ""} onChange={(e) => setOwner(e.target.value || null)}>
+            <label htmlFor={ownerId}>{t("dashboard.owner")}</label>
+            <select id={ownerId} className="input" value={owner ?? ""} onChange={(e) => setOwner(e.target.value || null)}>
               <option value="">{t("dashboard.hubOwner")}</option>
               {(users.data ?? []).map((u) => (
                 <option key={u.id} value={u.id}>

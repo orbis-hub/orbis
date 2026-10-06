@@ -1,4 +1,4 @@
-import { defineModule } from "@orbis/sdk/server";
+import { defineModule, invalid, notFound, parseBody, z } from "@orbis/sdk/server";
 
 export type Person = { id: string; name: string; date: string; note: string | null; created_at: string };
 export type PersonView = Person & { next: string; daysUntil: number; turns: number | null };
@@ -6,9 +6,37 @@ export type PersonView = Person & { next: string; daysUntil: number; turns: numb
 const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
-/** date is "YYYY-MM-DD" or "--MM-DD" (year unknown) */
+export const NAME_MAX = 100;
+export const NOTE_MAX = 500;
+export const MIN_YEAR = 1900;
+
+/** "YYYY-MM-DD", "MM-DD" or "--MM-DD" (year unknown) */
+const DATE_RE = /^(?:(\d{4})-|--)?(\d{2})-(\d{2})$/;
+
+/**
+ * Validate a birthday and return it in canonical form ("YYYY-MM-DD" or "MM-DD"): a real calendar date (no 02-30,
+ * no 13th month), year 1900..today, never in the future. Feb 29 is fine when the year is unknown.
+ */
+export function normalizeDate(input: string, today = new Date()): { ok: true; date: string } | { ok: false; error: string } {
+  const m = input.trim().match(DATE_RE);
+  if (!m) return { ok: false, error: "date must be YYYY-MM-DD or MM-DD" };
+  const year = m[1] ? Number(m[1]) : null;
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12) return { ok: false, error: "month must be 01..12" };
+  const daysInMonth = year === null ? (month === 2 ? 29 : new Date(2001, month, 0).getDate()) : new Date(year, month, 0).getDate();
+  if (day < 1 || day > daysInMonth) return { ok: false, error: "not a real calendar date" };
+  if (year !== null) {
+    if (year < MIN_YEAR) return { ok: false, error: `year must be ${MIN_YEAR} or later` };
+    const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (new Date(year, month - 1, day) > t) return { ok: false, error: "birthday must not be in the future" };
+  }
+  return { ok: true, date: `${year === null ? "" : `${m[1]}-`}${m[2]}-${m[3]}` };
+}
+
+/** date is "YYYY-MM-DD" or "MM-DD" (year unknown) */
 export function nextOccurrence(date: string, from = new Date()): { next: Date; turns: number | null } {
-  const m = date.match(/^(\d{4})?-?-?(\d{2})-(\d{2})$/);
+  const m = date.match(DATE_RE);
   if (!m) return { next: from, turns: null };
   const year = m[1] ? Number(m[1]) : null;
   const month = Number(m[2]) - 1, day = Number(m[3]);
@@ -20,8 +48,12 @@ export function nextOccurrence(date: string, from = new Date()): { next: Date; t
     next = new Date(today.getFullYear() + 1, month, day);
     if (next.getMonth() !== month) next = new Date(today.getFullYear() + 1, month, day - 1);
   }
-  return { next, turns: year ? next.getFullYear() - year : null };
+  return { next, turns: year ? Math.max(0, next.getFullYear() - year) : null };
 }
+
+const nameSchema = z.string().trim().min(1, "name must not be empty").max(NAME_MAX, `name: at most ${NAME_MAX} characters`);
+const dateSchema = z.string().trim().min(1, "date required").max(12, "date must be YYYY-MM-DD or MM-DD");
+const noteSchema = z.string().trim().max(NOTE_MAX, `note: at most ${NOTE_MAX} characters`).nullable();
 
 export default defineModule({
   setup(ctx) {
@@ -35,28 +67,40 @@ export default defineModule({
       return { ...p, next: localIso(next), daysUntil, turns };
     };
     const all = () => db.sql<Person>(`SELECT * FROM {{t:people}}`).map(view).sort((a, b) => a.daysUntil - b.daysUntil || a.name.localeCompare(b.name));
+    const exists = (id: string) => db.sql<{ id: string }>(`SELECT id FROM {{t:people}} WHERE id = ?`, [id]).length > 0;
 
     http.get("/people", (c) => c.json(all()));
     http.post("/people", async (c) => {
-      const b = (await c.req.json().catch(() => ({}))) as { name?: string; date?: string; note?: string };
-      if (!b.name?.trim() || !b.date) return c.json({ error: "name and date required" }, 400);
-      if (!/^(\d{4}-)?\d{2}-\d{2}$/.test(b.date) && !/^--\d{2}-\d{2}$/.test(b.date)) return c.json({ error: "date must be YYYY-MM-DD or MM-DD" }, 400);
+      const b = await parseBody(c, z.object({ name: nameSchema, date: dateSchema, note: noteSchema.optional() }));
+      if (!b.ok) return b.res;
+      const d = normalizeDate(b.data.date);
+      if (!d.ok) return invalid(c, [{ path: "date", message: d.error }]);
       const id = uid();
-      db.run(`INSERT INTO {{t:people}} (id, name, date, note, created_at) VALUES (?, ?, ?, ?, ?)`, [id, b.name.trim(), b.date.replace(/^--/, ""), b.note?.trim() || null, new Date().toISOString()]);
+      db.run(`INSERT INTO {{t:people}} (id, name, date, note, created_at) VALUES (?, ?, ?, ?, ?)`, [id, b.data.name, d.date, b.data.note || null, new Date().toISOString()]);
       changed();
       return c.json(all().find((p) => p.id === id), 201);
     });
     http.patch("/people/:id", async (c) => {
       const id = c.req.param("id");
-      const b = (await c.req.json().catch(() => ({}))) as Partial<{ name: string; date: string; note: string | null }>;
-      if (b.name !== undefined) db.run(`UPDATE {{t:people}} SET name = ? WHERE id = ?`, [b.name, id]);
-      if (b.date !== undefined) db.run(`UPDATE {{t:people}} SET date = ? WHERE id = ?`, [b.date.replace(/^--/, ""), id]);
-      if (b.note !== undefined) db.run(`UPDATE {{t:people}} SET note = ? WHERE id = ?`, [b.note, id]);
+      if (!exists(id)) return notFound(c, "person not found");
+      const b = await parseBody(c, z.object({ name: nameSchema.optional(), date: dateSchema.optional(), note: noteSchema.optional() }));
+      if (!b.ok) return b.res;
+      let date: string | undefined;
+      if (b.data.date !== undefined) {
+        const d = normalizeDate(b.data.date);
+        if (!d.ok) return invalid(c, [{ path: "date", message: d.error }]);
+        date = d.date;
+      }
+      if (b.data.name !== undefined) db.run(`UPDATE {{t:people}} SET name = ? WHERE id = ?`, [b.data.name, id]);
+      if (date !== undefined) db.run(`UPDATE {{t:people}} SET date = ? WHERE id = ?`, [date, id]);
+      if (b.data.note !== undefined) db.run(`UPDATE {{t:people}} SET note = ? WHERE id = ?`, [b.data.note || null, id]);
       changed();
-      return c.json(all().find((p) => p.id === id) ?? { ok: true });
+      return c.json(all().find((p) => p.id === id));
     });
     http.delete("/people/:id", (c) => {
-      db.run(`DELETE FROM {{t:people}} WHERE id = ?`, [c.req.param("id")]);
+      const id = c.req.param("id");
+      if (!exists(id)) return notFound(c, "person not found");
+      db.run(`DELETE FROM {{t:people}} WHERE id = ?`, [id]);
       changed();
       return c.json({ ok: true });
     });

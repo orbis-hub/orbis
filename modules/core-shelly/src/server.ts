@@ -21,6 +21,26 @@ export type ShellyDevice = {
   error: string | null;
 };
 
+/** `host[:port]` where host is a valid ipv4 (each octet ≤ 255) or a dns hostname; null for anything else ("999.1.1", "a..b", "http://x") */
+export function normalizeHost(input: string): string | null {
+  const s = input.trim().toLowerCase();
+  const m = s.match(/^([^:/\s]+)(?::(\d{1,5}))?$/);
+  if (!m) return null;
+  const host = m[1]!;
+  const port = m[2] !== undefined ? Number(m[2]) : null;
+  if (port !== null && (port < 1 || port > 65535)) return null;
+  if (/^[\d.]+$/.test(host)) {
+    const o = host.split(".");
+    if (o.length !== 4 || o.some((x) => x === "" || Number(x) > 255)) return null;
+  } else if (!/^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))*$/.test(host) || host.length > 253) return null;
+  try {
+    new URL(`http://${s}`);
+  } catch {
+    return null;
+  }
+  return s;
+}
+
 export default defineModule({
   setup(ctx) {
     const { http, storage, events, logger, devices } = ctx;
@@ -120,14 +140,21 @@ export default defineModule({
       return c.json({ ok: true });
     });
     http.post("/add-ip", async (c) => {
-      const b = (await c.req.json().catch(() => ({}))) as { ip?: string };
-      const target = (b.ip ?? "").trim();
-      if (!/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(target) && !/^[a-z0-9][a-z0-9.-]*(:\d+)?$/i.test(target)) return c.json({ error: ctx.i18n.t("error.ip_required") }, 400);
-      b.ip = target;
-      storage.set("manualIps", [...new Set([...manual(), b.ip])]);
-      await pollAll();
-      const d = state.get(`ip:${b.ip}`);
-      return d?.online ? c.json(d, 201) : c.json({ error: d?.error ?? ctx.i18n.t("error.no_answer") }, 400);
+      const b = (await c.req.json().catch(() => ({}))) as { ip?: unknown };
+      const target = normalizeHost(typeof b.ip === "string" ? b.ip : "");
+      if (!target) return c.json({ error: ctx.i18n.t("error.ip_required") }, 400);
+      const id = `ip:${target}`;
+      if (manual().includes(target) || devices.claimed().some((d) => d.ip === target)) return c.json(state.get(id) ?? { ok: true }, 200);
+      // probe first; only a device that answers is remembered (otherwise it would be polled forever and flag "offline")
+      const d = await poll({ id, ip: target, name: null, mac: null });
+      if (!d.online) {
+        state.delete(id);
+        return c.json({ error: d.error ?? ctx.i18n.t("error.no_answer") }, 400);
+      }
+      storage.set("manualIps", [...new Set([...manual(), target])]);
+      events.publish("state", [...state.values()]);
+      reportStatus();
+      return c.json(d, 201);
     });
     http.post("/switch", async (c) => {
       const b = (await c.req.json().catch(() => ({}))) as { device?: string; channel?: number; on?: boolean };

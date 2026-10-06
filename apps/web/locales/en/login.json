@@ -23,5 +23,9 @@
   "login.error.short": "the password needs at least 6 characters",
   "login.error.generic": "something went wrong",
   "login.error.unreachable": "hub unreachable",
-  "login.error.wrong": "wrong name or password"
+  "login.error.wrong": "wrong name or password",
+  "login.error.name": "the name needs 1–64 characters",
+  "login.error.invalid": "check the name (1–64 characters) and the password (at least 6 characters)",
+  "login.nameHint": "1–64 characters, shown to everyone on this hub",
+  "login.nextHint": "after signing in you go back to {path}"
 }

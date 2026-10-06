@@ -1,8 +1,21 @@
 import { createHash } from "node:crypto";
-import { defineModule } from "@orbis/sdk/server";
+import { defineModule, parseBody, parseQuery, z } from "@orbis/sdk/server";
 import { XMLParser } from "fast-xml-parser";
 
-export type Feed = { id: string; url: string; title: string; site: string | null; favicon: string | null; last_fetched: string | null; error: string | null; sort: number };
+export type Feed = {
+  id: string;
+  url: string;
+  title: string;
+  site: string | null;
+  favicon: string | null;
+  last_fetched: string | null;
+  /** when the feed last parsed fine */
+  last_ok: string | null;
+  error: string | null;
+  /** when `error` was first seen (null while the feed is healthy) */
+  last_error_at: string | null;
+  sort: number;
+};
 export type Item = { id: string; feed_id: string; title: string; url: string; summary: string | null; published: string; read: number; feed_title?: string; favicon?: string | null };
 
 type Settings = { refreshMinutes?: number; keepDays?: number };
@@ -19,7 +32,59 @@ const text = (v: unknown): string => {
   }
   return "";
 };
-const strip = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ").trim();
+/** named html entities (html 4 set: latin-1, greek, typographic, arrows) → code point; numeric ones are decoded directly */
+const ENTITIES: Record<string, number> = (() => {
+  const t: Record<string, number> = { quot: 34, amp: 38, apos: 39, lt: 60, gt: 62 };
+  const latin1 = "nbsp iexcl cent pound curren yen brvbar sect uml copy ordf laquo not shy reg macr deg plusmn sup2 sup3 acute micro para middot cedil sup1 ordm raquo frac14 frac12 frac34 iquest Agrave Aacute Acirc Atilde Auml Aring AElig Ccedil Egrave Eacute Ecirc Euml Igrave Iacute Icirc Iuml ETH Ntilde Ograve Oacute Ocirc Otilde Ouml times Oslash Ugrave Uacute Ucirc Uuml Yacute THORN szlig agrave aacute acirc atilde auml aring aelig ccedil egrave eacute ecirc euml igrave iacute icirc iuml eth ntilde ograve oacute ocirc otilde ouml divide oslash ugrave uacute ucirc uuml yacute thorn yuml".split(" ");
+  latin1.forEach((n, i) => (t[n] = 160 + i));
+  const greekU = "Alpha Beta Gamma Delta Epsilon Zeta Eta Theta Iota Kappa Lambda Mu Nu Xi Omicron Pi Rho _ Sigma Tau Upsilon Phi Chi Psi Omega".split(" ");
+  greekU.forEach((n, i) => n !== "_" && (t[n] = 913 + i));
+  const greekL = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigmaf sigma tau upsilon phi chi psi omega".split(" ");
+  greekL.forEach((n, i) => (t[n] = 945 + i));
+  Object.assign(t, { OElig: 338, oelig: 339, Scaron: 352, scaron: 353, Yuml: 376, fnof: 402, circ: 710, tilde: 732, ensp: 8194, emsp: 8195, thinsp: 8201, zwnj: 8204, zwj: 8205, lrm: 8206, rlm: 8207, ndash: 8211, mdash: 8212, lsquo: 8216, rsquo: 8217, sbquo: 8218, ldquo: 8220, rdquo: 8221, bdquo: 8222, dagger: 8224, Dagger: 8225, bull: 8226, hellip: 8230, permil: 8240, prime: 8242, Prime: 8243, lsaquo: 8249, rsaquo: 8250, oline: 8254, frasl: 8260, euro: 8364, trade: 8482, larr: 8592, uarr: 8593, rarr: 8594, darr: 8595, harr: 8596, minus: 8722, infin: 8734, ne: 8800, le: 8804, ge: 8805, hearts: 9829, spades: 9824, clubs: 9827, diams: 9830, loz: 9674 });
+  return t;
+})();
+/** `&eacute;`, `&#8217;`, `&#x2019;` → characters; unknown names are left alone */
+export const decodeEntities = (s: string) =>
+  s.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z][a-z0-9]{1,31});/gi, (m, body: string) => {
+    let cp: number | undefined;
+    if (body[0] === "#") cp = body[1] === "x" || body[1] === "X" ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
+    else cp = ENTITIES[body];
+    if (cp === undefined || !Number.isFinite(cp) || cp <= 0 || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff)) return m;
+    return cp === 160 ? " " : String.fromCodePoint(cp);
+  });
+export const strip = (html: string) => decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+
+/** feeds bigger than this are refused (the hub fetch policy caps bodies too; this is the module's own guard) */
+const MAX_FEED_BYTES = 5 * 1024 * 1024;
+const MAX_FAVICON_BYTES = 100 * 1024;
+const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+/** read a body up to `max` bytes; throws once more arrives (does not buffer the rest) */
+async function readCapped(res: Response, max: number, what: string): Promise<Uint8Array> {
+  const declared = Number(res.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > max) throw new Error(`${what} too large (${mb(declared)}, limit ${mb(max)})`);
+  if (!res.body) return new Uint8Array(await res.arrayBuffer());
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error(`${what} too large (over ${mb(max)})`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.byteLength;
+  }
+  return out;
+}
 
 export default defineModule<Settings>({
   setup(ctx) {
@@ -27,14 +92,18 @@ export default defineModule<Settings>({
     db.run(`CREATE TABLE IF NOT EXISTS {{t:feeds}} (id TEXT PRIMARY KEY, url TEXT NOT NULL UNIQUE, title TEXT NOT NULL, site TEXT, favicon TEXT, last_fetched TEXT, error TEXT, sort INTEGER NOT NULL DEFAULT 0)`);
     db.run(`CREATE TABLE IF NOT EXISTS {{t:items}} (id TEXT PRIMARY KEY, feed_id TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL, summary TEXT, published TEXT NOT NULL, read INTEGER NOT NULL DEFAULT 0)`);
     db.run(`CREATE INDEX IF NOT EXISTS {{t:items_pub}} ON {{t:items}}(published)`);
+    // per-feed health timestamps (added later: migrate older tables)
+    const cols = new Set(db.sql<{ name: string }>(`PRAGMA table_info("m_rss_feeds")`).map((c) => c.name));
+    if (!cols.has("last_ok")) db.run(`ALTER TABLE {{t:feeds}} ADD COLUMN last_ok TEXT`);
+    if (!cols.has("last_error_at")) db.run(`ALTER TABLE {{t:feeds}} ADD COLUMN last_error_at TEXT`);
     const feeds = () => db.sql<Feed>(`SELECT * FROM {{t:feeds}} ORDER BY sort, title`);
     const changed = () => events.publish("changed");
 
     async function fetchFeed(f: Feed) {
       try {
-        const res = await ctx.fetch(f.url, { headers: { accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*", "user-agent": "orbis-rss/0.1" }, signal: AbortSignal.timeout(20_000), redirect: "follow" });
+        const res = await ctx.fetch(f.url, { headers: { accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*", "user-agent": "orbis-rss/0.1" }, signal: AbortSignal.timeout(20_000), redirect: "follow", maxBytes: MAX_FEED_BYTES });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const xml = await res.text();
+        const xml = new TextDecoder().decode(await readCapped(res, MAX_FEED_BYTES, "feed"));
         const doc = parser.parse(xml) as Record<string, unknown>;
         const rss = doc.rss as { channel?: Record<string, unknown> } | undefined;
         const atom = doc.feed as Record<string, unknown> | undefined;
@@ -73,20 +142,23 @@ export default defineModule<Settings>({
         let favicon = f.favicon;
         if (!favicon && site) {
           try {
-            const r2 = await ctx.fetch(new URL("/favicon.ico", site).toString(), { signal: AbortSignal.timeout(6000) });
+            const r2 = await ctx.fetch(new URL("/favicon.ico", site).toString(), { signal: AbortSignal.timeout(6000), maxBytes: MAX_FAVICON_BYTES });
             if (r2.ok && (r2.headers.get("content-type") ?? "").startsWith("image/")) {
-              const buf = Buffer.from(await r2.arrayBuffer());
-              if (buf.byteLength < 100 * 1024) favicon = `data:${(r2.headers.get("content-type") ?? "image/x-icon").split(";")[0]};base64,${buf.toString("base64")}`;
+              const buf = Buffer.from(await readCapped(r2, MAX_FAVICON_BYTES, "favicon"));
+              favicon = `data:${(r2.headers.get("content-type") ?? "image/x-icon").split(";")[0]};base64,${buf.toString("base64")}`;
             }
           } catch {
             /* fine */
           }
         }
-        db.run(`UPDATE {{t:feeds}} SET title = ?, site = ?, favicon = ?, last_fetched = ?, error = NULL WHERE id = ?`, [title, site, favicon, new Date().toISOString(), f.id]);
+        const at = new Date().toISOString();
+        db.run(`UPDATE {{t:feeds}} SET title = ?, site = ?, favicon = ?, last_fetched = ?, last_ok = ?, error = NULL, last_error_at = NULL WHERE id = ?`, [title, site, favicon, at, at, f.id]);
         if (added) logger.debug(`${f.title}: ${added} new`);
         return added;
       } catch (err) {
-        db.run(`UPDATE {{t:feeds}} SET error = ?, last_fetched = ? WHERE id = ?`, [(err as Error).message, new Date().toISOString(), f.id]);
+        const at = new Date().toISOString();
+        // keep the time the trouble started so a flaky provider shows "failing since …"
+        db.run(`UPDATE {{t:feeds}} SET error = ?, last_fetched = ?, last_error_at = COALESCE(last_error_at, ?) WHERE id = ?`, [(err as Error).message, at, at, f.id]);
         logger.warn(`${f.url}: ${(err as Error).message}`);
         return 0;
       }
@@ -117,13 +189,23 @@ export default defineModule<Settings>({
       return c.json(feeds().map((f) => ({ ...f, unread: counts[f.id] ?? 0 })));
     });
     http.post("/feeds", async (c) => {
-      const b = (await c.req.json().catch(() => ({}))) as { url?: string };
-      if (!b.url) return c.json({ error: ctx.i18n.t("error.url_required") }, 400);
-      let url = b.url.trim();
+      const b = await parseBody(c, z.object({ url: z.string().trim().max(2048).optional() }));
+      if (!b.ok) return b.res;
+      if (!b.data.url) return c.json({ error: ctx.i18n.t("error.url_required") }, 400);
+      let url = b.data.url;
       if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+        if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || !parsed.hostname) throw new Error("bad");
+      } catch {
+        return c.json({ error: ctx.i18n.t("error.invalid_url") }, 400);
+      }
+      url = parsed.toString();
+      if (db.sql(`SELECT id FROM {{t:feeds}} WHERE url = ?`, [url]).length) return c.json({ error: ctx.i18n.t("error.already_added") }, 409);
       const id = uid();
       try {
-        db.run(`INSERT INTO {{t:feeds}} (id, url, title, sort) VALUES (?, ?, ?, ?)`, [id, url, new URL(url).hostname, feeds().length]);
+        db.run(`INSERT INTO {{t:feeds}} (id, url, title, sort) VALUES (?, ?, ?, ?)`, [id, url, parsed.hostname, feeds().length]);
       } catch {
         return c.json({ error: ctx.i18n.t("error.already_added") }, 409);
       }
@@ -150,6 +232,7 @@ export default defineModule<Settings>({
       return c.json(feeds().find((x) => x.id === id), 201);
     });
     http.delete("/feeds/:id", (c) => {
+      if (!db.sql(`SELECT id FROM {{t:feeds}} WHERE id = ?`, [c.req.param("id")]).length) return c.json({ error: ctx.i18n.t("error.unknown_feed") }, 404);
       db.run(`DELETE FROM {{t:items}} WHERE feed_id = ?`, [c.req.param("id")]);
       db.run(`DELETE FROM {{t:feeds}} WHERE id = ?`, [c.req.param("id")]);
       changed();
@@ -161,20 +244,32 @@ export default defineModule<Settings>({
       return c.json({ ok: true });
     });
     http.get("/items", (c) => {
-      const feed = c.req.query("feed");
-      const unread = c.req.query("unread") === "1";
-      const limit = Math.min(200, Number(c.req.query("limit") ?? 50));
+      const q = parseQuery(c, z.object({ feed: z.string().max(64).optional(), unread: z.string().optional(), limit: z.coerce.number().int().min(1).max(200).optional() }));
+      if (!q.ok) return q.res;
+      const feed = q.data.feed;
+      const unread = q.data.unread === "1";
+      const limit = q.data.limit ?? 50;
       const where = [feed ? "i.feed_id = ?" : null, unread ? "i.read = 0" : null].filter(Boolean).join(" AND ");
       const items = db.sql<Item>(`SELECT i.*, f.title AS feed_title, f.favicon FROM {{t:items}} i JOIN {{t:feeds}} f ON f.id = i.feed_id ${where ? `WHERE ${where}` : ""} ORDER BY i.published DESC LIMIT ?`, [...(feed ? [feed] : []), limit]);
       return c.json(items);
     });
     http.post("/read", async (c) => {
-      const b = (await c.req.json().catch(() => ({}))) as { ids?: string[]; all?: boolean; feed?: string; read?: boolean };
-      const v = b.read === false ? 0 : 1;
-      if (b.all) db.run(`UPDATE {{t:items}} SET read = ?${b.feed ? " WHERE feed_id = ?" : ""}`, b.feed ? [v, b.feed] : [v]);
-      else for (const id of b.ids ?? []) db.run(`UPDATE {{t:items}} SET read = ? WHERE id = ?`, [v, id]);
+      const b = await parseBody(c, z.object({ ids: z.array(z.string().max(64)).max(1000).optional(), all: z.boolean().optional(), feed: z.string().max(64).optional(), read: z.boolean().optional() }));
+      if (!b.ok) return b.res;
+      const v = b.data.read === false ? 0 : 1;
+      let touched = 0;
+      if (b.data.all) {
+        if (b.data.feed && !db.sql(`SELECT id FROM {{t:feeds}} WHERE id = ?`, [b.data.feed]).length) return c.json({ error: ctx.i18n.t("error.unknown_feed") }, 404);
+        touched = db.run(`UPDATE {{t:items}} SET read = ?${b.data.feed ? " WHERE feed_id = ?" : ""}`, b.data.feed ? [v, b.data.feed] : [v]).changes;
+      } else {
+        const ids = b.data.ids ?? [];
+        if (!ids.length) return c.json({ error: "ids or all required" }, 400);
+        const known = db.sql<{ id: string }>(`SELECT id FROM {{t:items}} WHERE id IN (${ids.map(() => "?").join(",")})`, ids).length;
+        if (!known) return c.json({ error: ctx.i18n.t("error.unknown_item") }, 404);
+        for (const id of ids) touched += db.run(`UPDATE {{t:items}} SET read = ? WHERE id = ?`, [v, id]).changes;
+      }
       changed();
-      return c.json({ ok: true });
+      return c.json({ ok: true, updated: touched });
     });
 
     einkRender = (req) => {

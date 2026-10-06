@@ -104,10 +104,34 @@ function FitnessPage(_p: PageProps) {
       setSyncing(false);
     }
   };
+  // secrets come back once on create / rotate (and in the list for admins); members only ever see the hint
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const remember = (s: Source) => s.secret && setSecrets((m) => ({ ...m, [s.id]: s.secret! }));
   const addSource = async () => {
-    const s = await api<Source>("/sources", { method: "POST", json: { name: newSrc || "apple health" } });
-    setNewSrc("");
-    setShowSecret(s.id);
+    try {
+      const s = await api<Source>("/sources", { method: "POST", json: { name: newSrc || "apple health" } });
+      remember(s);
+      setNewSrc("");
+      setShowSecret(s.id);
+    } catch (err) {
+      toast((err as Error).message, "bad");
+    }
+  };
+  const rotate = async (id: string) => {
+    try {
+      remember(await api<Source>(`/sources/${id}/rotate`, { method: "POST" }));
+      toast(t("toast.newSecret"));
+      setShowSecret(id);
+    } catch (err) {
+      toast((err as Error).message, "bad");
+    }
+  };
+  const remove = async (id: string) => {
+    try {
+      await api(`/sources/${id}`, { method: "DELETE" });
+    } catch (err) {
+      toast((err as Error).message, "bad");
+    }
   };
   const w = week.data;
   return (
@@ -170,14 +194,14 @@ function FitnessPage(_p: PageProps) {
                 <span className="soft" style={{ fontSize: 10 }}>{t("source.count", { count: s.count })}{s.last_at ? ` · ${t("source.last", { time: new Date(s.last_at).toLocaleString(locale) })}` : ""}</span>
                 <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
                   <Button size="sm" variant="ghost" onClick={() => setShowSecret(showSecret === s.id ? null : s.id)}>{showSecret === s.id ? t("action.hide") : t("action.showSetup")}</Button>
-                  <Button size="sm" variant="ghost" onClick={() => void api(`/sources/${s.id}/rotate`, { method: "POST" }).then(() => toast(t("toast.newSecret")))} title={t("action.rotate")}><Icon name="reload" size={12} /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => void api(`/sources/${s.id}`, { method: "DELETE" })} aria-label={t("action.delete")}><Icon name="trash" size={12} /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => void rotate(s.id)} title={t("action.rotate")}><Icon name="reload" size={12} /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => void remove(s.id)} aria-label={t("action.delete")}><Icon name="trash" size={12} /></Button>
                 </span>
               </div>
               {showSecret === s.id ? (
                 <div style={{ fontSize: 12, display: "flex", flexDirection: "column", gap: 6 }}>
                   <div><span className="soft">{t("setup.url")}</span><br /><code style={{ userSelect: "all", wordBreak: "break-all" }}>{base}/api/m/fitness/ingest/{s.id}</code></div>
-                  <div><span className="soft">{t("setup.header")}</span><br /><code style={{ userSelect: "all", wordBreak: "break-all" }}>Authorization: Bearer {s.secret}</code></div>
+                  <div><span className="soft">{t("setup.header")}</span><br />{s.secret ?? secrets[s.id] ? <code style={{ userSelect: "all", wordBreak: "break-all" }}>Authorization: Bearer {s.secret ?? secrets[s.id]}</code> : <span className="soft">{t("source.secretHidden")}</span>}</div>
                   <div className="soft">
                     {t("setup.body.intro")} <code>type</code>, <code>start</code> {t("setup.body.iso")}, <code>duration</code> {t("setup.body.min")} {t("setup.body.or")} <code>duration_s</code>, <code>distance</code> {t("setup.body.m")} {t("setup.body.or")} <code>distanceKm</code>, <code>calories</code>, {t("setup.body.optional")} <code>id</code> {t("setup.body.outro")}
                   </div>
@@ -185,7 +209,7 @@ function FitnessPage(_p: PageProps) {
                     <b>{t("setup.shortcut.title")}</b> <Kbd>Find Workouts</Kbd> {t("setup.shortcut.sort")} → <Kbd>Repeat with Each</Kbd> → <Kbd>Get Contents of URL</Kbd> {t("setup.shortcut.rest")}
                   </div>
                   <pre className="win" style={{ fontSize: 11, padding: 8, overflow: "auto", margin: 0 }}>{`curl -X POST ${base}/api/m/fitness/ingest/${s.id} \\
-  -H "Authorization: Bearer ${s.secret}" -H "content-type: application/json" \\
+  -H "Authorization: Bearer ${s.secret ?? secrets[s.id] ?? "<secret>"}" -H "content-type: application/json" \\
   -d '{"type":"run","start":"${new Date().toISOString()}","duration":32,"distanceKm":5.2,"calories":340}'`}</pre>
                 </div>
               ) : null}

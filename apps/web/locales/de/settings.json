@@ -38,7 +38,7 @@
   "settings.backup.restored": "wiederhergestellt. {note}",
   "settings.backup.failed": "backup fehlgeschlagen: {error}",
   "settings.backup.restoreFailed": "wiederherstellen fehlgeschlagen: {error}",
-  "settings.backup.note": "beim wiederherstellen bleibt eine kopie der aktuellen daten neben dem datenordner ({folder}). per skript:",
+  "settings.backup.note": "vor dem wiederherstellen kopiert der hub die aktuellen daten nach {folder} im datenordner (die letzten 3 kopien bleiben, uploads bis 200 MB). zurück: hub stoppen, den inhalt dieses ordners in den datenordner zurückschieben, neu starten. per skript:",
   "settings.notify.title": "benachrichtigungen",
   "settings.notify.intro": "module läuten die glocke in der app. leite sie so an dein handy weiter:",
   "settings.notify.ntfyHint": "· kostenlos, installier die ntfy-app und abonnier dasselbe topic",
@@ -57,5 +57,6 @@
   "settings.notify.mutedHint": "deren benachrichtigungen werden komplett verworfen",
   "settings.notify.test": "test senden",
   "settings.notify.testSent": "test gesendet",
-  "settings.notify.webpush": "web push (browser-benachrichtigungen) gibt es noch nicht; ntfy auf dem handy kommt dem am nächsten und dauert zwei minuten."
+  "settings.notify.webpush": "web push (browser-benachrichtigungen) gibt es noch nicht; ntfy auf dem handy kommt dem am nächsten und dauert zwei minuten.",
+  "settings.registries.label": "registry-urls"
 }
