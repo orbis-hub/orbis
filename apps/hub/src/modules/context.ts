@@ -12,6 +12,8 @@ import { broadcast } from "../ws";
 import * as notifications from "../services/notifications";
 import { getLanguage, onSettingChange } from "../services/settings";
 import { translatorFor } from "./locales";
+import { publicHubSettings } from "./hub-settings";
+import { createModuleFetch } from "./fetch-policy";
 
 export type BuiltContext = {
   ctx: ModuleServerContext;
@@ -161,6 +163,15 @@ export function buildContext(
   };
 
   const http = new Hono();
+  // module exceptions become json like the hub's own routes (hono's default is a text/plain "Internal Server Error")
+  http.onError((err, c) => {
+    log.error({ err, path: c.req.path, method: c.req.method }, "module route failed");
+    return c.json({ error: err?.message || "internal error" }, 500);
+  });
+
+  const fetch = createModuleFetch(manifest, {
+    onBlocked: ({ url, reason }) => log.warn({ url, reason }, "fetch blocked"),
+  });
 
   // translations: re-resolved whenever the hub language changes
   let translator = translatorFor(dir);
@@ -215,8 +226,9 @@ export function buildContext(
     notify: (input) => notifications.notify(id, input),
     dismissNotification: (key) => notifications.dismiss(id, key),
     modules: modulesApi ?? { list: () => [], has: () => false, call: async () => { throw new Error("modules api unavailable"); }, onChange: () => () => {} },
+    hub: { settings: () => publicHubSettings() },
     http,
-    fetch: globalThis.fetch.bind(globalThis),
+    fetch,
     i18n,
   };
 

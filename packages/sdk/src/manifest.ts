@@ -35,8 +35,13 @@ export const discoveryMatcherSchema = z.object({
   hostname: z.string().optional(),
 });
 
+/**
+ * `network:fetch` – outbound http(s) via `ctx.fetch` to public hosts; loopback, link-local, private (rfc1918/ula) and
+ * cloud-metadata addresses are refused. `network:lan` – additionally allows those local ranges (home-assistant, shelly…).
+ */
 export const permissionSchema = z.enum([
   "network:fetch",
+  "network:lan",
   "network:scan",
   "devices:read",
   "devices:claim",

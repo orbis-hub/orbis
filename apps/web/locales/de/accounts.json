@@ -40,5 +40,11 @@
   "accounts.resetTitle": "passwort zurücksetzen · {name}",
   "accounts.resetDone": "passwort zurückgesetzt, alle sitzungen beendet",
   "accounts.min6": "mind. 6 zeichen",
-  "accounts.reset": "zurücksetzen"
+  "accounts.reset": "zurücksetzen",
+  "accounts.roleOf": "rolle von {name}",
+  "accounts.activeOf": "{name} aktiv",
+  "accounts.userMenuOf": "menü: {name}",
+  "accounts.renameTitle": "{name} umbenennen",
+  "accounts.shared.title": "geteilte daten",
+  "accounts.shared.body": "notizen, todos, gewohnheiten, finanzen und einkaufslisten gelten hub-weit: jedes konto auf diesem hub sieht und bearbeitet dieselben daten. nur dashboards können privat sein."
 }

@@ -107,7 +107,7 @@
       "stravaClientSecret": {
         "type": "string",
         "title": "Strava client secret",
-        "format": "password"
+        "format": "secret"
       },
       "units": {
         "type": "string",

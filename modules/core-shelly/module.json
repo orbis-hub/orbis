@@ -71,6 +71,7 @@
   ],
   "permissions": [
     "network:fetch",
+    "network:lan",
     "storage",
     "scheduler",
     "devices:read",

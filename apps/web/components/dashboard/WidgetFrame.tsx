@@ -26,7 +26,7 @@ export function WidgetFrame({ instance, mod, editing, onConfigure, onRemove }: P
   const menu = editing ? (
     <Menu
       trigger={
-        <Button icon size="sm" variant="ghost" aria-label={t("dashboard.widgetMenu")} onMouseDown={(e) => e.stopPropagation()}>
+        <Button icon size="sm" variant="ghost" aria-label={t("dashboard.widgetMenuFor", { title })} title={t("dashboard.widgetMenuFor", { title })} onMouseDown={(e) => e.stopPropagation()}>
           <Icon name="more-horizontal" size={14} />
         </Button>
       }
@@ -43,7 +43,16 @@ export function WidgetFrame({ instance, mod, editing, onConfigure, onRemove }: P
   }
   return (
     <div className="widget">
-      <Window title={<span className="widget-handle" style={{ display: "block" }}>{title}</span>} right={menu} titleProps={{ className: "win-title widget-handle" }} bodyClassName="widget-body">
+      <Window
+        title={
+          <span className="widget-handle" title={title} style={{ display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {title}
+          </span>
+        }
+        right={menu}
+        titleProps={{ className: "win-title widget-handle" }}
+        bodyClassName="widget-body"
+      >
         {body}
       </Window>
     </div>
@@ -87,7 +96,7 @@ function WidgetBody({ instance, mod, editing }: { instance: WidgetInstance; mod:
     }
   }
   return (
-    <div ref={ref} style={{ height: "100%", width: "100%", minHeight: 40 }}>
+    <div ref={ref} style={{ height: "100%", width: "100%", minHeight: 40, minWidth: 0, overflow: "hidden" }}>
       {content}
     </div>
   );
@@ -95,9 +104,9 @@ function WidgetBody({ instance, mod, editing }: { instance: WidgetInstance; mod:
 
 function Problem({ icon, text }: { icon: string; text: string }) {
   return (
-    <div className="soft" style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, padding: 4 }}>
+    <div className="soft" style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, padding: 4, minWidth: 0 }}>
       <Icon name={icon} size={16} style={{ flex: "none", marginTop: 2 }} />
-      <span style={{ overflowWrap: "anywhere" }}>{text}</span>
+      <span style={{ overflowWrap: "anywhere", minWidth: 0 }}>{text}</span>
     </div>
   );
 }

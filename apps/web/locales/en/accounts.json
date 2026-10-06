@@ -40,5 +40,11 @@
   "accounts.resetTitle": "reset password · {name}",
   "accounts.resetDone": "password reset, all their sessions ended",
   "accounts.min6": "min 6 characters",
-  "accounts.reset": "reset"
+  "accounts.reset": "reset",
+  "accounts.roleOf": "role of {name}",
+  "accounts.activeOf": "{name} active",
+  "accounts.userMenuOf": "menu: {name}",
+  "accounts.renameTitle": "rename {name}",
+  "accounts.shared.title": "shared data",
+  "accounts.shared.body": "notes, todos, habits, finance and shopping lists are hub-wide: every account on this hub sees and edits the same data. only dashboards can be private."
 }

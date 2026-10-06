@@ -55,7 +55,9 @@ purgeExpiredSessions();
 const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
-if (config.dev) app.use(honoLogger((msg) => log.debug(msg)));
+// never log session tokens that clients put in the query string (websocket upgrade, e-ink devices)
+const redactQuery = (msg: string) => msg.replace(/([?&]token=)[^&\s]+/gi, "$1[redacted]");
+if (config.dev) app.use(honoLogger((msg) => log.debug(redactQuery(msg))));
 
 const allowedOrigins = new Set([
   "capacitor://localhost",
@@ -72,7 +74,7 @@ const corsPolicy = cors({
       // same-host LAN access from the Next dev server on another port
       try {
         const u = new URL(origin);
-        if (config.dev && (["localhost", "127.0.0.1"].includes(u.hostname) || u.hostname.endsWith(".local") || /^192.168./.test(u.hostname))) return origin;
+        if (config.dev && (["localhost", "127.0.0.1"].includes(u.hostname) || u.hostname.endsWith(".local") || /^192\.168\.\d{1,3}\.\d{1,3}$/.test(u.hostname))) return origin;
       } catch {
         /* ignore */
       }
@@ -102,7 +104,8 @@ app.route("/modules", moduleFiles);
 app.get(
   "/ws",
   upgradeWebSocket((c) => {
-    const token = tokenFromRequest(c);
+    // browsers cannot set headers on the upgrade request, so ?token= is accepted here (and on e-ink device routes), nowhere else
+    const token = tokenFromRequest(c, { allowQuery: true });
     const user = token ? resolveToken(token) : null;
     return {
       onOpen(_ev, ws) {

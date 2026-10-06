@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { defineClient, useModule, useModuleApi, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
 import { Button, Chip, Empty, Icon, Input, Modal, Textarea, useToast } from "@orbis/ui";
 import type { PlanEntry, Recipe } from "./server";
@@ -8,6 +8,34 @@ type Config = { days?: number; showImages?: boolean };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/** today's YYYY-MM-DD in the hub's timezone (the wall display and the browser may sit in different zones) */
+const todayKey = (tz: string) => {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: tz || undefined, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    const g = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    return `${g("year")}-${g("month")}-${g("day")}`;
+  } catch {
+    return iso(new Date());
+  }
+};
+/** local-midnight Date for a YYYY-MM-DD key (so day arithmetic and weekday names stay on that calendar day) */
+const fromKey = (key: string) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y!, m! - 1, d!);
+};
+/** a calendar day formatted without any zone shift: parse as utc midnight, format as utc */
+const fmtDay = (key: string, locale: string, opts: Intl.DateTimeFormatOptions) => new Date(`${key}T00:00:00Z`).toLocaleDateString(locale, { ...opts, timeZone: "UTC" });
+/** re-evaluates once a minute so a display left open past midnight moves on to the new day */
+function useToday() {
+  const { timezone } = useModule();
+  const [key, setKey] = useState(() => todayKey(timezone));
+  useEffect(() => {
+    setKey(todayKey(timezone));
+    const iv = setInterval(() => setKey((k) => (k === todayKey(timezone) ? k : todayKey(timezone))), 60_000);
+    return () => clearInterval(iv);
+  }, [timezone]);
+  return key;
+}
 const addDays = (d: Date, n: number) => {
   const x = new Date(d);
   x.setDate(x.getDate() + n);
@@ -32,11 +60,8 @@ function MealsWidget({ config }: WidgetProps<Config>) {
   const slots = useSlots();
   const t = useT();
   const { locale } = useModule();
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+  const todayIso = useToday();
+  const today = useMemo(() => fromKey(todayIso), [todayIso]);
   const days = Math.min(config.days ?? 2, 7);
   const q = usePlan(today, addDays(today, days - 1));
   if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
@@ -49,13 +74,13 @@ function MealsWidget({ config }: WidgetProps<Config>) {
         const d = addDays(today, i);
         return (
           <div key={i}>
-            <div className="soft pixel" style={{ fontSize: 10, marginBottom: 2 }}>{dayLabel(d, i, t, locale)}</div>
+            <div className="soft pixel" style={{ fontSize: "var(--fs-meta)", marginBottom: 2 }}>{dayLabel(d, i, t, locale)}</div>
             {slots.map((s) => {
               const e = entries.find((x) => x.day === iso(d) && x.slot === s);
               return (
                 <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0" }}>
                   {config.showImages !== false && e?.recipe?.image ? <img src={e.recipe.image} alt="" style={{ width: 28, height: 28, objectFit: "cover", border: "1.5px solid var(--line)", imageRendering: "auto" }} /> : <span className="soft" style={{ width: 28, textAlign: "center" }}><Icon name="coffee" size={12} /></span>}
-                  <span className="soft" style={{ fontSize: 10, width: 48 }}>{s}</span>
+                  <span className="soft" style={{ fontSize: "var(--fs-meta)", width: 48 }}>{s}</span>
                   <span style={{ fontSize: 13, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", opacity: e?.recipe || e?.note ? 1 : 0.4 }}>{e?.recipe?.title ?? e?.note ?? "–"}</span>
                 </div>
               );
@@ -80,7 +105,7 @@ function SlotPicker({ day, slot, current, recipes, onClose }: { day: string; slo
   };
   const list = recipes.filter((r) => !q || r.title.toLowerCase().includes(q.toLowerCase()) || r.tags.some((tag) => tag.includes(q.toLowerCase())));
   return (
-    <Modal open onClose={onClose} title={`${slot} · ${new Date(day).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })}`} width={460}>
+    <Modal open onClose={onClose} title={`${slot} · ${fmtDay(day, locale, { weekday: "short", day: "numeric", month: "short" })}`} width={460}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("picker.searchRecipes")} />
         <div className="scroll-y" style={{ maxHeight: 260, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -89,7 +114,7 @@ function SlotPicker({ day, slot, current, recipes, onClose }: { day: string; slo
             <button key={r.id} type="button" className="menu-item" onClick={() => void set(r.id)} style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {r.image ? <img src={r.image} alt="" style={{ width: 24, height: 24, objectFit: "cover" }} /> : <Icon name="coffee" size={12} />}
               <span style={{ flex: 1, textAlign: "left" }}>{r.title}</span>
-              {r.servings ? <span className="soft" style={{ fontSize: 10 }}>{r.servings}</span> : null}
+              {r.servings ? <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{r.servings}</span> : null}
             </button>
           ))}
         </div>
@@ -150,39 +175,72 @@ function NewRecipe({ onDone }: { onDone: () => void }) {
   const [manual, setManual] = useState(false);
   const [title, setTitle] = useState("");
   const [ings, setIngs] = useState("");
-  const importUrl = async () => {
+  const [steps, setSteps] = useState("");
+  const [servings, setServings] = useState("");
+  const [tags, setTags] = useState("");
+  /** the page had no recipe markup: ask before saving its title as an empty recipe */
+  const [askForce, setAskForce] = useState<{ url: string; title: string } | null>(null);
+  const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+  const importUrl = async (force = false) => {
     setBusy(true);
     try {
-      const r = await api<Recipe>("/import", { method: "POST", json: { url } });
+      const r = await api<Recipe>("/import", { method: "POST", json: { url, force } });
       toast(r.ingredients.length ? t("new.importedToast", { title: r.title, count: r.ingredients.length }) : t("new.importedNoneToast", { title: r.title }));
       setUrl("");
+      setAskForce(null);
       onDone();
     } catch (err) {
-      toast((err as Error).message, "bad");
+      const e = err as Error & { status?: number; body?: { fallbackTitle?: string | null } };
+      if (e.status === 422 && e.body?.fallbackTitle && !force) setAskForce({ url, title: e.body.fallbackTitle });
+      else toast(e.message, "bad");
     } finally {
       setBusy(false);
     }
   };
   const create = async () => {
-    await api("/recipes", { method: "POST", json: { title, ingredients: ings.split("\n").map((x) => x.trim()).filter(Boolean) } });
-    setTitle("");
-    setIngs("");
-    setManual(false);
-    onDone();
+    const n = Number(servings);
+    try {
+      await api("/recipes", { method: "POST", json: { title, ingredients: lines(ings), steps: lines(steps), servings: servings.trim() && Number.isInteger(n) && n > 0 ? n : null, tags: tags.split(",").map((x) => x.trim()).filter(Boolean) } });
+      setTitle("");
+      setIngs("");
+      setSteps("");
+      setServings("");
+      setTags("");
+      setManual(false);
+      onDone();
+    } catch (err) {
+      toast((err as Error).message, "bad");
+    }
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <form onSubmit={(e) => { e.preventDefault(); void importUrl(); }} style={{ display: "flex", gap: 6 }}>
-        <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t("new.urlPlaceholder")} />
+        <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t("new.urlPlaceholder")} maxLength={2000} />
         <Button type="submit" size="sm" loading={busy} disabled={!url.trim()}><Icon name="download" size={12} /> {t("new.import")}</Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setManual((m) => !m)}>{manual ? t("common.cancel") : t("new.byHand")}</Button>
       </form>
       {manual ? (
         <form onSubmit={(e) => { e.preventDefault(); void create(); }} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("new.titlePlaceholder")} />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("new.titlePlaceholder")} maxLength={200} />
           <Textarea value={ings} onChange={(e) => setIngs(e.target.value)} rows={4} placeholder={t("new.ingredientsPlaceholder")} />
+          <Textarea value={steps} onChange={(e) => setSteps(e.target.value)} rows={3} placeholder={t("new.stepsPlaceholder")} />
+          <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 6 }}>
+            <Input type="number" min={1} max={999} step={1} value={servings} onChange={(e) => setServings(e.target.value)} placeholder={t("new.servingsPlaceholder")} />
+            <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t("new.tagsPlaceholder")} />
+          </div>
           <Button type="submit" size="sm" disabled={!title.trim()}>{t("new.save")}</Button>
         </form>
+      ) : null}
+      {askForce ? (
+        <Modal open onClose={() => setAskForce(null)} title={t("import.noRecipeTitle")} width={420}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <span style={{ fontSize: 13 }}>{t("import.noRecipeBody", { title: askForce.title })}</span>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+              <Button size="sm" variant="ghost" onClick={() => setAskForce(null)}>{t("common.cancel")}</Button>
+              <Button size="sm" variant="primary" loading={busy} onClick={() => void importUrl(true)}>{t("import.anyway")}</Button>
+            </div>
+          </div>
+        </Modal>
       ) : null}
     </div>
   );
@@ -195,7 +253,8 @@ function PlanPage(_p: PageProps) {
   const toast = useToast();
   const slots = useSlots();
   const [weekOffset, setWeekOffset] = useState(0);
-  const start = useMemo(() => addDays(monday(new Date()), weekOffset * 7), [weekOffset]);
+  const todayIso = useToday();
+  const start = useMemo(() => addDays(monday(fromKey(todayIso)), weekOffset * 7), [weekOffset, todayIso]);
   const end = addDays(start, 6);
   const plan = usePlan(start, end);
   const recipes = useModuleQuery<Recipe[]>("/recipes", { refetchOn: ["changed"] });
@@ -203,7 +262,6 @@ function PlanPage(_p: PageProps) {
   const [pick, setPick] = useState<{ day: string; slot: string } | null>(null);
   const [open, setOpen] = useState<Recipe | null>(null);
   const [filter, setFilter] = useState("");
-  const todayIso = iso(new Date());
   const weekToShopping = async () => {
     const r = await api<{ added: number; list: string }>("/plan/to-shopping", { method: "POST", json: { from: iso(start), to: iso(end) } });
     toast(r.added ? t("recipe.addedToast", { count: r.added, list: r.list }) : t("page.plan.nothingToAdd"));
@@ -228,7 +286,7 @@ function PlanPage(_p: PageProps) {
             {Array.from({ length: 7 }, (_, i) => {
               const d = addDays(start, i);
               const isToday = iso(d) === todayIso;
-              return <div key={i} className="pixel" style={{ fontSize: 11, textAlign: "center", color: isToday ? "var(--accent)" : undefined }}>{d.toLocaleDateString(locale, { weekday: "short" })} {d.getDate()}</div>;
+              return <div key={i} className="pixel" style={{ fontSize: "var(--fs-meta)", textAlign: "center", color: isToday ? "var(--accent-ink)" : undefined }}>{d.toLocaleDateString(locale, { weekday: "short" })} {d.getDate()}</div>;
             })}
             {slots.map((s) => (
               <SlotRow key={s} slot={s} start={start} entries={plan.data ?? []} todayIso={todayIso} onPick={(day) => setPick({ day, slot: s })} onOpen={(id) => setOpen((recipes.data ?? []).find((r) => r.id === id) ?? null)} />
@@ -248,7 +306,7 @@ function PlanPage(_p: PageProps) {
                   {r.image ? <img src={r.image} alt="" style={{ width: "100%", height: 90, objectFit: "cover", display: "block" }} /> : <div style={{ height: 40, display: "grid", placeItems: "center", background: "var(--paper-2)" }}><Icon name="coffee" size={16} /></div>}
                   <div style={{ padding: "6px 8px" }}>
                     <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
-                    <div className="soft" style={{ fontSize: 10 }}>{t("recipe.ingredientsCount", { count: r.ingredients.length })}{r.servings ? ` · ${r.servings}` : ""}</div>
+                    <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("recipe.ingredientsCount", { count: r.ingredients.length })}{r.servings ? ` · ${r.servings}` : ""}</div>
                   </div>
                 </button>
               ))}
@@ -267,7 +325,7 @@ function SlotRow({ slot, start, entries, todayIso, onPick, onOpen }: { slot: str
   const t = useT();
   return (
     <>
-      <div className="soft pixel" style={{ fontSize: 11, alignSelf: "center" }}>{slot}</div>
+      <div className="soft pixel" style={{ fontSize: "var(--fs-meta)", alignSelf: "center" }}>{slot}</div>
       {Array.from({ length: 7 }, (_, i) => {
         const day = iso(addDays(start, i));
         const e = entries.find((x) => x.day === day && x.slot === slot);
@@ -279,7 +337,7 @@ function SlotRow({ slot, start, entries, todayIso, onPick, onOpen }: { slot: str
                 {e.recipe.image ? <img src={e.recipe.image} alt="" style={{ width: "100%", height: 36, objectFit: "cover" }} /> : null}
                 <span style={{ fontSize: 12, lineHeight: 1.2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }} onClick={(ev) => { ev.stopPropagation(); onOpen(e.recipe!.id); }} title={t("recipe.open")}>{e.recipe.title}</span>
               </>
-            ) : e?.note ? <span style={{ fontSize: 12, fontStyle: "italic" }}>{e.note}</span> : <span className="soft" style={{ fontSize: 11, margin: "auto" }}>+</span>}
+            ) : e?.note ? <span style={{ fontSize: 12, fontStyle: "italic" }}>{e.note}</span> : <span className="soft" style={{ fontSize: "var(--fs-meta)", margin: "auto" }}>+</span>}
           </div>
         );
       })}

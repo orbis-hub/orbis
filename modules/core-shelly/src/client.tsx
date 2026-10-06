@@ -22,12 +22,13 @@ function SwitchWidget({ config, size }: WidgetProps<{ device?: string; channel?:
   if (!d) return <Empty icon="warning-diamond" title={t("widget.switch.unknown")}>{config.device}</Empty>;
   if (!d.online) return <Empty icon="plug" title={t("widget.switch.offline", { name: d.name })}>{d.error}</Empty>;
   if (!ch) return <Empty icon="plug" title={t("widget.switch.no_channel")} />;
-  const big = Math.max(24, Math.min(size.height * 0.4, size.width * 0.3));
+  const big = size.height > 0 ? Math.max(24, Math.min(size.height * 0.4, size.width * 0.3)) : 28;
+  const name = `${config.name ?? d.name}${d.channels.length > 1 ? ` · ${ch.id + 1}` : ""}`;
   return (
-    <button type="button" onClick={() => void api("/switch", { method: "POST", json: { device: d.id, channel: ch.id, on: !ch.on } })} aria-pressed={ch.on} style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, color: ch.on ? "var(--accent)" : "var(--ink-soft)" }}>
-      <Icon name={ch.on ? "power" : "power-off"} size={big} />
-      <div className="pixel" style={{ fontSize: 13, color: "var(--ink)" }}>{config.name ?? d.name}{d.channels.length > 1 ? ` · ${ch.id + 1}` : ""}</div>
-      <div style={{ fontSize: 11 }}>{ch.on ? t("common.on") : t("common.off")}{ch.power != null ? ` · ${Math.round(ch.power)} W` : ""}</div>
+    <button type="button" onClick={() => void api("/switch", { method: "POST", json: { device: d.id, channel: ch.id, on: !ch.on } })} aria-pressed={ch.on} title={name} style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, minWidth: 0, overflow: "hidden", color: ch.on ? "var(--accent-ink)" : "var(--ink-soft)" }}>
+      <Icon name={ch.on ? "power" : "power-off"} size={big} style={{ flex: "none" }} />
+      <div className="pixel" style={{ fontSize: 13, color: "var(--ink)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+      <div style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>{ch.on ? t("common.on") : t("common.off")}{ch.power != null ? ` · ${Math.round(ch.power)} W` : ""}</div>
     </button>
   );
 }
@@ -39,14 +40,14 @@ function PowerWidget() {
   if (!list.length) return <Empty icon="plug" title={t("widget.power.empty.title")}>{t("widget.power.empty.body")}</Empty>;
   const total = list.reduce((a, d) => a + d.channels.reduce((b, c) => b + (c.power ?? 0), 0), 0);
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
-      <div className="pixel" style={{ fontSize: 20 }}>{Math.round(total)} W <span className="soft" style={{ fontSize: 11, fontFamily: "var(--font-mono)" }}>{t("widget.power.total")}</span></div>
-      <div className="scroll-y" style={{ flex: 1 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, minWidth: 0, overflow: "hidden" }}>
+      <div className="pixel" style={{ fontSize: 20, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{Math.round(total)} W <span className="soft" style={{ fontSize: "var(--fs-meta)", fontFamily: "var(--font-mono)" }}>{t("widget.power.total")}</span></div>
+      <div className="scroll-y" style={{ flex: 1, minHeight: 0, overflowX: "hidden" }}>
         {list.map((d) => (
-          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", borderBottom: "1px dashed var(--line)", fontSize: 12, opacity: d.online ? 1 : 0.5 }}>
+          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", borderBottom: "1px dashed var(--line)", fontSize: 12, opacity: d.online ? 1 : 0.5, minWidth: 0 }}>
             <i className="status-dot" style={{ background: d.online ? (d.channels.some((c) => c.on) ? "var(--accent)" : "var(--ok)") : "var(--off)", borderWidth: 0, width: 8, height: 8 }} />
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
-            <span style={{ fontVariantNumeric: "tabular-nums" }}>{d.online ? `${Math.round(d.channels.reduce((a, c) => a + (c.power ?? 0), 0))} W` : t("common.offline")}</span>
+            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={d.name}>{d.name}</span>
+            <span style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", flex: "none" }}>{d.online ? `${Math.round(d.channels.reduce((a, c) => a + (c.power ?? 0), 0))} W` : t("common.offline")}</span>
           </div>
         ))}
       </div>
@@ -71,7 +72,7 @@ function ShellyPage(_p: PageProps) {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {(sugg.data ?? []).map((d) => (
               <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                <Icon name="plug" size={14} style={{ color: "var(--accent)" }} />
+                <Icon name="plug" size={14} style={{ color: "var(--accent-ink)" }} />
                 <span style={{ flex: 1 }}>{d.hostname ?? d.ip} <span className="soft">{d.ip}{d.vendor ? ` · ${d.vendor}` : ""}</span></span>
                 <Button size="sm" onClick={() => api("/claim", { method: "POST", json: { deviceId: d.id } }).then(() => { refetch(); sugg.refetch(); })}>{t("page.use_it")}</Button>
               </div>
@@ -93,14 +94,14 @@ function ShellyPage(_p: PageProps) {
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <i className="status-dot" style={{ background: d.online ? "var(--ok)" : "var(--dnd)", borderWidth: 0, width: 8, height: 8 }} />
                 <span className="pixel" style={{ fontSize: 13 }}>{d.name}</span>
-                <Chip style={{ fontSize: 10 }}>{d.model ?? "?"}</Chip>
-                <Chip style={{ fontSize: 10 }}>{t("page.gen", { gen: d.gen })}</Chip>
-                <Chip style={{ fontSize: 10 }}>{d.ip}</Chip>
-                {d.temperature != null ? <Chip style={{ fontSize: 10 }}>{d.temperature.toFixed(0)}°C</Chip> : null}
-                <button type="button" className="soft" style={{ fontSize: 10, fontFamily: "var(--font-mono)", textDecoration: "underline dotted", marginLeft: "auto" }} onClick={() => { void navigator.clipboard?.writeText(d.id); setCopied(d.id); setTimeout(() => setCopied(null), 1200); }}>{copied === d.id ? t("page.copied") : t("page.id", { id: d.id })}</button>
+                <Chip style={{ fontSize: "var(--fs-min)" }}>{d.model ?? "?"}</Chip>
+                <Chip style={{ fontSize: "var(--fs-min)" }}>{t("page.gen", { gen: d.gen })}</Chip>
+                <Chip style={{ fontSize: "var(--fs-min)" }}>{d.ip}</Chip>
+                {d.temperature != null ? <Chip style={{ fontSize: "var(--fs-min)" }}>{d.temperature.toFixed(0)}°C</Chip> : null}
+                <button type="button" className="soft" style={{ fontSize: "var(--fs-meta)", fontFamily: "var(--font-mono)", textDecoration: "underline dotted", marginLeft: "auto" }} onClick={() => { void navigator.clipboard?.writeText(d.id); setCopied(d.id); setTimeout(() => setCopied(null), 1200); }}>{copied === d.id ? t("page.copied") : t("page.id", { id: d.id })}</button>
                 <Button icon size="sm" variant="ghost" aria-label={t("common.remove")} onClick={() => api("/release", { method: "POST", json: { deviceId: d.id } }).then(refetch)}><Icon name="close" size={12} /></Button>
               </div>
-              {d.error ? <div style={{ color: "var(--dnd)", fontSize: 11 }}>{d.error}</div> : null}
+              {d.error ? <div style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{d.error}</div> : null}
               {d.channels.map((c) => (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
                   <Switch checked={c.on} disabled={!d.online} onChange={(e) => void api("/switch", { method: "POST", json: { device: d.id, channel: c.id, on: e.target.checked } })} aria-label={t("page.channel", { id: c.id })} />
@@ -130,7 +131,7 @@ function ShellyPage(_p: PageProps) {
         >
           <Input value={ip} onChange={(e) => setIp(e.target.value)} placeholder="192.168.1.60" style={{ maxWidth: 200 }} required />
           <Button type="submit" size="sm">{t("common.add")}</Button>
-          {err ? <span style={{ color: "var(--dnd)", fontSize: 11 }}>{err}</span> : null}
+          {err ? <span style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{err}</span> : null}
         </form>
       </Window>
     </div>

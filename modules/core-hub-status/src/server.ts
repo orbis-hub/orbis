@@ -15,7 +15,8 @@ export type Stats = {
   processUptimeSec: number;
   cpuPercent: number;
   cores: number;
-  load: [number, number, number];
+  /** 1/5/15 min load average; null where the os has none (windows always reports 0 0 0) */
+  load: [number, number, number] | null;
   memTotal: number;
   memUsed: number;
   memPercent: number;
@@ -81,7 +82,7 @@ export default defineModule({
         processUptimeSec: Math.round(process.uptime()),
         cpuPercent,
         cores: cpus.length,
-        load: os.loadavg() as [number, number, number],
+        load: process.platform === "win32" ? null : (os.loadavg() as [number, number, number]),
         memTotal,
         memUsed,
         memPercent: Math.round((memUsed / memTotal) * 100),

@@ -45,5 +45,7 @@
   "eink.tokenHint": "shown in full only right after creating or rotating it",
   "eink.rotate": "rotate",
   "eink.newToken": "new token – update the device",
-  "eink.testTitle": "test it without hardware"
+  "eink.testTitle": "test it without hardware",
+  "eink.previewOf": "preview of {name}",
+  "eink.remove": "remove {name}"
 }

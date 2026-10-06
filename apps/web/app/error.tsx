@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useT } from "@/lib/i18n";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -17,7 +18,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         </div>
         <div className="win-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="pixel" style={{ fontSize: 16 }}>{t("error.subtitle")}</div>
-          <pre className="input" style={{ fontSize: 11, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0, maxHeight: 200, overflow: "auto" }}>
+          <pre className="input" style={{ fontSize: "var(--fs-meta)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: 0, maxHeight: 200, overflow: "auto" }}>
             {error.message}
             {error.digest ? `\n\n${t("error.digest", { digest: error.digest })}` : ""}
           </pre>
@@ -28,11 +29,11 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
             <button type="button" className="btn" onClick={() => window.location.reload()}>
               {t("common.reload")}
             </button>
-            <a className="btn" href="/">
+            <Link className="btn" href="/">
               {t("common.dashboard")}
-            </a>
+            </Link>
           </div>
-          <p className="soft" style={{ fontSize: 11 }}>
+          <p className="soft" style={{ fontSize: "var(--fs-meta)" }}>
             {t("error.issueHint")}{" "}
             <a href="https://github.com/orbis-hub/orbis/issues/new" target="_blank" rel="noreferrer">
               orbis-hub/orbis

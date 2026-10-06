@@ -16,6 +16,7 @@
     "web": "pnpm --filter @orbis/web dev",
     "modules:build": "turbo run build --filter=./modules/*",
     "i18n:check": "node scripts/i18n-check.mjs",
+    "contrast:check": "node scripts/contrast-check.mjs",
     "mobile:sync": "pnpm --filter @orbis/web build && pnpm --filter @orbis/mobile sync",
     "mobile:android": "pnpm --filter @orbis/mobile android"
   },

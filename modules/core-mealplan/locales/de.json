@@ -30,11 +30,17 @@
 
   "new.importedToast": { "one": "„{title}“ importiert ({count} zutat)", "other": "„{title}“ importiert ({count} zutaten)" },
   "new.importedNoneToast": "„{title}“ importiert, keine zutaten gefunden",
+  "import.noRecipeTitle": "kein rezept gefunden",
+  "import.noRecipeBody": "die seite hat keine rezeptdaten. „{title}“ trotzdem als leeres rezept speichern? zutaten kannst du später ergänzen.",
+  "import.anyway": "trotzdem speichern",
   "new.urlPlaceholder": "rezept-url einfügen (die meisten food-blogs klappen)",
   "new.import": "importieren",
   "new.byHand": "von hand",
   "new.titlePlaceholder": "titel",
   "new.ingredientsPlaceholder": "eine zutat pro zeile\n200 g nudeln\n1 zwiebel",
+  "new.stepsPlaceholder": "schritte, einer pro zeile (optional)\nnudeln kochen\nzwiebel anbraten",
+  "new.servingsPlaceholder": "portionen",
+  "new.tagsPlaceholder": "tags, mit komma: schnell, vegetarisch",
   "new.save": "rezept speichern",
 
   "page.plan.nothingToAdd": "nichts hinzuzufügen (keine rezepte mit zutaten geplant)",

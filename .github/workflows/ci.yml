@@ -16,6 +16,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "./modules/*" build
       - run: pnpm -r typecheck
+      - run: pnpm lint
       - run: pnpm -r test
       - run: pnpm --filter @orbis/web build
       - run: pnpm --filter @orbis/hub build

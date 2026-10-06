@@ -1,5 +1,5 @@
 import type { Dashboard, WidgetInstance } from "@orbis/sdk";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { isAdminRole, type AuthUser } from "../auth";
 import { getDb, now, schema } from "../db";
@@ -89,6 +89,8 @@ export function updateDashboard(id: string, patch: { name?: string; icon?: strin
   if (patch.shared !== undefined) set.shared = patch.shared;
   if (patch.ownerId !== undefined) set.ownerId = patch.ownerId;
   if (patch.accent !== undefined) set.accent = patch.accent;
+  // an empty patch (e.g. PATCH {access:[...]} only) is a no-op, not a drizzle "No values to set" error
+  if (Object.keys(set).length === 0) return getDashboard(id, user);
   getDb().update(schema.dashboards).set(set).where(eq(schema.dashboards.id, id)).run();
   broadcast({ type: "dashboards:changed", dashboardId: id });
   return getDashboard(id, user);
@@ -141,18 +143,21 @@ export function updateWidget(id: string, patch: Partial<Omit<WidgetInstance, "id
   return row ? rowToWidget(row) : null;
 }
 
-/** Bulk layout save from the grid: positions and sizes only. */
+/** Bulk layout save from the grid: positions and sizes only. Scoped to the dashboard: ids of other dashboards' widgets are ignored. Returns the number of rows touched. */
 export function saveLayout(dashboardId: string, layout: Array<{ id: string; x: number; y: number; w: number; h: number }>) {
   const db = getDb();
+  let changed = 0;
   db.transaction((tx) => {
     for (const l of layout) {
-      tx.update(schema.dashboardWidgets)
+      changed += tx
+        .update(schema.dashboardWidgets)
         .set({ x: l.x, y: l.y, w: l.w, h: l.h })
-        .where(eq(schema.dashboardWidgets.id, l.id))
-        .run();
+        .where(and(eq(schema.dashboardWidgets.id, l.id), eq(schema.dashboardWidgets.dashboardId, dashboardId)))
+        .run().changes;
     }
   });
   broadcast({ type: "dashboards:changed", dashboardId });
+  return changed;
 }
 
 export function widgetDashboard(widgetId: string): string | null {

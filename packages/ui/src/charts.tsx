@@ -31,7 +31,7 @@ export function Bars({ series, labels, height = 80, format = (v) => String(Math.
       <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height }}>
         {Array.from({ length: n }, (_, i) => (
           <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch", gap: 2, height: "100%", justifyContent: "flex-end" }}>
-            {showValues ? <span className="soft" style={{ fontSize: 9, textAlign: "center", lineHeight: 1 }}>{series[0] && series[0].values[i] ? format(series[0].values[i]!) : ""}</span> : null}
+            {showValues ? <span className="soft" style={{ fontSize: "var(--fs-min)", textAlign: "center", lineHeight: 1 }}>{series[0] && series[0].values[i] ? format(series[0].values[i]!) : ""}</span> : null}
             <div style={{ display: "flex", alignItems: "flex-end", gap: 1, flex: 1, minHeight: 0 }}>
               {series.map((s, si) => {
                 const v = s.values[i] ?? 0;
@@ -58,7 +58,7 @@ export function Bars({ series, labels, height = 80, format = (v) => String(Math.
       {labels ? (
         <div style={{ display: "flex", gap: 4 }}>
           {labels.map((l, i) => (
-            <span key={i} className="pixel" style={{ flex: 1, textAlign: "center", fontSize: 9, color: highlight === i ? "var(--accent)" : "var(--ink-soft, inherit)", opacity: highlight === i ? 1 : 0.7 }}>{l}</span>
+            <span key={i} className="pixel" style={{ flex: 1, textAlign: "center", fontSize: "var(--fs-min)", color: highlight === i ? "var(--accent-ink)" : "var(--ink-soft, inherit)", opacity: highlight === i ? 1 : 0.7 }}>{l}</span>
           ))}
         </div>
       ) : null}
@@ -70,7 +70,7 @@ export function Bars({ series, labels, height = 80, format = (v) => String(Math.
 /** inline legend to pair with <Bars> */
 export function BarsLegend({ series }: { series: Array<Pick<BarSeries, "label" | "color" | "dashed">> }) {
   return (
-    <div style={{ display: "flex", gap: 10, fontSize: 10 }} className="soft">
+    <div style={{ display: "flex", gap: 10, fontSize: "var(--fs-meta)" }} className="soft">
       {series.map((s, i) => (
         <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
           <i style={{ width: 8, height: 8, display: "inline-block", background: s.color ?? (i === 0 ? "var(--accent)" : "var(--paper-2)"), border: `1.5px ${s.dashed ? "dashed" : "solid"} var(--line)` }} />

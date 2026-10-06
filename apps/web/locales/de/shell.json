@@ -25,5 +25,6 @@
   "shell.unreachable.hint2": "gleiches netzwerk / vpn wie der hub?",
   "shell.unreachable.hint3": "https-seite, aber http-hub? das blockieren browser.",
   "shell.unreachable.retry": "nochmal",
-  "shell.unreachable.changeHub": "hub-adresse ändern"
+  "shell.unreachable.changeHub": "hub-adresse ändern",
+  "shell.sessionExpired": "abgemeldet, bitte melde dich neu an"
 }

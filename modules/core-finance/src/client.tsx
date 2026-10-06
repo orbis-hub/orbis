@@ -24,8 +24,11 @@ const fmt = (n: number, cur: string, locale?: string | null, digits = 2) => {
 const blur = (on: boolean) => (on ? { filter: "blur(6px)", transition: "filter .15s" } : {});
 
 function Amount({ n, cur, locale, hide, size = 13, tone }: { n: number; cur: string; locale?: string | null; hide?: boolean; size?: number; tone?: "ok" | "bad" }) {
-  return <span className="amount" style={{ fontSize: size, fontVariantNumeric: "tabular-nums", color: tone === "bad" ? "var(--dnd)" : tone === "ok" ? "var(--ok)" : undefined, ...blur(!!hide) }}>{fmt(n, cur, locale)}</span>;
+  return <span className="amount" style={{ fontSize: size, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", color: tone === "bad" ? "var(--dnd)" : tone === "ok" ? "var(--ok)" : undefined, ...blur(!!hide) }}>{fmt(n, cur, locale)}</span>;
 }
+
+/** height of one `.soft` line at --fs-meta (12px × 1.4) */
+const META_LINE = 17;
 
 function OverviewWidget({ config, size }: WidgetProps<Config>) {
   const t = useT();
@@ -35,21 +38,37 @@ function OverviewWidget({ config, size }: WidgetProps<Config>) {
   const o = q.data;
   if (!o) return <Empty icon="wallet" title={t("widget.overview.noData")} />;
   const big = config.mode === "total" ? o.total : o.left;
-  const compact = size.height < 140;
+  const text = fmt(big, o.currency, loc, 0);
+  const detail = config.mode === "total" ? t("overview.stillDueThisMonth", { amount: fmt(o.upcomingExpenses, o.currency, loc, 0) }) : t("overview.perDay", { amount: fmt(o.perDay, o.currency, loc, 0), count: o.daysLeft });
+  // size is 0×0 until the frame has measured itself; until then assume the default 2×2
+  const measured = size.width > 0 && size.height > 0;
+  // the upcoming list needs a 3-row widget; the detail line stays while a ≥22px number still fits under label + detail
+  const showList = config.showUpcoming !== false && (!measured || size.height >= 140) && o.upcoming.length > 0;
+  const showDetail = !measured || size.height - 2 * META_LINE - 8 >= 22;
+  // the number fills the width (pixel font ≈ 0.6em per glyph) and whatever height is left under the label (and detail) line
+  const widthFit = measured ? size.width / (text.length * 0.6) : 28;
+  const heightFit = measured ? size.height - (showDetail ? 2 * META_LINE + 8 : META_LINE + 4) : 28;
+  const px = Math.round(Math.max(18, Math.min(showList ? 30 : 40, widthFit, heightFit)));
   return (
-    <div className="finance-widget" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className="finance-widget" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
       <style>{`.finance-widget:hover .amount{filter:none!important}`}</style>
-      <div className="soft" style={{ fontSize: 11 }}>{config.mode === "total" ? t("label.total") : t("label.left")}</div>
-      <div className="pixel" style={{ fontSize: compact ? 22 : 30, lineHeight: 1, fontWeight: 600, color: big < 0 ? "var(--dnd)" : undefined, ...blur(o.hideAmounts) }}>{fmt(big, o.currency, loc, 0)}</div>
-      <div className="soft" style={{ fontSize: 11 }}>
-        {config.mode === "total" ? t("overview.stillDueThisMonth", { amount: fmt(o.upcomingExpenses, o.currency, loc, 0) }) : t("overview.perDay", { amount: fmt(o.perDay, o.currency, loc, 0), count: o.daysLeft })}
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={config.mode === "total" ? undefined : t("label.leftHint")}>
+        {config.mode === "total" ? t("label.total") : t("label.left")}
       </div>
-      {config.showUpcoming !== false && !compact && o.upcoming.length ? (
-        <div className="scroll-y" style={{ flex: 1, minHeight: 0, marginTop: 4, borderTop: "1px dashed var(--line)", paddingTop: 4 }}>
+      <div className="pixel" title={showDetail ? undefined : detail} style={{ fontSize: px, lineHeight: 1, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", color: big < 0 ? "var(--dnd)" : undefined, ...blur(o.hideAmounts) }}>
+        {text}
+      </div>
+      {showDetail ? (
+        <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={detail}>
+          {detail}
+        </div>
+      ) : null}
+      {showList ? (
+        <div className="scroll-y" style={{ flex: 1, minHeight: 0, marginTop: 4, borderTop: "1px dashed var(--line)", paddingTop: 4, overflowX: "hidden" }}>
           {o.upcoming.slice(0, 8).map((u) => (
-            <div key={u.id} style={{ display: "flex", gap: 6, fontSize: 12, padding: "1px 0" }}>
-              <span className="soft" style={{ width: 22 }}>{u.date.slice(8)}.</span>
-              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+            <div key={u.id} style={{ display: "flex", gap: 6, fontSize: 12, padding: "1px 0", minWidth: 0 }}>
+              <span className="soft" style={{ width: 22, flex: "none" }}>{u.date.slice(8)}.</span>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
               <Amount n={u.kind === "income" ? u.amount : -u.amount} cur={o.currency} locale={loc} hide={o.hideAmounts} size={12} tone={u.kind === "income" ? "ok" : undefined} />
             </div>
           ))}
@@ -59,20 +78,26 @@ function OverviewWidget({ config, size }: WidgetProps<Config>) {
   );
 }
 
-function AccountsWidget(_p: WidgetProps) {
+function AccountsWidget({ size }: WidgetProps) {
   const t = useT();
   const acc = useModuleQuery<Account[]>("/accounts", { refetchOn: ["changed"] });
   const o = useOverview().data;
   const loc = useLoc(o);
   if (!acc.data?.length) return <Empty icon="wallet" title={t("widget.accounts.empty")}>{t("widget.accounts.emptyHint")}</Empty>;
+  // narrower than 3 columns (the 2×3 default): name on one line, amount right-aligned underneath instead of side by side
+  const stacked = size.width > 0 && size.width < 200;
   return (
-    <div className="finance-widget scroll-y" style={{ height: "100%" }}>
+    <div className="finance-widget scroll-y" style={{ height: "100%", overflowX: "hidden" }}>
       <style>{`.finance-widget:hover .amount{filter:none!important}`}</style>
       {acc.data.map((a) => (
-        <div key={a.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 0", borderBottom: "1px dashed var(--line)" }}>
-          <Icon name={kindIcon(a.kind)} size={12} />
-          <span style={{ flex: 1, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>
-          <Amount n={a.balance} cur={a.currency} locale={loc} hide={o?.hideAmounts} tone={a.balance < 0 ? "bad" : undefined} />
+        <div key={a.id} style={{ display: "flex", flexDirection: stacked ? "column" : "row", gap: stacked ? 1 : 8, alignItems: stacked ? "stretch" : "center", padding: "4px 0", borderBottom: "1px dashed var(--line)", minWidth: 0 }}>
+          <span style={{ display: "flex", gap: 8, alignItems: "center", flex: 1, minWidth: 0 }}>
+            <Icon name={kindIcon(a.kind)} size={12} style={{ flex: "none" }} />
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.name}>{a.name}</span>
+          </span>
+          <span style={{ flex: "none", textAlign: "right" }}>
+            <Amount n={a.balance} cur={a.currency} locale={loc} hide={o?.hideAmounts} tone={a.balance < 0 ? "bad" : undefined} />
+          </span>
         </div>
       ))}
     </div>
@@ -85,14 +110,14 @@ const KINDS: Account["kind"][] = ["checking", "savings", "cash", "credit", "inve
 /** 24 months of totals as pixel columns */
 function History({ rows, cur, locale }: { rows: Snapshot[]; cur: string; locale: string | null }) {
   const t = useT();
-  if (rows.length < 2) return <span className="soft" style={{ fontSize: 11 }}>{t("history.empty")}</span>;
+  if (rows.length < 2) return <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("history.empty")}</span>;
   const max = Math.max(...rows.map((r) => Math.abs(r.total)), 1);
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 70 }}>
       {rows.map((r) => (
         <div key={r.month} title={`${r.month}: ${fmt(r.total, cur, locale, 0)}`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
           <div style={{ width: "100%", height: Math.max(2, Math.round((Math.abs(r.total) / max) * 56)), background: r.total < 0 ? "var(--dnd)" : "var(--accent)", border: "1.5px solid var(--line)" }} />
-          <span className="soft" style={{ fontSize: 9 }}>{r.month.slice(5)}</span>
+          <span className="soft" style={{ fontSize: "var(--fs-min)" }}>{r.month.slice(5)}</span>
         </div>
       ))}
     </div>
@@ -111,28 +136,56 @@ function FinancePage(_p: PageProps) {
   const [editRec, setEditRec] = useState<Partial<Recurring> | null>(null);
   const [csv, setCsv] = useState<"accounts" | "recurring" | null>(null);
   const [csvText, setCsvText] = useState("");
+  /** delete asks first: which row, shown in a modal instead of window.confirm */
+  const [confirmDel, setConfirmDel] = useState<{ what: "accounts" | "recurring"; id: string; name: string } | null>(null);
   const o = ov.data;
   const cur = o?.currency ?? "EUR";
   const loc = useLoc(o);
   const hide = !!o?.hideAmounts;
+  const fail = (err: unknown) => toast((err as Error).message, "bad");
 
   const saveAcc = async () => {
     if (!editAcc?.name?.trim()) return;
-    if (editAcc.id) await api(`/accounts/${editAcc.id}`, { method: "PATCH", json: editAcc });
-    else await api("/accounts", { method: "POST", json: editAcc });
-    setEditAcc(null);
+    const { id, ...body } = editAcc;
+    try {
+      if (id) await api(`/accounts/${id}`, { method: "PATCH", json: body });
+      else await api("/accounts", { method: "POST", json: body });
+      setEditAcc(null);
+    } catch (err) {
+      fail(err);
+    }
   };
   const saveRec = async () => {
     if (!editRec?.name?.trim()) return;
-    if (editRec.id) await api(`/recurring/${editRec.id}`, { method: "PATCH", json: editRec });
-    else await api("/recurring", { method: "POST", json: editRec });
-    setEditRec(null);
+    const { id, ...body } = editRec;
+    try {
+      if (id) await api(`/recurring/${id}`, { method: "PATCH", json: body });
+      else await api("/recurring", { method: "POST", json: body });
+      setEditRec(null);
+    } catch (err) {
+      fail(err);
+    }
   };
   const importCsv = async () => {
-    const r = await api<{ imported: number }>("/import", { method: "POST", json: { csv: csvText, what: csv } });
-    toast(t("toast.imported", { count: r.imported }));
-    setCsv(null);
-    setCsvText("");
+    try {
+      const r = await api<{ imported: number; skipped: number }>("/import", { method: "POST", json: { csv: csvText, what: csv } });
+      toast(r.skipped ? t("toast.importedSkipped", { count: r.imported, skipped: r.skipped }) : t("toast.imported", { count: r.imported }), r.imported ? undefined : "warn");
+      setCsv(null);
+      setCsvText("");
+    } catch (err) {
+      fail(err);
+    }
+  };
+  const doDelete = async () => {
+    if (!confirmDel) return;
+    try {
+      await api(`/${confirmDel.what}/${confirmDel.id}`, { method: "DELETE" });
+      setConfirmDel(null);
+      if (confirmDel.what === "accounts") setEditAcc(null);
+      else setEditRec(null);
+    } catch (err) {
+      fail(err);
+    }
   };
 
   return (
@@ -143,7 +196,7 @@ function FinancePage(_p: PageProps) {
         <div className="win-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
           {o ? (
             <>
-              <Stat label={t("label.left")} value={fmt(o.left, cur, loc, 0)} hint={t("stat.perDayFor", { amount: fmt(o.perDay, cur, loc, 0), count: o.daysLeft })} hide={hide} bad={o.left < 0} />
+              <Stat label={t("label.left")} value={fmt(o.left, cur, loc, 0)} hint={`${t("label.leftHint")} · ${t("stat.perDayFor", { amount: fmt(o.perDay, cur, loc, 0), count: o.daysLeft })}`} hide={hide} bad={o.left < 0} />
               <Stat label={t("label.total")} value={fmt(o.total, cur, loc, 0)} hint={t("stat.accounts", { count: acc.data?.length ?? 0 })} hide={hide} bad={o.total < 0} />
               <Stat label={t("stat.stillDue")} value={fmt(o.upcomingExpenses, cur, loc, 0)} hint={t("stat.ofRecurring", { amount: fmt(o.monthlyExpenses, cur, loc, 0) })} hide={hide} />
               <Stat label={t("stat.stillComingIn")} value={fmt(o.upcomingIncome, cur, loc, 0)} hint={t("stat.ofRecurring", { amount: fmt(o.monthlyIncome, cur, loc, 0) })} hide={hide} />
@@ -162,7 +215,7 @@ function FinancePage(_p: PageProps) {
               <Icon name={kindIcon(a.kind)} size={14} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13 }}>{a.name}</div>
-                <div className="soft" style={{ fontSize: 10 }}>{t("account.updated", { kind: t(`kind.${a.kind}`), date: new Date(a.updated_at).toLocaleDateString(loc) })}</div>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("account.updated", { kind: t(`kind.${a.kind}`), date: new Date(a.updated_at).toLocaleDateString(loc) })}</div>
               </div>
               <Amount n={a.balance} cur={a.currency} locale={loc} hide={hide} size={15} tone={a.balance < 0 ? "bad" : undefined} />
               <Button size="sm" variant="ghost" onClick={() => setEditAcc(a)} aria-label={t("action.edit")}><Icon name="more-horizontal" size={12} /></Button>
@@ -179,10 +232,10 @@ function FinancePage(_p: PageProps) {
             const due = o?.upcoming.some((u) => u.id === r.id);
             return (
               <div key={r.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: "1px dashed var(--line)", opacity: r.active ? 1 : 0.5 }}>
-                <span className="pixel soft" style={{ width: 26, fontSize: 11 }}>{r.day}.</span>
+                <span className="pixel soft" style={{ width: 26, fontSize: "var(--fs-meta)" }}>{r.day}.</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13 }}>{r.name} {due ? <Chip tone="warn" style={{ fontSize: 9, marginLeft: 4 }}>{t("chip.due")}</Chip> : null}</div>
-                  <div className="soft" style={{ fontSize: 10 }}>{t(`rkind.${r.kind}`)}{r.account_id ? ` · ${acc.data?.find((a) => a.id === r.account_id)?.name ?? ""}` : ""}</div>
+                  <div style={{ fontSize: 13 }}>{r.name} {due ? <Chip tone="warn" style={{ fontSize: "var(--fs-min)", marginLeft: 4 }}>{t("chip.due")}</Chip> : null}</div>
+                  <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t(`rkind.${r.kind}`)}{r.account_id ? ` · ${acc.data?.find((a) => a.id === r.account_id)?.name ?? ""}` : ""}</div>
                 </div>
                 <Amount n={r.kind === "income" ? r.amount : -r.amount} cur={cur} locale={loc} hide={hide} size={14} tone={r.kind === "income" ? "ok" : undefined} />
                 {due && acc.data?.length ? <Button size="sm" variant="ghost" title={t("action.book")} onClick={() => void api(`/recurring/${r.id}/book`, { method: "POST" }).then(() => toast(t("toast.booked", { name: r.name })))}><Icon name="check" size={12} /></Button> : null}
@@ -203,7 +256,7 @@ function FinancePage(_p: PageProps) {
             </div>
             <Field label={t("field.type")}><Select value={editAcc.kind ?? "checking"} onChange={(e) => setEditAcc({ ...editAcc, kind: e.target.value as Account["kind"] })}>{KINDS.map((k) => <option key={k} value={k}>{t(`kind.${k}`)}</option>)}</Select></Field>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              {editAcc.id ? <Button type="button" size="sm" variant="ghost" onClick={() => void api(`/accounts/${editAcc.id}`, { method: "DELETE" }).then(() => setEditAcc(null))}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
+              {editAcc.id ? <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDel({ what: "accounts", id: editAcc.id!, name: editAcc.name ?? "" })}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
               <Button type="submit" size="sm" variant="primary">{t("action.save")}</Button>
             </div>
           </form>
@@ -221,10 +274,21 @@ function FinancePage(_p: PageProps) {
             <Field label={t("field.account")}><Select value={editRec.account_id ?? ""} onChange={(e) => setEditRec({ ...editRec, account_id: e.target.value || null })}><option value="">{t("field.firstAccount")}</option>{acc.data?.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></Field>
             {editRec.id ? <Checkbox label={t("field.active")} checked={!!editRec.active} onChange={(e) => setEditRec({ ...editRec, active: e.target.checked ? 1 : 0 })} /> : null}
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              {editRec.id ? <Button type="button" size="sm" variant="ghost" onClick={() => void api(`/recurring/${editRec.id}`, { method: "DELETE" }).then(() => setEditRec(null))}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
+              {editRec.id ? <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDel({ what: "recurring", id: editRec.id!, name: editRec.name ?? "" })}><Icon name="trash" size={12} /> {t("action.delete")}</Button> : <span />}
               <Button type="submit" size="sm" variant="primary">{t("action.save")}</Button>
             </div>
           </form>
+        </Modal>
+      ) : null}
+      {confirmDel ? (
+        <Modal open onClose={() => setConfirmDel(null)} title={t("confirm.deleteTitle")} width={360}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <span style={{ fontSize: 13 }}>{t(confirmDel.what === "accounts" ? "confirm.deleteAccount" : "confirm.deleteRecurring", { name: confirmDel.name })}</span>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmDel(null)}>{t("action.cancel")}</Button>
+              <Button size="sm" variant="danger" autoFocus onClick={() => void doDelete()}><Icon name="trash" size={12} /> {t("action.delete")}</Button>
+            </div>
+          </div>
         </Modal>
       ) : null}
       {csv ? (
@@ -242,9 +306,9 @@ function FinancePage(_p: PageProps) {
 function Stat({ label, value, hint, hide, bad }: { label: string; value: string; hint?: string; hide?: boolean; bad?: boolean }) {
   return (
     <div>
-      <div className="soft" style={{ fontSize: 11 }}>{label}</div>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{label}</div>
       <div className="pixel amount" style={{ fontSize: 24, lineHeight: 1.1, color: bad ? "var(--dnd)" : undefined, ...blur(!!hide) }}>{value}</div>
-      {hint ? <div className="soft" style={{ fontSize: 10 }}>{hint}</div> : null}
+      {hint ? <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{hint}</div> : null}
     </div>
   );
 }

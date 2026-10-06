@@ -79,6 +79,7 @@ export async function startWorkerServer(manifest: ModuleManifest, file: string, 
     "devices.release": (id: string) => ctx.devices.release(id),
     "modules.list": () => ctx.modules.list(),
     "modules.has": (id: string) => ctx.modules.has(id),
+    "hub.settings": () => ctx.hub.settings(),
     notify: (input: Parameters<ModuleServerContext["notify"]>[0]) => ctx.notify(input),
   };
   syncHub.on("message", (m: SyncCall) => {

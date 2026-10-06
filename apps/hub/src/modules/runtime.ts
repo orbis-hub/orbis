@@ -13,6 +13,8 @@ import { broadcast } from "../ws";
 import { buildContext, type BuiltContext } from "./context";
 import { evictLocales, translatorFor } from "./locales";
 import { shouldIsolate, startWorkerServer } from "./worker/host";
+import { stripSecretSettings } from "./secrets";
+import { applySettingsPatch, type SettingsSchema } from "./settings-schema";
 import { type DiscoveredModule, discoverBuiltin, discoverDev, discoverInstalled, installFromUrl, type ModuleSource, removeInstalledFiles } from "./installer";
 
 const log = childLog("modules");
@@ -293,10 +295,12 @@ export async function setEnabled(id: string, enabled: boolean) {
 export async function updateSettings(id: string, patch: Record<string, unknown>) {
   const s = states.get(id);
   if (!s) throw new Error(`unknown module ${id}`);
-  s.settings = { ...s.settings, ...patch };
+  // `null` removes a key; the merged result must pass the module's settingsSchema (unknown keys are rejected when the schema lists properties)
+  s.settings = applySettingsPatch(s.manifest.settingsSchema as SettingsSchema | undefined, s.settings, patch);
   persist(s);
   s.built?.emitSettings(s.settings);
-  broadcast({ type: "module:event", module: id, name: "$settings", payload: s.settings });
+  // every websocket client (members too) receives this event: never ship secrets over it (#38)
+  broadcast({ type: "module:event", module: id, name: "$settings", payload: stripSecretSettings(s.manifest, s.settings) });
   return s.settings;
 }
 

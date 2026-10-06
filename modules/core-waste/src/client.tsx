@@ -36,11 +36,13 @@ function BinIcon({ bin, size = 14 }: { bin: { color: string; icon: string }; siz
 
 /* ================= widgets ================= */
 
-function NextWidget({ config }: WidgetProps<{ count?: number }>) {
+function NextWidget({ config, size }: WidgetProps<{ count?: number }>) {
   const t = useT();
   const { locale } = useModule();
   const api = useModuleApi();
   const q = useOverview(30 * 60_000);
+  // narrower than 3 columns: the second line keeps only the relative day ("tomorrow"), the full date moves to the tooltip
+  const narrow = size.width > 0 && size.width < 200;
   if (q.loading && !q.data) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
   const ov = q.data;
   const list = (ov?.upcoming ?? []).slice(0, config.count ?? 4);
@@ -49,18 +51,19 @@ function NextWidget({ config }: WidgetProps<{ count?: number }>) {
   const nextDate = list[0]!.date;
   const toggle = (p: PickupView) => api("/putout", { method: "POST", json: { binId: p.binId, date: p.date, value: !p.putOut } }).then(() => q.refetch());
   return (
-    <div className="scroll-y" style={{ height: "100%" }}>
+    <div className="scroll-y" style={{ height: "100%", overflowX: "hidden" }}>
       {list.map((p) => {
         const soon = p.daysUntil <= 1;
+        const when = `${whenLabel(t, locale, p)} · ${dateLabel(locale, p.date)}`;
         return (
-          <div key={`${p.binId}:${p.date}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px dashed var(--line)", color: soon ? "var(--accent)" : undefined, opacity: p.putOut ? 0.55 : 1 }}>
+          <div key={`${p.binId}:${p.date}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", borderBottom: "1px dashed var(--line)", color: soon ? "var(--accent-ink)" : undefined, opacity: p.putOut ? 0.55 : 1, minWidth: 0 }}>
             <BinIcon bin={p.bin} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: soon ? 600 : undefined, textDecoration: p.putOut ? "line-through" : undefined }}>{p.bin.name}</div>
-              <div className="soft" style={{ fontSize: 10 }}>{whenLabel(t, locale, p)} · {dateLabel(locale, p.date)}</div>
+              <div title={p.bin.name} style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: soon ? 600 : undefined, textDecoration: p.putOut ? "line-through" : undefined }}>{p.bin.name}</div>
+              <div className="soft" title={when} style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{narrow ? whenLabel(t, locale, p) : when}</div>
             </div>
             {p.date === nextDate ? (
-              <label className="check" title={p.putOut ? t("widget.next.isOut") : t("widget.next.putOut")} style={{ fontSize: 10 }}>
+              <label className="check" title={p.putOut ? t("widget.next.isOut") : t("widget.next.putOut")} style={{ fontSize: "var(--fs-meta)" }}>
                 <input type="checkbox" checked={p.putOut} onChange={() => void toggle(p)} />
                 <i aria-hidden />
               </label>
@@ -72,10 +75,14 @@ function NextWidget({ config }: WidgetProps<{ count?: number }>) {
   );
 }
 
-function WeekWidget(_p: WidgetProps) {
+function WeekWidget({ size }: WidgetProps) {
   const t = useT();
   const { locale } = useModule();
   const q = useOverview(30 * 60_000);
+  // the 4×2 default is ≈328×70 px: seven columns of weekday + day number + bin dots fit; below 3 columns the weekday
+  // labels go (the day number stays), below ~60 px of height the cells lose their padding
+  const narrow = size.width > 0 && size.width < 200;
+  const short = size.height > 0 && size.height < 60;
   const today = q.data?.today ?? todayIso();
   const days = useMemo(() => {
     const out: string[] = [];
@@ -92,18 +99,19 @@ function WeekWidget(_p: WidgetProps) {
   const by = new Map<string, PickupView[]>();
   for (const p of q.data.upcoming) by.set(p.date, [...(by.get(p.date) ?? []), p]);
   return (
-    <div style={{ display: "flex", gap: 4, height: "100%" }}>
+    <div style={{ display: "flex", gap: narrow ? 2 : 4, height: "100%", minWidth: 0 }}>
       {days.map((iso, i) => {
         const list = by.get(iso) ?? [];
+        const label = noon(iso).toLocaleDateString(locale, { weekday: narrow || short ? "long" : "short" });
         return (
-          <div key={iso} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "4px 2px", border: `1px ${i === 0 ? "solid" : "dashed"} var(--line)`, background: list.length ? "var(--paper-2)" : undefined }}>
-            <span className={cx("pixel", i !== 0 && "soft")} style={{ fontSize: 10 }}>{noon(iso).toLocaleDateString(locale, { weekday: "short" })}</span>
+          <div key={iso} title={`${label}${list.length ? ` · ${list.map((p) => p.bin.name).join(", ")}` : ""}`} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: short ? 2 : 4, padding: short ? "2px 0" : "4px 2px", border: `1px ${i === 0 ? "solid" : "dashed"} var(--line)`, background: list.length ? "var(--paper-2)" : undefined, overflow: "hidden" }}>
+            {!narrow && !short ? <span className={cx("pixel", i !== 0 && "soft")} style={{ fontSize: "var(--fs-meta)", whiteSpace: "nowrap" }}>{label}</span> : null}
             <span style={{ fontSize: 13, fontWeight: list.length ? 600 : undefined }}>{Number(iso.slice(8, 10))}</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center" }}>
               {list.map((p) => (
                 <span key={p.binId} title={p.bin.name} style={{ width: 10, height: 10, borderRadius: 2, background: p.bin.color, opacity: p.putOut ? 0.4 : 1 }} />
               ))}
-              {!list.length ? <span className="soft" style={{ fontSize: 9 }}>–</span> : null}
+              {!list.length && !narrow ? <span className="soft" style={{ fontSize: "var(--fs-min)" }}>–</span> : null}
             </div>
           </div>
         );
@@ -135,7 +143,7 @@ function WastePage(_p: PageProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <Button onClick={() => setSetup(true)} variant={ov && !ov.sources.length ? "primary" : "default"}><Icon name="plus" size={12} /> {t("page.sources.add")}</Button>
-        <span className="soft" style={{ fontSize: 11 }}>{t("page.hint")}</span>
+        <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("page.hint")}</span>
       </div>
 
       {ov && !ov.sources.length ? <Empty icon="trash" title={t("page.sources.empty")}>{t("page.sources.emptyHint")}</Empty> : null}
@@ -146,14 +154,14 @@ function WastePage(_p: PageProps) {
           {groups.map(([date, list]) => (
             <div key={date} style={{ padding: "8px 12px", borderBottom: "1px dashed var(--line)" }}>
               <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 4 }}>
-                <span style={{ fontSize: 13, color: list[0]!.daysUntil <= 1 ? "var(--accent)" : undefined }}>{dateLabel(locale, date, true)}</span>
-                <span className="soft pixel" style={{ fontSize: 10 }}>{whenLabel(t, locale, list[0]!)}</span>
+                <span style={{ fontSize: 13, color: list[0]!.daysUntil <= 1 ? "var(--accent-ink)" : undefined }}>{dateLabel(locale, date, true)}</span>
+                <span className="soft pixel" style={{ fontSize: "var(--fs-meta)" }}>{whenLabel(t, locale, list[0]!)}</span>
               </div>
               {list.map((p) => (
                 <div key={p.binId} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, padding: "2px 0", opacity: p.putOut ? 0.55 : 1 }}>
                   <BinIcon bin={p.bin} size={16} />
                   <span style={{ flex: 1, textDecoration: p.putOut ? "line-through" : undefined }}>{p.bin.name}</span>
-                  {date === nextDate ? <Checkbox label={p.putOut ? t("page.upcoming.isOut") : t("page.upcoming.putOut")} checked={p.putOut} onChange={() => void toggle(p)} style={{ fontSize: 11 }} /> : null}
+                  {date === nextDate ? <Checkbox label={p.putOut ? t("page.upcoming.isOut") : t("page.upcoming.putOut")} checked={p.putOut} onChange={() => void toggle(p)} style={{ fontSize: "var(--fs-meta)" }} /> : null}
                 </div>
               ))}
             </div>
@@ -173,10 +181,10 @@ function WastePage(_p: PageProps) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <span style={{ fontSize: 13 }}>{b.name}</span>
-                    <Chip style={{ fontSize: 10 }}>{t(`bin.${b.type}`)}</Chip>
-                    {!b.enabled ? <Chip style={{ fontSize: 10 }}>{t("page.bins.disabled")}</Chip> : null}
+                    <Chip style={{ fontSize: "var(--fs-meta)" }}>{t(`bin.${b.type}`)}</Chip>
+                    {!b.enabled ? <Chip style={{ fontSize: "var(--fs-meta)" }}>{t("page.bins.disabled")}</Chip> : null}
                   </div>
-                  <div className="soft" style={{ fontSize: 11 }}>{src?.name ?? "?"}{src?.kind === "manual" ? ` · ${ruleLabel(t, locale, b.rule)}` : b.key ? ` · ${b.key}` : ""}</div>
+                  <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{src?.name ?? "?"}{src?.kind === "manual" ? ` · ${ruleLabel(t, locale, b.rule)}` : b.key ? ` · ${b.key}` : ""}</div>
                 </div>
                 <Button icon size="sm" variant="ghost" onClick={() => api(`/bins/${b.id}`, { method: "PATCH", json: { enabled: !b.enabled } }).then(() => q.refetch())} aria-label={b.enabled ? "disable" : "enable"} title={b.enabled ? t("page.bins.disable") : t("page.bins.enable")}><Icon name={b.enabled ? "eye" : "eye-off"} size={12} /></Button>
                 <Button icon size="sm" variant="ghost" onClick={() => setEditBin({ bin: b })} aria-label="edit"><Icon name="sliders" size={12} /></Button>
@@ -235,15 +243,15 @@ function SourceRow({ s, onChanged, onAddBin }: { s: SourceView; onChanged: () =>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <span style={{ fontSize: 13 }}>{s.name}</span>
-            <Chip style={{ fontSize: 10 }}>{t(`page.sources.kind.${s.kind}`)}</Chip>
-            {s.error ? <Chip tone="bad" style={{ fontSize: 10 }}>{t("page.sources.error")}</Chip> : null}
+            <Chip style={{ fontSize: "var(--fs-meta)" }}>{t(`page.sources.kind.${s.kind}`)}</Chip>
+            {s.error ? <Chip tone="bad" style={{ fontSize: "var(--fs-meta)" }}>{t("page.sources.error")}</Chip> : null}
           </div>
-          <div className="soft" style={{ fontSize: 11 }}>
+          <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>
             {t("page.sources.counts", { bins: s.binCount, pickups: s.pickupCount })}
             {s.kind !== "manual" ? ` · ${t("page.sources.lastFetched", { time: s.last_fetched ? new Date(s.last_fetched).toLocaleString(locale, { dateStyle: "short", timeStyle: "short" }) : t("page.sources.never") })}` : null}
             {s.kind === "ics" ? ` · ${(s.config as { url?: string }).url ?? ""}` : null}
           </div>
-          {s.error ? <div style={{ fontSize: 11, color: "var(--bad, #d6372f)" }}>{s.error}</div> : null}
+          {s.error ? <div style={{ fontSize: "var(--fs-meta)", color: "var(--bad, #d6372f)" }}>{s.error}</div> : null}
         </div>
         {s.kind === "manual" ? <Button size="sm" onClick={onAddBin}><Icon name="plus" size={12} /> {t("page.bins.add")}</Button> : null}
         {s.kind !== "manual" ? <Button icon size="sm" variant="ghost" onClick={() => void refresh()} disabled={busy} aria-label="refresh" title={t("common.refresh")}>{busy ? <Spinner /> : <Icon name="reload" size={12} />}</Button> : null}
@@ -251,7 +259,7 @@ function SourceRow({ s, onChanged, onAddBin }: { s: SourceView; onChanged: () =>
       </div>
       {s.kind === "manual" ? (
         <div style={{ marginTop: 6, paddingLeft: 26 }}>
-          <Checkbox label={t("page.sources.shiftHolidays")} checked={shift} onChange={(e) => api(`/sources/${s.id}`, { method: "PATCH", json: { config: { shiftOnHolidays: e.target.checked } } }).then(onChanged)} style={{ fontSize: 11 }} />
+          <Checkbox label={t("page.sources.shiftHolidays")} checked={shift} onChange={(e) => api(`/sources/${s.id}`, { method: "PATCH", json: { config: { shiftOnHolidays: e.target.checked } } }).then(onChanged)} style={{ fontSize: "var(--fs-meta)" }} />
         </div>
       ) : null}
     </div>
@@ -273,10 +281,10 @@ function SetupModal({ onClose, onDone }: { onClose: () => void; onDone: (manualS
           <p className="soft" style={{ fontSize: 12, margin: 0 }}>{t("setup.intro")}</p>
           {(["auto", "ics", "manual"] as const).map((k) => (
             <button key={k} type="button" onClick={() => setStep(k)} style={{ display: "flex", gap: 12, alignItems: "center", textAlign: "left", padding: "10px 12px", border: "1px solid var(--line)", background: "var(--paper-2)", cursor: "pointer", color: "inherit", font: "inherit" }}>
-              <Icon name={k === "auto" ? "map-pin" : k === "ics" ? "link" : "sliders"} size={20} style={{ flex: "none", color: "var(--accent)" }} />
+              <Icon name={k === "auto" ? "map-pin" : k === "ics" ? "link" : "sliders"} size={20} style={{ flex: "none", color: "var(--accent-ink)" }} />
               <span style={{ flex: 1 }}>
                 <span style={{ display: "block", fontSize: 13 }}>{t(`setup.option.${k}.title`)}</span>
-                <span className="soft" style={{ display: "block", fontSize: 11 }}>{t(`setup.option.${k}.text`)}</span>
+                <span className="soft" style={{ display: "block", fontSize: "var(--fs-meta)" }}>{t(`setup.option.${k}.text`)}</span>
               </span>
               <Icon name="chevron-right" size={14} />
             </button>
@@ -395,11 +403,11 @@ function AutoSetup({ onDone, onFallback }: { onDone: () => void; onFallback: (s:
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <Button onClick={locate} disabled={locating}>{locating ? <Spinner /> : <Icon name="map-pin" size={12} />} {locating ? t("setup.auto.locating") : t("setup.auto.locate")}</Button>
-        <span className="soft" style={{ fontSize: 11 }}>{geoMsg ?? t("setup.auto.locateHint")}</span>
+        <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{geoMsg ?? t("setup.auto.locateHint")}</span>
       </div>
       <Field label={t("setup.auto.city")} hint={t("setup.auto.provider")}>
         <Input value={cityQ} onChange={(e) => setCityQ(e.target.value)} placeholder={t("setup.auto.cityPlaceholder")} autoFocus />
-        {searchingCity ? <div className="soft" style={{ fontSize: 11, marginTop: 4 }}>{t("setup.auto.searching")}</div> : null}
+        {searchingCity ? <div className="soft" style={{ fontSize: "var(--fs-meta)", marginTop: 4 }}>{t("setup.auto.searching")}</div> : null}
         {!city && cities.length ? (
           <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--line)", marginTop: 4, maxHeight: 160, overflowY: "auto" }}>
             {cities.map((c) => (
@@ -410,7 +418,7 @@ function AutoSetup({ onDone, onFallback }: { onDone: () => void; onFallback: (s:
           </div>
         ) : null}
         {noCity ? (
-          <div style={{ fontSize: 11, marginTop: 6 }}>
+          <div style={{ fontSize: "var(--fs-meta)", marginTop: 6 }}>
             <div>{t("setup.auto.noCity")}</div>
             <div className="soft">{t("setup.auto.noCityHint")} <a href="#" onClick={(e) => { e.preventDefault(); onFallback("ics"); }}>{t("setup.option.ics.title")}</a> · <a href="#" onClick={(e) => { e.preventDefault(); onFallback("manual"); }}>{t("setup.option.manual.title")}</a></div>
           </div>
@@ -425,7 +433,7 @@ function AutoSetup({ onDone, onFallback }: { onDone: () => void; onFallback: (s:
             <Input value={house} onChange={(e) => setHouse(e.target.value)} placeholder="12" />
           </Field>
           <div style={{ gridColumn: "1 / -1" }}>
-            {searchingStreet ? <div className="soft" style={{ fontSize: 11 }}>{t("setup.auto.searching")}</div> : null}
+            {searchingStreet ? <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("setup.auto.searching")}</div> : null}
             {!street && streets.length ? (
               <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--line)", maxHeight: 160, overflowY: "auto" }}>
                 {streets.map((s) => (
@@ -435,7 +443,7 @@ function AutoSetup({ onDone, onFallback }: { onDone: () => void; onFallback: (s:
                 ))}
               </div>
             ) : null}
-            {!street && !searchingStreet && !streets.length && dStreet.trim() ? <div className="soft" style={{ fontSize: 11 }}>{t("setup.auto.noStreet")}</div> : null}
+            {!street && !searchingStreet && !streets.length && dStreet.trim() ? <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("setup.auto.noStreet")}</div> : null}
           </div>
         </div>
       ) : null}
@@ -567,7 +575,7 @@ function BinModal({ bin, sourceId, manual, onClose, onSaved }: { bin?: Bin; sour
         <Field label={t("bin.field.type")}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {BIN_TYPES.map((ty) => (
-              <button key={ty} type="button" onClick={() => pickType(ty)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", fontSize: 11, border: `1px solid ${ty === type ? "var(--ink)" : "var(--line)"}`, background: ty === type ? "var(--paper-2)" : "transparent", color: "inherit", font: "inherit", cursor: "pointer" }}>
+              <button key={ty} type="button" onClick={() => pickType(ty)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", fontSize: "var(--fs-meta)", border: `1px solid ${ty === type ? "var(--ink)" : "var(--line)"}`, background: ty === type ? "var(--paper-2)" : "transparent", color: "inherit", font: "inherit", cursor: "pointer" }}>
                 <Icon name={BIN_STYLE[ty].icon} size={12} style={{ color: BIN_STYLE[ty].color }} /> {t(`bin.${ty}`)}
               </button>
             ))}
@@ -604,7 +612,7 @@ function BinModal({ bin, sourceId, manual, onClose, onSaved }: { bin?: Bin; sour
                     </div>
                   ))}
                   <div><Button size="sm" onClick={() => setRule({ mode: "dates", dates: [...rule.dates, todayIso()] })}><Icon name="plus" size={12} /> {t("bin.rule.addDate")}</Button></div>
-                  <span className="soft" style={{ fontSize: 11 }}>{t("bin.rule.datesHint")}</span>
+                  <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("bin.rule.datesHint")}</span>
                 </div>
               )}
             </div>

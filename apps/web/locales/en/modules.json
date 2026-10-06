@@ -33,7 +33,7 @@
   "modules.store.empty.noMatch": "nothing matches your search.",
   "modules.store.empty.noRegistry": "no registry reachable or no modules listed yet. you can still install from a tarball url below.",
   "modules.store.fromUrl": "install from url",
-  "modules.store.trust": "only install modules you trust: module code runs inside your hub with full access.",
+  "modules.store.trust": "only install modules you trust.",
   "modules.store.needs": "needs {deps} (installed along). ",
   "modules.store.worksWith": "works with {deps}.",
   "modules.store.installed": "installed",
@@ -41,5 +41,8 @@
   "modules.store.source": "source ↗",
   "modules.settingsTitle": "{name} · settings",
   "modules.settingsHint": "module id: {id} · v{version}",
-  "modules.settingsSaved": "settings saved"
+  "modules.settingsSaved": "settings saved",
+  "modules.store.trustCovers": "store modules run in their own worker thread with a memory limit: hub apis (storage, devices, notifications, scheduler, fetch) are limited to the permissions a module declares, and hub secrets are kept out of its environment.",
+  "modules.store.trustNotCovered": "that is not a security sandbox: module code can still use node itself (files, network), so a malicious module can do real damage. built-in and dev modules run inside the hub process.",
+  "modules.uninstallTitle": "uninstall {name}"
 }

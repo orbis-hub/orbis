@@ -17,6 +17,8 @@
 
   "notReady.notSetup": "home assistant not set up",
   "notReady.notSetupHint": "modules → home assistant → settings: url + token.",
+  "notReady.notSetupShort": "not set up",
+  "notReady.notSetupHintShort": "settings: url + token",
   "notReady.notConnected": "not connected",
   "notReady.connecting": "connecting…",
   "notReady.pickEntity": "pick an entity",
@@ -49,5 +51,10 @@
   "error.tokenRejected": "home assistant rejected the token",
   "error.unreachable": "cannot reach {url}",
 
-  "eink.noEntity": "no entity"
+  "eink.noEntity": "no entity",
+  "error.notConfigured": "home assistant is not set up yet: enter url and token in the module settings",
+  "error.badUrl": "\"{url}\" is not a valid home assistant url – use http://host:8123 or https://…",
+  "error.notConnected": "not connected to home assistant ({detail})",
+  "error.timeout": "home assistant did not answer in time",
+  "error.haError": "home assistant answered with an error: {message}"
 }

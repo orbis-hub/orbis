@@ -15,7 +15,7 @@ function ProviderSwitch({ state }: { state: State | undefined }) {
   return (
     <span style={{ display: "inline-flex", gap: 2 }} title={t("provider.title")}>
       {list.map((p) => (
-        <button key={p.id} type="button" className="chip" disabled={!p.available} title={p.reason} onClick={() => void api("/provider", { method: "POST", json: { id: p.id } })} style={{ cursor: p.available ? "pointer" : "not-allowed", opacity: p.available ? 1 : 0.5, borderColor: state?.provider === p.id ? "var(--accent)" : undefined, color: state?.provider === p.id ? "var(--accent)" : undefined, fontSize: 10 }}>
+        <button key={p.id} type="button" className="chip" disabled={!p.available} title={p.reason} onClick={() => void api("/provider", { method: "POST", json: { id: p.id } })} style={{ cursor: p.available ? "pointer" : "not-allowed", opacity: p.available ? 1 : 0.5, borderColor: state?.provider === p.id ? "var(--accent)" : undefined, color: state?.provider === p.id ? "var(--accent-ink)" : undefined, fontSize: "var(--fs-min)" }}>
           {p.name}
         </button>
       ))}
@@ -92,7 +92,7 @@ function BrowserPlayer({ state }: { state: State }) {
       ) : (
         <Button size="sm" variant="ghost" loading={status === "loading"} onClick={() => void start()} title={t("browser.startTitle")}><Icon name="monitor" size={12} /> {t("browser.playHere")}</Button>
       )}
-      {err ? <span style={{ color: "var(--dnd)", fontSize: 10 }}>{err}{/scope/i.test(err) ? t("browser.scopeHint") : ""}</span> : null}
+      {err ? <span style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{err}{/scope/i.test(err) ? t("browser.scopeHint") : ""}</span> : null}
     </span>
   );
 }
@@ -182,8 +182,8 @@ function Progress({ state, progress, onSeek }: { state: State; progress: number;
   const dur = state.track?.durationMs ?? 0;
   const pct = dur ? Math.min(100, (progress / dur) * 100) : 0;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }} className="soft">
-      <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(progress)}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--fs-meta)", minWidth: 0 }} className="soft">
+      <span style={{ fontVariantNumeric: "tabular-nums", flex: "none" }}>{fmt(progress)}</span>
       <div
         className="progress"
         style={{ flex: 1, cursor: onSeek && state.premium ? "pointer" : undefined }}
@@ -195,7 +195,7 @@ function Progress({ state, progress, onSeek }: { state: State; progress: number;
       >
         <i style={{ width: `${pct}%`, transition: "none" }} />
       </div>
-      <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(dur)}</span>
+      <span style={{ fontVariantNumeric: "tabular-nums", flex: "none" }}>{fmt(dur)}</span>
     </div>
   );
 }
@@ -215,7 +215,7 @@ function DevicePicker({ state, compact }: { state: State; compact?: boolean }) {
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-flex" }}>
       <button type="button" className="chip" onClick={() => setOpen((v) => !v)} title={t("device.choose")} style={{ cursor: "pointer", gap: 6, maxWidth: compact ? 140 : 220 }}>
-        <Icon name={deviceIcon(d?.type ?? "")} size={11} style={{ color: "var(--accent)" }} />
+        <Icon name={deviceIcon(d?.type ?? "")} size={11} style={{ color: "var(--accent-ink)", flex: "none" }} />
         <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{d?.name ?? t("device.none")}</span>
         <Icon name="chevron-down" size={10} />
       </button>
@@ -231,11 +231,11 @@ function DevicePicker({ state, compact }: { state: State; compact?: boolean }) {
                 setOpen(false);
                 void api("/transfer", { method: "POST", json: { deviceId: dev.id, play: state.playing } });
               }}
-              style={{ color: dev.active ? "var(--accent)" : undefined }}
+              style={{ color: dev.active ? "var(--accent-ink)" : undefined }}
             >
               <Icon name={deviceIcon(dev.type)} size={13} />
               <span style={{ flex: 1 }}>{dev.name}</span>
-              {dev.volume !== null ? <span className="soft" style={{ fontSize: 10 }}>{dev.volume}%</span> : null}
+              {dev.volume !== null ? <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{dev.volume}%</span> : null}
             </button>
           ))}
         </div>
@@ -373,9 +373,9 @@ function SearchBox({ types = ["track", "playlist", "album"], compact, onPlayed }
               <div style={{ width: 24, height: 24, flex: "none", background: "var(--paper-2)", border: "1px solid var(--line)", overflow: "hidden" }}>{it.cover ? <img src={it.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
-                <div className="soft" style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
               </div>
-              <Chip style={{ fontSize: 9 }}>{t(`kind.${it.kind}`)}</Chip>
+              <Chip style={{ fontSize: "var(--fs-min)" }}>{t(`kind.${it.kind}`)}</Chip>
               {it.kind === "track" ? (
                 <button type="button" className="btn btn-icon btn-sm btn-ghost" title={t("search.addToQueue")} aria-label={t("search.addToQueue")} onClick={(e) => { e.stopPropagation(); void queue(it); }}>
                   <Icon name="plus" size={11} />
@@ -414,33 +414,34 @@ function NowPlayingWidget({ config, size }: WidgetProps<NowPlayingConfig>) {
   const compact = !vertical && size.height < 150;
   const searchH = on("showSearch") ? 34 : 0;
   const cover = vertical ? Math.max(48, Math.min(size.width - 8, size.height - 130 - searchH)) : Math.max(44, Math.min(size.height - 24 - searchH, size.width * 0.3, 160));
+  const artists = t ? `${t.artists.join(", ")}${!compact && t.album ? ` · ${t.album}` : ""}` : "";
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8, minWidth: 0, overflow: "hidden" }}>
       {on("showSearch") ? <SearchBox types={config.searchTypes?.length ? config.searchTypes : ["track", "playlist", "album"]} compact={compact || size.width < 260} /> : null}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: vertical ? "column" : "row", gap: 12, alignItems: vertical ? "center" : "stretch", textAlign: vertical ? "center" : undefined }}>
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: vertical ? "column" : "row", gap: 12, alignItems: vertical ? "center" : "stretch", textAlign: vertical ? "center" : undefined }}>
         {on("showCover") ? (
           <div style={{ width: cover, height: cover, flex: "none", border: "1.5px solid var(--line)", boxShadow: "3px 3px 0 var(--line)", background: "var(--paper-2)", alignSelf: "center", overflow: "hidden" }}>
             {t?.cover ? <img src={t.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Icon name="music" size={cover * 0.5} className="soft" style={{ margin: cover * 0.25 }} />}
           </div>
         ) : null}
-        <div style={{ flex: 1, minWidth: 0, width: vertical ? "100%" : undefined, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6 }}>
+        <div style={{ flex: 1, minWidth: 0, width: vertical ? "100%" : undefined, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6, overflow: "hidden" }}>
           {on("showTitle") ? (
             t ? (
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0 }} title={`${t.title} · ${t.artists.join(", ")}${t.album ? ` · ${t.album}` : ""}`}>
                 <div className="pixel" style={{ fontSize: compact ? 13 : 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
-                <div className="soft" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.artists.join(", ")}{!compact && t.album ? ` · ${t.album}` : ""}</div>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{artists}</div>
               </div>
             ) : (
-              <div className="soft" style={{ fontSize: 12 }}>{state.device ? tr("widget.now-playing.nothingOn", { device: state.device.name }) : tr("widget.now-playing.nothing")}</div>
+              <div className="soft" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{state.device ? tr("widget.now-playing.nothingOn", { device: state.device.name }) : tr("widget.now-playing.nothing")}</div>
             )
           ) : null}
           {on("showProgress") && t ? <Progress state={state} progress={progress} onSeek={(ms) => void api("/seek", { method: "POST", json: { positionMs: ms } })} /> : null}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: vertical ? "center" : undefined }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: vertical ? "center" : undefined, minWidth: 0 }}>
             {on("showControls") ? <Controls state={state} size={compact ? "sm" : "md"} /> : null}
             {on("showVolume", false) ? <Volume state={state} /> : null}
             {on("showDevice") && !compact ? <DevicePicker state={state} compact /> : null}
           </div>
-          {state.error ? <div style={{ color: "var(--dnd)", fontSize: 10 }}>{state.error}</div> : null}
+          {state.error ? <div style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={state.error}>{state.error}</div> : null}
         </div>
       </div>
     </div>
@@ -454,13 +455,13 @@ function DevicesWidget() {
   if (!state?.connected) return <ConnectHint state={state} />;
   if (state.devices.length === 0) return <Empty icon="radio" title={t("widget.devices.empty")}>{t("widget.devices.emptyHint")}</Empty>;
   return (
-    <div className="scroll-y" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className="scroll-y" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, overflowX: "hidden", minWidth: 0 }}>
       {state.devices.map((d) => (
-        <button key={d.id} type="button" className={cx("menu-item")} style={{ border: `1px ${d.active ? "solid var(--accent)" : "dashed var(--line)"}`, color: d.active ? "var(--accent)" : undefined, padding: "6px 10px" }} onClick={() => void api("/transfer", { method: "POST", json: { deviceId: d.id, play: state.playing } })}>
-          <Icon name={deviceIcon(d.type)} size={14} />
-          <span style={{ flex: 1, textAlign: "left" }}>{d.name}</span>
-          {d.active ? <Chip tone="accent" style={{ fontSize: 9 }}>{t("widget.devices.playingHere")}</Chip> : null}
-          {d.volume !== null ? <span className="soft" style={{ fontSize: 10 }}>{d.volume}%</span> : null}
+        <button key={d.id} type="button" className={cx("menu-item")} title={d.name} style={{ border: `1px ${d.active ? "solid var(--accent)" : "dashed var(--line)"}`, color: d.active ? "var(--accent-ink)" : undefined, padding: "6px 10px", minWidth: 0, flex: "none" }} onClick={() => void api("/transfer", { method: "POST", json: { deviceId: d.id, play: state.playing } })}>
+          <Icon name={deviceIcon(d.type)} size={14} style={{ flex: "none" }} />
+          <span style={{ flex: 1, minWidth: 0, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+          {d.active ? <Chip tone="accent" style={{ fontSize: "var(--fs-min)", flex: "none" }}>{t("widget.devices.playingHere")}</Chip> : null}
+          {d.volume !== null ? <span className="soft" style={{ fontSize: "var(--fs-meta)", flex: "none" }}>{d.volume}%</span> : null}
         </button>
       ))}
     </div>
@@ -499,7 +500,7 @@ function MediaPage(_p: PageProps) {
       <Window title={tr("page.media.title")} right={<ProviderSwitch state={state} />}>
         <ConnectHint state={state} />
         {state?.configured ? (
-          <p className="soft" style={{ fontSize: 11, marginTop: 10 }}>
+          <p className="soft" style={{ fontSize: "var(--fs-meta)", marginTop: 10 }}>
             {tr("page.media.redirectInfo1")} <code>http://127.0.0.1</code>{tr("page.media.redirectInfo2")} <code>{redirectUri}</code>
             {isLoopback ? tr("page.media.loopbackHint") : tr("page.media.lanHint")}
           </p>
@@ -518,7 +519,7 @@ function MediaPage(_p: PageProps) {
           right={
             <>
               <ProviderSwitch state={state} />
-              {state.account && state.provider === "spotify" ? <Chip style={{ fontSize: 10 }}>{state.account.name}{state.premium ? "" : tr("page.media.free")}</Chip> : null}
+              {state.account && state.provider === "spotify" ? <Chip style={{ fontSize: "var(--fs-min)" }}>{state.account.name}{state.premium ? "" : tr("page.media.free")}</Chip> : null}
               {state.provider === "spotify" ? <Button size="sm" variant="ghost" onClick={() => api("/spotify/logout", { method: "POST" })} aria-label={tr("page.media.disconnect")}><Icon name="unlink" size={12} /></Button> : null}
             </>
           }
@@ -543,8 +544,8 @@ function MediaPage(_p: PageProps) {
                 <DevicePicker state={state} />
                 <BrowserPlayer state={state} />
               </div>
-              {!state.premium && state.provider === "spotify" ? <div className="soft" style={{ fontSize: 10 }}>{tr("page.media.premiumInfo")}</div> : null}
-              {state.error ? <div style={{ color: "var(--dnd)", fontSize: 11 }}>{state.error}</div> : null}
+              {!state.premium && state.provider === "spotify" ? <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{tr("page.media.premiumInfo")}</div> : null}
+              {state.error ? <div style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{state.error}</div> : null}
             </div>
           </div>
         </Window>
@@ -614,7 +615,7 @@ function Row({ cover, name, sub, onPlay, onQueue }: { cover: string | null; name
       <div style={{ width: 28, height: 28, flex: "none", background: "var(--paper-2)", border: "1px solid var(--line)", overflow: "hidden" }}>{cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-        {sub ? <div className="soft" style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div> : null}
+        {sub ? <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div> : null}
       </div>
       {onQueue ? <Button icon size="sm" variant="ghost" onClick={onQueue} aria-label={t("search.addToQueue")} title={t("search.addToQueue")}><Icon name="plus" size={11} /></Button> : null}
       {onPlay ? <Button icon size="sm" variant="ghost" onClick={onPlay} aria-label={t("controls.play")}><Icon name="play" size={11} /></Button> : null}
@@ -626,7 +627,7 @@ function List({ title, items }: { title: string; items: Array<{ key: string; cov
   if (items.length === 0) return null;
   return (
     <div>
-      <div className="pixel soft" style={{ fontSize: 11, marginBottom: 4 }}>{title}</div>
+      <div className="pixel soft" style={{ fontSize: "var(--fs-meta)", marginBottom: 4 }}>{title}</div>
       {items.map((it) => (
         <Row key={it.key} cover={it.cover} name={it.name} sub={it.sub} onPlay={it.onPlay} onQueue={it.onQueue} />
       ))}
@@ -642,7 +643,7 @@ function MediaSettings({ value, onChange }: SettingsProps) {
       <Field label={t("settings.clientId")} hint={t("settings.clientIdHint")}>
         <Input value={String(value.spotifyClientId ?? "")} onChange={(e) => onChange({ ...value, spotifyClientId: e.target.value.trim() })} placeholder={t("settings.clientIdPlaceholder")} autoComplete="off" />
       </Field>
-      <div className="win win-dashed win-flat" style={{ padding: "8px 10px", fontSize: 11 }}>
+      <div className="win win-dashed win-flat" style={{ padding: "8px 10px", fontSize: "var(--fs-meta)" }}>
         <div className="pixel" style={{ marginBottom: 4 }}>{t("settings.redirectTitle")}</div>
         <code style={{ overflowWrap: "anywhere" }}>{redirectUri}</code>
         <div className="soft" style={{ marginTop: 6 }}>{t("settings.redirectHint")}</div>

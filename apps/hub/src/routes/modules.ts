@@ -7,6 +7,7 @@ import { requireAuth, requireRole, resolveToken, tokenFromRequest } from "../aut
 import { config } from "../config";
 import * as registry from "../modules/registry";
 import * as runtime from "../modules/runtime";
+import { settingsForRole } from "../modules/secrets";
 
 export const moduleRoutes = new Hono()
   .use(requireAuth)
@@ -55,9 +56,10 @@ export const moduleRoutes = new Hono()
       return c.json({ error: (err as Error).message }, 400);
     }
   })
+  /** manifest + settings; members get the settings without `format: "secret"` keys (#38) */
   .get("/:id", (c) => {
     const s = runtime.get(c.req.param("id"));
-    return s ? c.json({ ...runtime.toPublic(s), settings: s.settings }) : c.json({ error: "not found" }, 404);
+    return s ? c.json({ ...runtime.toPublic(s), settings: settingsForRole(s.manifest, s.settings, c.var.user.role) }) : c.json({ error: "not found" }, 404);
   })
   .patch("/:id", requireRole("admin"), async (c) => {
     const body = z.object({ enabled: z.boolean().optional() }).safeParse(await c.req.json().catch(() => null));
@@ -86,7 +88,8 @@ export const moduleRoutes = new Hono()
       return c.json({ error: (err as Error).message }, 400);
     }
   })
-  .get("/:id/settings", (c) => {
+  /** raw settings incl. secrets: admins only (members use GET /:id, which strips secrets) */
+  .get("/:id/settings", requireRole("admin"), (c) => {
     const s = runtime.get(c.req.param("id"));
     return s ? c.json(s.settings) : c.json({ error: "not found" }, 404);
   })
@@ -111,12 +114,20 @@ export const moduleApiProxy = new Hono().all("/:id/*", async (c) => {
   // manifest.publicPaths (oauth callbacks etc.) skip the session check; everything else needs one
   // "/x" also covers "/x/…"; a trailing "*" is a plain prefix ("/ingest/*", "/hook*")
   const isPublic = s.manifest.publicPaths.some((p) => (p.endsWith("*") ? url.pathname.startsWith(p.slice(0, -1)) : url.pathname === p || url.pathname.startsWith(p.endsWith("/") ? p : `${p}/`)));
+  const req = new Request(url, c.req.raw);
+  // the module sees who is calling via x-orbis-user / x-orbis-role; a client cannot forge them (always reset here)
+  req.headers.delete("x-orbis-user");
+  req.headers.delete("x-orbis-role");
   if (!isPublic) {
-    const token = tokenFromRequest(c);
+    // `?token=` is normally ignored (#39). The one exception: a top-level browser navigation (oauth login links such as
+    // /strava/login and /spotify/login, which cannot carry headers and which token-only clients like the app open directly).
+    const navigation = c.req.method === "GET" && c.req.header("sec-fetch-dest") === "document";
+    const token = tokenFromRequest(c, { allowQuery: navigation });
     const user = token ? resolveToken(token) : null;
     if (!user) return c.json({ error: "unauthorized" }, 401);
+    req.headers.set("x-orbis-user", user.id);
+    req.headers.set("x-orbis-role", user.role);
   }
-  const req = new Request(url, c.req.raw);
   return s.built.ctx.http.fetch(req);
 });
 

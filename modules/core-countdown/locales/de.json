@@ -5,6 +5,7 @@
 
   "widget.countdown.empty": "datum setzen",
   "widget.countdown.emptyHint": "⋯ → einstellen",
+  "widget.countdown.invalid": "ungültiges datum oder uhrzeit",
   "defaultTitle": "countdown",
   "today": "heute!",
   "unit.hours": { "one": "stunde", "other": "stunden" },

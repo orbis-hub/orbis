@@ -1,5 +1,7 @@
 import {
+  cloneElement,
   createContext,
+  isValidElement,
   useContext,
   useEffect,
   useId,
@@ -115,14 +117,45 @@ export function Tab({ active, children, className, ...rest }: ButtonHTMLAttribut
 
 /* ---------- Forms ---------- */
 export type FieldProps = { label?: ReactNode; hint?: ReactNode; error?: ReactNode; children: ReactNode; className?: string; htmlFor?: string };
+
+/**
+ * Label + control + hint. The label is associated with the control: pass `htmlFor` and give the
+ * control that `id`, or let Field do it – when the only child is an Input/Select/Textarea (or a
+ * plain input/select/textarea) without an id, Field generates one so screen readers announce the label.
+ */
 export function Field({ label, hint, error, children, className, htmlFor }: FieldProps) {
+  const auto = useStableId("field");
+  let control = children;
+  let forId = htmlFor;
+  if (!forId && isValidElement<{ id?: string }>(children) && isFormControl(children.type) && !children.props.id) {
+    forId = auto;
+    control = cloneElement(children, { id: auto });
+  } else if (!forId && isValidElement<{ id?: string }>(children) && isFormControl(children.type) && children.props.id) {
+    forId = children.props.id;
+  }
+  const hintId = hint || error ? `${auto}-hint` : undefined;
+  if (hintId && isValidElement<{ id?: string; "aria-describedby"?: string }>(control) && isFormControl(control.type) && !control.props["aria-describedby"]) {
+    control = cloneElement(control, { "aria-describedby": hintId });
+  }
   return (
     <div className={cx("field", className)}>
-      {label ? <label htmlFor={htmlFor}>{label}</label> : null}
-      {children}
-      {error ? <span className="error">{error}</span> : hint ? <span className="hint">{hint}</span> : null}
+      {label ? <label htmlFor={forId}>{label}</label> : null}
+      {control}
+      {error ? (
+        <span className="error" id={hintId} role="alert">
+          {error}
+        </span>
+      ) : hint ? (
+        <span className="hint" id={hintId}>
+          {hint}
+        </span>
+      ) : null}
     </div>
   );
+}
+
+function isFormControl(type: unknown): boolean {
+  return type === Input || type === Select || type === Textarea || type === "input" || type === "select" || type === "textarea";
 }
 
 export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
@@ -185,34 +218,90 @@ export function Empty({ title, children, icon }: { title?: ReactNode; children?:
 }
 
 /* ---------- Modal ---------- */
-export type ModalProps = { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; width?: number; right?: ReactNode };
-export function Modal({ open, onClose, title, children, width, right }: ModalProps) {
+export type ModalProps = {
+  open: boolean;
+  onClose: () => void;
+  title?: ReactNode;
+  children: ReactNode;
+  width?: number;
+  right?: ReactNode;
+  /** accessible name of the close button (defaults to "close") */
+  closeLabel?: string;
+};
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Dialog: `role="dialog"` + `aria-modal`, labelled by its title, keeps Tab inside, moves focus to the
+ * first control on open and gives it back to the opener on close. Escape and a click on the backdrop close it.
+ */
+export function Modal({ open, onClose, title, children, width, right, closeLabel = "close" }: ModalProps) {
+  const box = useRef<HTMLDivElement>(null);
+  const titleId = useStableId("modal-title");
+  // callers pass inline arrows for onClose; the focus handling below must only run when `open` changes,
+  // so the latest callback is read through a ref instead of being an effect dependency
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
   useEffect(() => {
     if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const el = box.current;
+    // focus the first control (not the close button in the title bar if something better exists)
+    const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter((n) => n.offsetParent !== null || n === document.activeElement);
+    const first = focusables().find((n) => !n.hasAttribute("data-modal-close")) ?? focusables()[0];
+    if (!el?.contains(document.activeElement)) (first ?? el)?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !el) return;
+      const list = focusables();
+      if (list.length === 0) {
+        e.preventDefault();
+        el.focus();
+        return;
+      }
+      const firstEl = list[0]!;
+      const lastEl = list[list.length - 1]!;
+      const active = document.activeElement;
+      if (e.shiftKey && (active === firstEl || !el.contains(active))) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && (active === lastEl || !el.contains(active))) {
+        e.preventDefault();
+        firstEl.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (opener && typeof opener.focus === "function" && document.contains(opener)) opener.focus({ preventScroll: true });
+    };
+  }, [open]);
   if (!open) return null;
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <Window
-        className="modal"
-        style={width ? { maxWidth: width } : undefined}
-        title={title}
-        right={
-          <>
-            {right}
-            <Button icon size="sm" variant="ghost" onClick={onClose} aria-label="close">
-              <Icon name="close" size={14} />
-            </Button>
-          </>
-        }
-      >
-        {children}
-      </Window>
+      <div ref={box} role="dialog" aria-modal="true" aria-labelledby={title !== undefined ? titleId : undefined} tabIndex={-1} style={{ width: "100%", maxWidth: width ?? 520, display: "flex", justifyContent: "center", outline: "none" }}>
+        <Window
+          className="modal"
+          style={width ? { maxWidth: width } : undefined}
+          title={title !== undefined ? <span id={titleId}>{title}</span> : undefined}
+          right={
+            <>
+              {right}
+              <Button icon size="sm" variant="ghost" onClick={onClose} aria-label={closeLabel} data-modal-close>
+                <Icon name="close" size={14} />
+              </Button>
+            </>
+          }
+        >
+          {children}
+        </Window>
+      </div>
     </div>
   );
 }

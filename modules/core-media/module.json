@@ -141,6 +141,7 @@
   },
   "permissions": [
     "network:fetch",
+    "network:lan",
     "storage",
     "scheduler"
   ],

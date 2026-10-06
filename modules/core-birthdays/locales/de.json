@@ -24,6 +24,7 @@
   "action.cancel": "abbrechen",
   "action.save": "speichern",
   "confirm.remove": "{name} entfernen?",
+  "error.save": "konnte nicht speichern: {message}",
 
   "modal.edit": "bearbeiten",
   "modal.new": "neue person",

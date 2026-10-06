@@ -11,6 +11,7 @@
   "common.saving": "speichert…",
   "common.saved": "gespeichert",
   "common.delete": "löschen",
+  "common.cancel": "abbrechen",
 
   "widget.note.empty": "keine notiz",
   "widget.note.emptyHint": "schreib eine auf der notizen-seite und pinne sie.",
@@ -23,6 +24,7 @@
   "page.notes.titleField": "titel",
   "page.notes.preview": "vorschau",
   "page.notes.pin": "ans dashboard-widget pinnen",
+  "page.notes.deleteTitle": "notiz löschen",
   "page.notes.confirmDelete": "\"{title}\" löschen?",
   "page.notes.bodyPlaceholder": "# überschrift\n- liste\n- [ ] checkbox\n**fett** *kursiv* `code` [link](https://…)",
   "page.notes.pick": "wähl eine notiz oder leg eine an",

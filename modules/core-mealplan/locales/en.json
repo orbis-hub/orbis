@@ -30,11 +30,17 @@
 
   "new.importedToast": { "one": "imported \"{title}\" ({count} ingredient)", "other": "imported \"{title}\" ({count} ingredients)" },
   "new.importedNoneToast": "imported \"{title}\", no ingredients found",
+  "import.noRecipeTitle": "no recipe found",
+  "import.noRecipeBody": "that page has no recipe data. save \"{title}\" as an empty recipe anyway? you can add ingredients later.",
+  "import.anyway": "save anyway",
   "new.urlPlaceholder": "paste a recipe url (most food blogs work)",
   "new.import": "import",
   "new.byHand": "by hand",
   "new.titlePlaceholder": "title",
   "new.ingredientsPlaceholder": "one ingredient per line\n200 g pasta\n1 onion",
+  "new.stepsPlaceholder": "steps, one per line (optional)\nboil the pasta\nfry the onion",
+  "new.servingsPlaceholder": "servings",
+  "new.tagsPlaceholder": "tags, comma separated: quick, vegetarian",
   "new.save": "save recipe",
 
   "page.plan.nothingToAdd": "nothing to add (no recipes with ingredients planned)",

@@ -43,8 +43,10 @@ export function getToken(): string | null {
 }
 
 export function setToken(token: string | null) {
-  if (token) ls()?.setItem(KEY_TOKEN, token);
-  else ls()?.removeItem(KEY_TOKEN);
+  if (token) {
+    ls()?.setItem(KEY_TOKEN, token);
+    sessionLost = false; // a fresh session: 401s are meaningful again
+  } else ls()?.removeItem(KEY_TOKEN);
 }
 
 export class HubError extends Error {
@@ -56,6 +58,33 @@ export class HubError extends Error {
     super(message);
   }
 }
+
+export const isUnauthorized = (err: unknown): boolean => err instanceof HubError && err.status === 401;
+
+/* ---------- session loss (401 / ws 4401) ---------- */
+
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+/** Called once per lost session: the first 401 from any hub call (or a ws close 4401) fires it, later ones are swallowed until a new token is stored. */
+export function onUnauthorized(cb: UnauthorizedListener) {
+  unauthorizedListeners.add(cb);
+  return () => {
+    unauthorizedListeners.delete(cb);
+  };
+}
+
+let sessionLost = false;
+
+export function signalUnauthorized() {
+  if (sessionLost) return;
+  sessionLost = true;
+  disconnectWs();
+  for (const l of unauthorizedListeners) l();
+}
+
+/** login / setup / logout 401s never mean "your session was lost": they stay local to the caller */
+const LOCAL_401_PATHS = ["/api/auth/login", "/api/auth/setup", "/api/auth/logout"];
 
 export async function hubFetch<T = unknown>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const base = getHubUrl();
@@ -84,6 +113,7 @@ export async function hubFetch<T = unknown>(path: string, init: RequestInit & { 
   }
   if (!res.ok) {
     const msg = (data && typeof data === "object" && "error" in data && typeof (data as { error: unknown }).error === "string" ? (data as { error: string }).error : null) ?? `HTTP ${res.status}`;
+    if (res.status === 401 && !LOCAL_401_PATHS.some((p) => path.startsWith(p))) signalUnauthorized();
     throw new HubError(res.status, msg, data);
   }
   return data as T;
@@ -102,7 +132,7 @@ const listeners = new Set<Listener>();
 let socket: WebSocket | null = null;
 let retry = 0;
 let wanted = false;
-let statusListeners = new Set<(s: "open" | "closed" | "connecting") => void>();
+const statusListeners = new Set<(s: "open" | "closed" | "connecting") => void>();
 let status: "open" | "closed" | "connecting" = "closed";
 
 function setStatus(s: typeof status) {
@@ -150,7 +180,12 @@ export function connectWs() {
   ws.onclose = (ev) => {
     socket = null;
     setStatus("closed");
-    if (!wanted || ev.code === 4401) return;
+    if (ev.code === 4401) {
+      // the hub refused our token: same as a 401 from the api
+      signalUnauthorized();
+      return;
+    }
+    if (!wanted) return;
     const delay = Math.min(30_000, 500 * 2 ** retry++);
     setTimeout(connectWs, delay);
   };

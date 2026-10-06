@@ -1,14 +1,15 @@
 "use client";
 
-import { ToastProvider } from "@orbis/ui";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider, useToast } from "@orbis/ui";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { connectWs, disconnectWs, getHubUrl, HubError, setHubUrl } from "@/lib/hub";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { connectWs, disconnectWs, getHubUrl, HubError, isUnauthorized, onUnauthorized, setHubUrl, setToken } from "@/lib/hub";
 import { useT } from "@/lib/i18n";
 import { installHostBridge } from "@/lib/module-host";
-import { useAuthStatus, useHubEventsSync } from "@/lib/queries";
+import { qk, useAuthStatus, useHubEventsSync } from "@/lib/queries";
 import { applyTheme, useShell } from "@/lib/store";
+import { ConfirmProvider } from "./Confirm";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [qc] = useState(
@@ -17,7 +18,8 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             retry: (count, err) => !(err instanceof HubError && (err.status === 401 || err.status === 0)) && count < 2,
-            refetchOnWindowFocus: true,
+            // a lost session must not keep polling: every refetch would be another 401 (polling queries check the same)
+            refetchOnWindowFocus: (query) => !isUnauthorized(query.state.error),
           },
         },
       }),
@@ -29,10 +31,24 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={qc}>
       <ToastProvider>
-        <AuthGate>{children}</AuthGate>
+        <ConfirmProvider>
+          <AuthGate>{children}</AuthGate>
+        </ConfirmProvider>
       </ToastProvider>
     </QueryClientProvider>
   );
+}
+
+/** `?next=` must stay inside the app: a relative path, never a different origin */
+export function safeNext(raw: string | null | undefined): string | null {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/login")) return null;
+  return raw;
+}
+
+/** where to send the user after signing in again: the page they were on, with its query string */
+function currentPath() {
+  if (typeof window === "undefined") return "/";
+  return `${window.location.pathname}${window.location.search}`;
 }
 
 /**
@@ -44,11 +60,13 @@ export function Providers({ children }: { children: ReactNode }) {
 function AuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [hubUrl, setHubUrlState] = useState<string | null | undefined>(undefined);
-  useEffect(() => setHubUrlState(getHubUrl()), []);
+  const toast = useToast();
+  // read once on the client; the static export prerenders with `undefined` ("connecting"), the client picks up the stored url on hydration
+  const [hubUrl] = useState<string | null | undefined>(() => (typeof window === "undefined" ? undefined : getHubUrl()));
   const status = useAuthStatus(hubUrl !== undefined && hubUrl !== null);
   const onLogin = pathname?.startsWith("/login");
   const t = useT();
+  const qc = useQueryClient();
   useHubEventsSync();
 
   const authed = !!status.data?.authenticated;
@@ -57,13 +75,43 @@ function AuthGate({ children }: { children: ReactNode }) {
     else disconnectWs();
   }, [authed]);
 
+  // the status poll itself can be the first to notice (refetch on focus): authenticated → not authenticated
+  const wasAuthed = useRef(false);
+  useEffect(() => {
+    if (authed) wasAuthed.current = true;
+    else if (wasAuthed.current && status.data) {
+      wasAuthed.current = false;
+      setToken(null);
+      toast(t("shell.sessionExpired"), "warn");
+    }
+  }, [authed, status.data, toast, t]);
+
+  // session lost (first 401 from any api call, or ws close 4401): drop the token, forget everything we
+  // fetched with it, tell the user once and go to the login page with a way back
+  useEffect(
+    () =>
+      onUnauthorized(() => {
+        wasAuthed.current = false; // this handler tells the user; the status transition below must not repeat it
+        setToken(null);
+        void qc.cancelQueries();
+        void qc.invalidateQueries({ queryKey: qk.auth }); // → authenticated: false → the gate unmounts the app
+        if (window.location.pathname.startsWith("/login")) return;
+        toast(t("shell.sessionExpired"), "warn");
+        router.replace(`/login/?next=${encodeURIComponent(currentPath())}`);
+      }),
+    [router, toast, t, qc],
+  );
+
   useEffect(() => {
     if (hubUrl === undefined) return;
     if (onLogin) {
-      if (authed) router.replace("/");
+      if (authed) router.replace(safeNext(new URLSearchParams(window.location.search).get("next")) ?? "/");
       return;
     }
-    if (hubUrl === null || (status.data && !status.data.authenticated) || (status.error && !status.isFetching)) router.replace("/login/");
+    if (hubUrl === null || (status.data && !status.data.authenticated) || (status.error && !status.isFetching)) {
+      const next = hubUrl === null ? null : safeNext(currentPath());
+      router.replace(next && next !== "/" ? `/login/?next=${encodeURIComponent(next)}` : "/login/");
+    }
   }, [hubUrl, status.data, status.error, status.isFetching, authed, onLogin, router]);
 
   if (onLogin) return <>{children}</>;
@@ -116,6 +164,8 @@ function Unreachable({ hubUrl, error, onRetry }: { hubUrl: string; error: string
               className="btn"
               onClick={() => {
                 setHubUrl(null);
+                // full reload on purpose: a different hub means fresh module bundles, caches and websocket
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                 window.location.href = "/login/";
               }}
             >

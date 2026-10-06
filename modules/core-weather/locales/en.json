@@ -45,8 +45,11 @@
   "settings.units_metric": "metric",
   "settings.units_imperial": "imperial",
   "settings.refresh": "refresh (min)",
-  "settings.no_location": "without a location the hub's default (Würzburg) is used.",
+  "settings.no_location": "without a location here the hub's location from the settings page is used (Würzburg while none is set).",
 
   "eink.feels": "{name} · feels {temp}°",
-  "eink.details": "{min}° / {max}° · {wind} {unit} · {humidity}% rh"
+  "eink.details": "{min}° / {max}° · {wind} {unit} · {humidity}% rh",
+  "error.unknown_location": "unknown location id \"{id}\" – see /locations",
+  "error.geocode": "place search is unavailable right now ({message})",
+  "settings.invalid_line": "not a valid line: id=Name@lat,lon with lat −90…90 and lon −180…180"
 }
