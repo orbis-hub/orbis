@@ -39,6 +39,8 @@
   "description": "Orbis design system: retro window boxes, pixel icons, weather icons, tiny charts.",
   "files": [
     "dist",
+    "src",
+    "!src/**/*.test.ts",
     "README.md"
   ],
   "publishConfig": {

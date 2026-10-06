@@ -37,6 +37,8 @@
   "description": "Types, manifest schema, server context and client hooks for Orbis modules.",
   "files": [
     "dist",
+    "src",
+    "!src/**/*.test.ts",
     "README.md"
   ],
   "publishConfig": {
