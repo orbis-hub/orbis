@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { defineModule } from "@orbis/sdk/server";
+import { defineModule, parseBody, z } from "@orbis/sdk/server";
 import type { Context } from "hono";
 
 /**
@@ -37,6 +37,14 @@ type Tokens = { access: string; refresh: string; expiresAt: number; scope: strin
 const SCOPES = ["user-read-playback-state", "user-modify-playback-state", "user-read-currently-playing", "user-read-private", "user-read-email", "streaming", "playlist-read-private", "playlist-read-collaborative", "user-library-read", "user-read-recently-played"].join(" ");
 
 const b64url = (b: Buffer) => b.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+/** origin as the browser sees it: behind a tls proxy the Host header is the internal one, x-forwarded-* carry the public one */
+export function publicOrigin(c: Context): string {
+  const u = new URL(c.req.url);
+  const first = (v: string | undefined) => v?.split(",")[0]?.trim() ?? "";
+  const proto = first(c.req.header("x-forwarded-proto")).replace(/:$/, "") || u.protocol.replace(/:$/, "");
+  const host = first(c.req.header("x-forwarded-host")) || c.req.header("host") || u.host;
+  return /^https?$/.test(proto) && /^[a-z0-9.-]+(:\d+)?$/i.test(host) ? `${proto}://${host}` : u.origin;
+}
 
 export default defineModule<Settings>({
   setup(ctx) {
@@ -79,7 +87,7 @@ export default defineModule<Settings>({
       if (res.status === 429) {
         const retry = Number(res.headers.get("retry-after") ?? "30");
         pausedUntil = Date.now() + Math.min(300, Math.max(5, retry)) * 1000;
-        throw Object.assign(new Error(`spotify rate limit, pausing ${Math.round((pausedUntil - Date.now()) / 1000)}s`), { status: 429 });
+        throw Object.assign(new Error(ctx.i18n.t("error.rateLimit", { seconds: Math.round((pausedUntil - Date.now()) / 1000) })), { status: 429 });
       }
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -101,7 +109,7 @@ export default defineModule<Settings>({
       const verifier = b64url(randomBytes(48));
       const challenge = b64url(createHash("sha256").update(verifier).digest());
       const stateKey = b64url(randomBytes(12));
-      const origin = new URL(c.req.url).origin;
+      const origin = publicOrigin(c);
       const redirectUri = `${origin}/api/m/media/spotify/callback`;
       storage.set(`spotify:pkce:${stateKey}`, { verifier, redirectUri, back: c.req.query("return") ?? `${origin}/m/?id=media`, at: Date.now() });
       const u = new URL("https://accounts.spotify.com/authorize");
@@ -113,14 +121,14 @@ export default defineModule<Settings>({
       const stateKey = c.req.query("state") ?? "";
       const pending = storage.get<{ verifier: string; redirectUri: string; back: string }>(`spotify:pkce:${stateKey}`);
       storage.delete(`spotify:pkce:${stateKey}`);
-      if (!pending) return c.text("login expired, try again", 400);
+      if (!pending) return c.text(ctx.i18n.t("error.loginExpired"), 400);
       if (c.req.query("error")) return c.redirect(`${pending.back}${pending.back.includes("?") ? "&" : "?"}spotify_error=${encodeURIComponent(c.req.query("error")!)}`);
       const res = await ctx.fetch("https://accounts.spotify.com/api/token", {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ grant_type: "authorization_code", code: c.req.query("code") ?? "", redirect_uri: pending.redirectUri, client_id: clientId(), code_verifier: pending.verifier }),
       });
-      if (!res.ok) return c.text(`token exchange failed: ${await res.text()}`, 400);
+      if (!res.ok) return c.text(ctx.i18n.t("error.tokenExchange", { detail: await res.text() }), 400);
       const j = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number; scope: string };
       storage.set("spotify:tokens", { access: j.access_token, refresh: j.refresh_token, expiresAt: Date.now() + j.expires_in * 1000, scope: j.scope } satisfies Tokens);
       logger.info("spotify connected");
@@ -144,8 +152,8 @@ export default defineModule<Settings>({
     const haAvailable = () => ctx.modules.has("home-assistant");
     const providerId = (): ProviderId => (settings.get().provider === "ha" && haAvailable() ? "ha" : "spotify");
     const providers = (): ProviderInfo[] => [
-      { id: "spotify", name: "spotify", available: !!clientId(), reason: clientId() ? undefined : "client id missing" },
-      { id: "ha", name: "home assistant", available: haAvailable(), reason: haAvailable() ? undefined : "home assistant module not installed" },
+      { id: "spotify", name: "spotify", available: !!clientId(), reason: clientId() ? undefined : ctx.i18n.t("reason.clientIdMissing") },
+      { id: "ha", name: "home assistant", available: haAvailable(), reason: haAvailable() ? undefined : ctx.i18n.t("reason.haMissing") },
     ];
     const haSelected = () => storage.get<string>("ha:selected") ?? null;
     let haBase = "";
@@ -178,7 +186,7 @@ export default defineModule<Settings>({
         devices,
         context: null,
         updatedAt: new Date().toISOString(),
-        error: list.length ? undefined : "no media_player entities in home assistant",
+        error: list.length ? undefined : ctx.i18n.t("error.noHaPlayers"),
       };
     }
 
@@ -265,13 +273,19 @@ export default defineModule<Settings>({
 
     const schedule = () => ctx.scheduler.every("poll", (settings.get().pollSeconds ?? 10) * 1000, () => poll(), { immediate: true });
     const reportStatus = () => {
+      const t = ctx.i18n.t;
       if (providerId() === "ha") ctx.status.set({ state: "ok" });
-      else if (!clientId()) ctx.status.set({ state: "needs-setup", message: "add your spotify client id", action: { label: "settings", settings: true } });
-      else if (!tokens()) ctx.status.set({ state: "needs-setup", message: "spotify is not connected yet", action: { label: "connect", page: "media" } });
+      else if (!clientId()) ctx.status.set({ state: "needs-setup", message: t("status.needsClientId"), action: { label: t("status.settings"), settings: true } });
+      else if (!tokens()) ctx.status.set({ state: "needs-setup", message: t("status.notConnected"), action: { label: t("status.connect"), page: "media" } });
       else ctx.status.set({ state: "ok" });
     };
     reportStatus();
     schedule();
+    ctx.i18n.onChange(() => {
+      reportStatus();
+      lastSig = ""; // re-broadcast so translated provider reasons / errors reach clients
+      void poll(true);
+    });
     ctx.modules.onChange(() => {
       haBase = "";
       reportStatus();
@@ -330,22 +344,63 @@ export default defineModule<Settings>({
     http.post("/pause", wrap(async (c) => { if (providerId() === "ha") { await haCall("media_pause"); return ok(c); } await api("/me/player/pause", { method: "PUT" }); return ok(c); }));
     http.post("/next", wrap(async (c) => { if (providerId() === "ha") { await haCall("media_next_track"); return ok(c); } await api("/me/player/next", { method: "POST" }); return ok(c); }));
     http.post("/previous", wrap(async (c) => { if (providerId() === "ha") { await haCall("media_previous_track"); return ok(c); } await api("/me/player/previous", { method: "POST" }); return ok(c); }));
-    http.post("/seek", wrap(async (c) => { const b = (await c.req.json()) as { positionMs: number }; if (providerId() === "ha") { await haCall("media_seek", { seek_position: Math.max(0, b.positionMs / 1000) }); return ok(c); } await api(`/me/player/seek?position_ms=${Math.max(0, Math.round(b.positionMs))}`, { method: "PUT" }); return ok(c); }));
-    http.post("/volume", wrap(async (c) => { const b = (await c.req.json()) as { percent: number; deviceId?: string }; if (providerId() === "ha") { await haCall("volume_set", { volume_level: Math.min(1, Math.max(0, b.percent / 100)) }, b.deviceId ?? haSelected()); return ok(c); } await api(`/me/player/volume?volume_percent=${Math.min(100, Math.max(0, Math.round(b.percent)))}${b.deviceId ? `&device_id=${b.deviceId}` : ""}`, { method: "PUT" }); return ok(c); }));
-    http.post("/shuffle", wrap(async (c) => { const b = (await c.req.json()) as { on: boolean }; if (providerId() === "ha") { await haCall("shuffle_set", { shuffle: b.on }); return ok(c); } await api(`/me/player/shuffle?state=${b.on}`, { method: "PUT" }); return ok(c); }));
-    http.post("/repeat", wrap(async (c) => { const b = (await c.req.json()) as { mode: "off" | "track" | "context" }; await api(`/me/player/repeat?state=${b.mode}`, { method: "PUT" }); return ok(c); }));
-    http.post("/transfer", wrap(async (c) => { const b = (await c.req.json()) as { deviceId: string; play?: boolean }; if (providerId() === "ha") { storage.set("ha:selected", b.deviceId); lastSig = ""; return ok(c); } await api("/me/player", { method: "PUT", body: JSON.stringify({ device_ids: [b.deviceId], play: b.play ?? true }) }); return ok(c); }));
-    http.post("/queue", wrap(async (c) => { const b = (await c.req.json()) as { uri: string }; await api(`/me/player/queue?uri=${encodeURIComponent(b.uri)}`, { method: "POST" }); return ok(c); }));
+    // control routes: a missing / invalid body is the caller's fault (400), not an upstream failure (502)
+    const deviceId = z.string().trim().min(1).max(200);
+    http.post("/seek", wrap(async (c) => {
+      const b = await parseBody(c, z.object({ positionMs: z.number().finite().min(0) }));
+      if (!b.ok) return b.res;
+      if (providerId() === "ha") { await haCall("media_seek", { seek_position: b.data.positionMs / 1000 }); return ok(c); }
+      await api(`/me/player/seek?position_ms=${Math.round(b.data.positionMs)}`, { method: "PUT" });
+      return ok(c);
+    }));
+    http.post("/volume", wrap(async (c) => {
+      const b = await parseBody(c, z.object({ percent: z.number().finite().min(0).max(100), deviceId: deviceId.optional() }));
+      if (!b.ok) return b.res;
+      if (providerId() === "ha") { await haCall("volume_set", { volume_level: b.data.percent / 100 }, b.data.deviceId ?? haSelected()); return ok(c); }
+      await api(`/me/player/volume?volume_percent=${Math.round(b.data.percent)}${b.data.deviceId ? `&device_id=${encodeURIComponent(b.data.deviceId)}` : ""}`, { method: "PUT" });
+      return ok(c);
+    }));
+    http.post("/shuffle", wrap(async (c) => {
+      const b = await parseBody(c, z.object({ on: z.boolean() }));
+      if (!b.ok) return b.res;
+      if (providerId() === "ha") { await haCall("shuffle_set", { shuffle: b.data.on }); return ok(c); }
+      await api(`/me/player/shuffle?state=${b.data.on}`, { method: "PUT" });
+      return ok(c);
+    }));
+    http.post("/repeat", wrap(async (c) => {
+      const b = await parseBody(c, z.object({ mode: z.enum(["off", "track", "context"]) }));
+      if (!b.ok) return b.res;
+      if (providerId() === "ha") { await haCall("repeat_set", { repeat: b.data.mode === "track" ? "one" : b.data.mode === "context" ? "all" : "off" }); return ok(c); }
+      await api(`/me/player/repeat?state=${b.data.mode}`, { method: "PUT" });
+      return ok(c);
+    }));
+    http.post("/transfer", wrap(async (c) => {
+      const b = await parseBody(c, z.object({ deviceId, play: z.boolean().optional() }));
+      if (!b.ok) return b.res;
+      if (providerId() === "ha") { storage.set("ha:selected", b.data.deviceId); lastSig = ""; return ok(c); }
+      await api("/me/player", { method: "PUT", body: JSON.stringify({ device_ids: [b.data.deviceId], play: b.data.play ?? true }) });
+      return ok(c);
+    }));
+    http.post("/queue", wrap(async (c) => {
+      const b = await parseBody(c, z.object({ uri: z.string().trim().min(1).max(500) }));
+      if (!b.ok) return b.res;
+      if (providerId() === "ha") { await haCall("play_media", { media_content_id: b.data.uri, media_content_type: "music", enqueue: "add" }); return ok(c); }
+      await api(`/me/player/queue?uri=${encodeURIComponent(b.data.uri)}`, { method: "POST" });
+      return ok(c);
+    }));
 
     http.get("/queue", wrap(async (c) => {
+      if (providerId() === "ha") return c.json({ current: state.track, queue: [] });
       const q = await api<{ currently_playing: Record<string, unknown>; queue: Record<string, unknown>[] }>("/me/player/queue");
       return c.json({ current: mapTrack(q?.currently_playing), queue: (q?.queue ?? []).map((t) => mapTrack(t)).filter(Boolean).slice(0, 20) });
     }));
     http.get("/playlists", wrap(async (c) => {
+      if (providerId() === "ha") return c.json([]);
       const p = await api<{ items: Array<{ id: string; name: string; uri: string; images?: Array<{ url: string }>; tracks?: { total: number }; owner?: { display_name?: string } }> }>("/me/playlists?limit=50");
       return c.json((p?.items ?? []).map((x) => ({ id: x.id, name: x.name, uri: x.uri, cover: x.images?.[0]?.url ?? null, tracks: x.tracks?.total ?? 0, owner: x.owner?.display_name ?? "" })));
     }));
     http.get("/recent", wrap(async (c) => {
+      if (providerId() === "ha") return c.json([]);
       const r = await api<{ items: Array<{ track: Record<string, unknown>; context?: { uri: string; type: string } | null }> }>("/me/player/recently-played?limit=20");
       const seen = new Set<string>();
       const out: Array<Track & { context: { uri: string; type: string } | null }> = [];
@@ -360,7 +415,7 @@ export default defineModule<Settings>({
     const searchCache = new Map<string, { at: number; value: unknown }>();
     http.get("/search", wrap(async (c) => {
       const q = c.req.query("q")?.trim().toLowerCase();
-      if (!q) return c.json({ tracks: [], albums: [], artists: [], playlists: [] });
+      if (!q || providerId() === "ha") return c.json({ tracks: [], albums: [], artists: [], playlists: [] });
       const types = (c.req.query("types") ?? "track,album,artist,playlist").split(",").filter((t) => ["track", "album", "artist", "playlist"].includes(t)).join(",") || "track";
       const limit = Math.min(10, Math.max(1, Number(c.req.query("limit") ?? 8)));
       const key = `${types}|${limit}|${q}`;

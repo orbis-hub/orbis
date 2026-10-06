@@ -67,5 +67,6 @@
     "storage",
     "scheduler",
     "notifications"
-  ]
+  ],
+  "languages": ["en", "de"]
 }

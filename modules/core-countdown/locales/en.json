@@ -1,0 +1,17 @@
+{
+  "manifest.name": "Countdown",
+  "manifest.description": "Big number counting down to a date: vacation, birthday, deadline. Client-only, one widget per countdown.",
+  "widget.countdown.name": "Countdown",
+
+  "widget.countdown.empty": "set a date",
+  "widget.countdown.emptyHint": "⋯ → configure",
+  "widget.countdown.invalid": "invalid date or time",
+  "defaultTitle": "countdown",
+  "today": "today!",
+  "unit.hours": { "one": "hour", "other": "hours" },
+  "unit.days": { "one": "day", "other": "days" },
+  "unit.weeksDays": "{weeks}w {days}d",
+  "ago": "ago",
+  "toGo": "to go",
+  "turns": "turns {count}"
+}

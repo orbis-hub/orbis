@@ -35,8 +35,13 @@ export const discoveryMatcherSchema = z.object({
   hostname: z.string().optional(),
 });
 
+/**
+ * `network:fetch` – outbound http(s) via `ctx.fetch` to public hosts; loopback, link-local, private (rfc1918/ula) and
+ * cloud-metadata addresses are refused. `network:lan` – additionally allows those local ranges (home-assistant, shelly…).
+ */
 export const permissionSchema = z.enum([
   "network:fetch",
+  "network:lan",
   "network:scan",
   "devices:read",
   "devices:claim",
@@ -72,6 +77,12 @@ export const manifestSchema = z.object({
   /** Module http paths (prefix match, relative to /api/m/<id>) that need no session, e.g. oauth callbacks. */
   publicPaths: z.array(z.string().regex(/^\//)).default([]),
   eink: z.boolean().default(false),
+  /**
+   * Languages this module ships translations for (bcp-47 tags like "en", "de", "pt-BR"). Each needs a
+   * `locales/<lang>.json` next to module.json; `orbis-module build` copies them to `dist/locales/`.
+   * English is the fallback and should be present whenever the list is non-empty.
+   */
+  languages: z.array(z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/)).default([]),
 });
 
 export type ModuleManifest = z.infer<typeof manifestSchema>;

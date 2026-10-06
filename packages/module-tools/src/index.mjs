@@ -2,7 +2,7 @@
 // Server bundle: ESM for node, everything bundled except node builtins (runs inside the hub via import()).
 // Client bundle: ESM for the browser; react, react-dom, react/jsx-runtime, @orbis/sdk/client and @orbis/ui are
 // NOT bundled but resolved at runtime from window.__ORBIS__ so there is exactly one React instance.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as esbuild from "esbuild";
 import * as tar from "tar";
@@ -50,7 +50,7 @@ const NAMED_EXPORTS = {
   "react-dom": ["createPortal", "flushSync", "version"],
   "react/jsx-runtime": ["jsx", "jsxs", "Fragment"],
   "react/jsx-dev-runtime": ["jsx", "jsxs", "jsxDEV", "Fragment"],
-  "@orbis/sdk/client": ["host", "defineClient", "useModule", "useModuleApi", "useModuleEvents", "useModuleSettings", "useModuleDevices", "useModuleQuery", "getModuleContext"],
+  "@orbis/sdk/client": ["host", "defineClient", "useModule", "useModuleApi", "useModuleEvents", "useModuleSettings", "useModuleDevices", "useModuleQuery", "getModuleContext", "useT", "createTranslator", "localizeManifest", "languageChain", "pickLanguage"],
   "@orbis/ui": [
     "cx", "Window", "Button", "Icon", "iconNames", "Tabs", "Tab", "Field", "Input", "Textarea", "Select", "Checkbox", "Switch", "Chip",
     "Spinner", "Empty", "Modal", "Menu", "ToastProvider", "useToast", "Hr", "Kbd", "useStableId", "ICONS",
@@ -114,6 +114,7 @@ export async function buildModule(dir, { watch = false, minify = !watch, onRebui
     });
   }
   if (builds.length === 0) throw new Error("manifest.entry has neither server nor client");
+  copyLocales(dir, manifest);
 
   if (watch) {
     const ctxs = await Promise.all(
@@ -134,6 +135,31 @@ export async function buildModule(dir, { watch = false, minify = !watch, onRebui
   await Promise.all(builds.map((b) => esbuild.build(b)));
   console.log(`[orbis-module] built ${manifest.id}@${manifest.version} → dist/`);
   return null;
+}
+
+/** locales/<lang>.json → dist/locales/<lang>.json, validated against manifest.languages. */
+export function copyLocales(dir, manifest) {
+  const src = join(dir, "locales");
+  const langs = manifest.languages ?? [];
+  if (!existsSync(src)) {
+    if (langs.length) console.warn(`[orbis-module] manifest.languages lists ${langs.join(", ")} but there is no locales/ folder`);
+    return;
+  }
+  const out = join(dir, "dist", "locales");
+  mkdirSync(out, { recursive: true });
+  const files = readdirSync(src).filter((f) => f.endsWith(".json"));
+  for (const f of files) {
+    const lang = f.slice(0, -5);
+    try {
+      JSON.parse(readFileSync(join(src, f), "utf8"));
+    } catch (err) {
+      throw new Error(`locales/${f} is not valid json: ${err.message}`);
+    }
+    if (langs.length && !langs.includes(lang)) console.warn(`[orbis-module] locales/${f} exists but "${lang}" is not in manifest.languages`);
+    copyFileSync(join(src, f), join(out, f));
+  }
+  for (const l of langs) if (!files.includes(`${l}.json`)) console.warn(`[orbis-module] manifest.languages has "${l}" but locales/${l}.json is missing`);
+  if (files.length) console.log(`[orbis-module] locales: ${files.map((f) => f.slice(0, -5)).join(", ")}`);
 }
 
 /** Create module.tgz with module.json, dist/, README and optional assets/ – what a GitHub release ships. */

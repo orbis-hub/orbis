@@ -1,0 +1,46 @@
+{
+  "manifest.name": "Feeds",
+  "manifest.description": "RSS-/Atom-Schlagzeilen neben deinem Wetter. Ein paar Feeds, ein Widget mit dem Neuesten, eine Seite zum Überfliegen und Gelesen-Markieren.",
+  "widget.headlines.name": "Schlagzeilen",
+  "widget.headlines.description": "Neueste Einträge aus allen Feeds (oder einem Feed).",
+  "page.feeds.name": "Feeds",
+
+  "common.loading": "lade…",
+  "common.add": "hinzufügen",
+  "common.refresh": "aktualisieren",
+
+  "ago.minutes": "{count}min",
+  "ago.hours": "{count}h",
+  "ago.days": "{count}d",
+
+  "widget.empty.title": "nichts hier",
+  "widget.empty.body": "füg feeds auf der feeds-seite hinzu.",
+
+  "page.feeds": "feeds",
+  "page.all": "alle",
+  "page.add_feed": "feed hinzufügen",
+  "page.url_placeholder": "feed- oder seiten-url",
+  "page.remove_confirm": "diesen feed entfernen?",
+  "page.remove_selected": "ausgewählten entfernen",
+  "page.feed": "feed",
+  "page.all_feeds": "alle feeds",
+  "page.unread_only": "nur ungelesene",
+  "page.mark_all_read": "alle als gelesen markieren",
+  "page.all_read": "alles gelesen",
+  "page.nothing": "nichts",
+
+  "status.needs_feeds": "füg ein, zwei feeds hinzu",
+  "status.failing": { "one": "{count} feed fehlerhaft", "other": "{count} feeds fehlerhaft" },
+  "status.action": "feeds",
+
+  "error.url_required": "url fehlt",
+  "error.already_added": "feed ist schon drin",
+
+  "eink.empty": "noch keine einträge",
+  "error.invalid_url": "das ist keine gültige http(s)-url",
+  "error.unknown_feed": "unbekannter feed",
+  "error.unknown_item": "unbekannter eintrag",
+  "page.last_ok": "zuletzt ok {time}",
+  "page.last_error": "fehlerhaft seit {time}: {error}",
+  "page.never": "nie"
+}

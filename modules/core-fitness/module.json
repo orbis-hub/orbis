@@ -6,6 +6,7 @@
   "author": "orbis",
   "icon": "heart",
   "minHub": "0.1.0",
+  "languages": ["en", "de"],
   "entry": {
     "server": "dist/server.js",
     "client": "dist/client.js"
@@ -106,7 +107,7 @@
       "stravaClientSecret": {
         "type": "string",
         "title": "Strava client secret",
-        "format": "password"
+        "format": "secret"
       },
       "units": {
         "type": "string",

@@ -1,0 +1,55 @@
+{
+  "manifest.name": "Wetter",
+  "manifest.description": "Aktuelles Wetter und Vorhersage von Open-Meteo. Kein API-Key nötig.",
+  "widget.current.name": "Aktuelles Wetter",
+  "widget.current.description": "Temperatur, Wetterlage und ein paar Details für einen Ort.",
+  "widget.forecast.name": "Vorhersage",
+  "widget.forecast.description": "Die nächsten Tage auf einen Blick.",
+  "page.weather.name": "Wetter",
+
+  "common.refresh": "aktualisieren",
+  "common.remove": "entfernen",
+  "common.today": "heute",
+
+  "status.fetching": "hole wetter",
+
+  "condition.clear": "klar",
+  "condition.mostly_clear": "überwiegend klar",
+  "condition.partly_cloudy": "teils bewölkt",
+  "condition.overcast": "bedeckt",
+  "condition.fog": "nebel",
+  "condition.drizzle": "nieselregen",
+  "condition.rain": "regen",
+  "condition.snow": "schnee",
+  "condition.rain_showers": "regenschauer",
+  "condition.snow_showers": "schneeschauer",
+  "condition.thunderstorm": "gewitter",
+  "condition.cloudy": "bewölkt",
+
+  "current.feels": "gefühlt {temp}°",
+  "current.humidity": "{value}% rf",
+
+  "page.updated": "aktualisiert {time}",
+  "page.now": "jetzt · {name}",
+  "page.next_hours": "nächste stunden",
+  "page.hour": "{hour}h",
+  "page.seven_days": "7 tage",
+  "page.source": "daten: open-meteo.com",
+
+  "settings.locations": "orte",
+  "settings.locations_hint": "der erste ist der standard. widgets können per id einen anderen wählen.",
+  "settings.locations_empty": "noch keiner – such unten",
+  "settings.add_place": "ort hinzufügen",
+  "settings.city_placeholder": "stadtname",
+  "settings.units": "einheiten",
+  "settings.units_metric": "metrisch",
+  "settings.units_imperial": "imperial",
+  "settings.refresh": "aktualisieren (min)",
+  "settings.no_location": "ohne ort hier wird der ort des hubs aus den einstellungen genommen (Würzburg, solange keiner gesetzt ist).",
+
+  "eink.feels": "{name} · gefühlt {temp}°",
+  "eink.details": "{min}° / {max}° · {wind} {unit} · {humidity}% rf",
+  "error.unknown_location": "unbekannte orts-id \"{id}\" – siehe /locations",
+  "error.geocode": "die ortssuche ist gerade nicht erreichbar ({message})",
+  "settings.invalid_line": "keine gültige zeile: id=Name@lat,lon mit lat −90…90 und lon −180…180"
+}

@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
-import { defineClient, useModuleEvents, useModuleQuery, type PageProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModule, useModuleEvents, useModuleQuery, useT, type PageProps, type WidgetProps } from "@orbis/sdk/client";
 import { Chip, Icon, Window } from "@orbis/ui";
 import type { Stats } from "./server";
 
-const gb = (b: number) => `${(b / 1024 / 1024 / 1024).toFixed(1)} gb`;
-const mb = (b: number) => `${Math.round(b / 1024 / 1024)} mb`;
-const up = (sec: number) => (sec > 86400 ? `${Math.floor(sec / 86400)}d ${Math.floor((sec % 86400) / 3600)}h` : sec > 3600 ? `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m` : `${Math.floor(sec / 60)}m`);
+/** locale-aware size / uptime formatters */
+function useFmt() {
+  const t = useT();
+  const { locale } = useModule();
+  const num = (v: number, digits: number) => v.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return {
+    t,
+    gb: (b: number) => t("unit.gb", { value: num(b / 1024 / 1024 / 1024, 1) }),
+    mb: (b: number) => t("unit.mb", { value: Math.round(b / 1024 / 1024) }),
+    up: (sec: number) => (sec > 86400 ? t("time.dh", { d: Math.floor(sec / 86400), h: Math.floor((sec % 86400) / 3600) }) : sec > 3600 ? t("time.hm", { h: Math.floor(sec / 3600), m: Math.floor((sec % 3600) / 60) }) : t("time.m", { m: Math.floor(sec / 60) })),
+    load: (v: number) => num(v, 2),
+  };
+}
 
 function useStats() {
   const q = useModuleQuery<Stats>("/stats", { intervalMs: 30_000 });
@@ -22,56 +32,80 @@ function Bar({ value, tone }: { value: number; tone?: string }) {
   );
 }
 
-function Metric({ label, value, pct, sub }: { label: string; value: string; pct?: number | null; sub?: string }) {
+/** height of one `.soft` line at --fs-meta (12px × 1.4) */
+const LINE = 17;
+/** label/value line + bar of one metric row (without its sub line) */
+const ROW_H = LINE + 3 + 6;
+
+function Metric({ label, value, pct, sub, showSub = true }: { label: string; value: string; pct?: number | null; sub?: string; showSub?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-        <span className="soft">{label}</span>
-        <span style={{ fontVariantNumeric: "tabular-nums" }}>{value}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }} title={showSub ? undefined : sub}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, minWidth: 0 }}>
+        <span className="soft" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        <span style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", flex: "none" }}>{value}</span>
       </div>
       {pct !== undefined && pct !== null ? <Bar value={pct} /> : null}
-      {sub ? <div className="soft" style={{ fontSize: 10 }}>{sub}</div> : null}
+      {sub && showSub ? <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sub}>{sub}</div> : null}
     </div>
   );
 }
 
-function OverviewWidget({ config }: WidgetProps<{ showModules?: boolean }>) {
+function OverviewWidget({ config, size }: WidgetProps<{ showModules?: boolean }>) {
   const s = useStats();
-  if (!s) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
+  const { t, gb, mb, up, load } = useFmt();
+  if (!s) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
+  const rows = [
+    { label: t("metric.cpu"), value: `${s.cpuPercent}%`, pct: s.cpuPercent, sub: `${t("sub.cores", { count: s.cores })}${s.load ? ` · ${t("sub.load", { load: load(s.load[0]) })}` : ""}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}` },
+    { label: t("metric.memory"), value: `${s.memPercent}%`, pct: s.memPercent, sub: `${t("sub.of", { used: gb(s.memUsed), total: gb(s.memTotal) })} · ${t("sub.hub", { size: mb(s.processRss) })}` },
+    ...(s.diskPercent !== null ? [{ label: t("metric.disk"), value: `${s.diskPercent}%`, pct: s.diskPercent, sub: t("sub.of", { used: gb(s.diskUsed ?? 0), total: gb(s.diskTotal ?? 0) }) }] : []),
+  ];
+  // size is 0×0 until the frame has measured itself; until then assume the 3×3 default (≈140px high)
+  const h = size.height > 0 ? size.height : 140;
+  // the sub lines ("12 cores · load 0.00", "3.1 gb of 16 gb") only when every row fits with them (a 4-row widget);
+  // below that they move into the row's tooltip, and rows that still do not fit are dropped from the bottom
+  const showSub = h >= rows.length * (ROW_H + 3 + LINE) + 8 * rows.length + LINE;
+  const gap = showSub ? 8 : 6;
+  const shown = showSub ? rows : rows.slice(0, Math.max(1, Math.floor((h + gap) / (ROW_H + gap))));
+  const rowsH = shown.length * (showSub ? ROW_H + 3 + LINE : ROW_H) + (shown.length - 1) * gap;
+  const showUptime = h - rowsH - gap >= LINE;
+  const footer = [t("sub.up", { uptime: up(s.uptimeSec) }), ...(config.showModules !== false ? [t("sub.modules", { count: s.modules })] : []), ...(s.dbBytes ? [t("sub.db", { size: mb(s.dbBytes) })] : [])].join(" · ");
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}>
-      <Metric label="cpu" value={`${s.cpuPercent}%`} pct={s.cpuPercent} sub={`${s.cores} cores · load ${s.load[0].toFixed(2)}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`} />
-      <Metric label="memory" value={`${s.memPercent}%`} pct={s.memPercent} sub={`${gb(s.memUsed)} of ${gb(s.memTotal)} · hub ${mb(s.processRss)}`} />
-      {s.diskPercent !== null ? <Metric label="disk" value={`${s.diskPercent}%`} pct={s.diskPercent} sub={`${gb(s.diskUsed ?? 0)} of ${gb(s.diskTotal ?? 0)}`} /> : null}
-      <div className="soft" style={{ fontSize: 11, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <span>up {up(s.uptimeSec)}</span>
-        {config.showModules !== false ? <span>· {s.modules} modules</span> : null}
-        {s.dbBytes ? <span>· db {mb(s.dbBytes)}</span> : null}
-      </div>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap, minWidth: 0, overflow: "hidden" }} title={showUptime ? undefined : footer}>
+      {shown.map((m) => (
+        <Metric key={m.label} label={m.label} value={m.value} pct={m.pct} sub={m.sub} showSub={showSub} />
+      ))}
+      {showUptime ? (
+        <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={footer}>
+          {footer}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function GaugeWidget({ config, size }: WidgetProps<{ metric?: string }>) {
   const s = useStats();
-  if (!s) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
+  const { t, up, load } = useFmt();
+  if (!s) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
   const m = config.metric ?? "cpu";
   const map: Record<string, { label: string; value: string; pct: number | null; icon: string }> = {
-    cpu: { label: "cpu", value: `${s.cpuPercent}%`, pct: s.cpuPercent, icon: "cpu" },
-    memory: { label: "memory", value: `${s.memPercent}%`, pct: s.memPercent, icon: "chip" },
-    disk: { label: "disk", value: s.diskPercent !== null ? `${s.diskPercent}%` : "–", pct: s.diskPercent, icon: "hdd" },
-    uptime: { label: "uptime", value: up(s.uptimeSec), pct: null, icon: "clock" },
-    temperature: { label: "cpu temp", value: s.tempC !== null ? `${s.tempC}°C` : "n/a", pct: s.tempC !== null ? Math.min(100, s.tempC) : null, icon: "thermometer" },
-    load: { label: "load 1m", value: s.load[0].toFixed(2), pct: Math.min(100, (s.load[0] / s.cores) * 100), icon: "zap" },
+    cpu: { label: t("metric.cpu"), value: `${s.cpuPercent}%`, pct: s.cpuPercent, icon: "cpu" },
+    memory: { label: t("metric.memory"), value: `${s.memPercent}%`, pct: s.memPercent, icon: "chip" },
+    disk: { label: t("metric.disk"), value: s.diskPercent !== null ? `${s.diskPercent}%` : "–", pct: s.diskPercent, icon: "hdd" },
+    uptime: { label: t("metric.uptime"), value: up(s.uptimeSec), pct: null, icon: "clock" },
+    temperature: { label: t("metric.cpuTemp"), value: s.tempC !== null ? `${s.tempC}°C` : t("common.na"), pct: s.tempC !== null ? Math.min(100, s.tempC) : null, icon: "thermometer" },
+    load: { label: t("metric.load1m"), value: s.load ? load(s.load[0]) : t("common.na"), pct: s.load ? Math.min(100, (s.load[0] / s.cores) * 100) : null, icon: "zap" },
   };
   const g = map[m] ?? map.cpu!;
-  const big = Math.max(20, Math.min(size.height * 0.4, size.width / Math.max(3, g.value.length * 0.7)));
+  // the number takes what is left under the label line (and above the bar), capped by the width (pixel font ≈ 0.7em per glyph)
+  const measured = size.width > 0 && size.height > 0;
+  const big = measured ? Math.max(20, Math.min(size.height - LINE - 4 - (g.pct !== null ? 10 : 0), size.width / Math.max(3, g.value.length * 0.7))) : 28;
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
-      <div className="soft" style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}>
-        <Icon name={g.icon} size={12} /> {g.label}
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 4, minWidth: 0, overflow: "hidden" }}>
+      <div className="soft" style={{ fontSize: "var(--fs-meta)", display: "flex", alignItems: "center", gap: 6, minWidth: 0 }} title={g.label}>
+        <Icon name={g.icon} size={12} style={{ flex: "none" }} /> <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
       </div>
-      <div className="pixel" style={{ fontSize: big, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{g.value}</div>
+      <div className="pixel" style={{ fontSize: big, lineHeight: 1, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", overflow: "hidden" }}>{g.value}</div>
       {g.pct !== null ? <Bar value={g.pct} /> : null}
     </div>
   );
@@ -79,13 +113,14 @@ function GaugeWidget({ config, size }: WidgetProps<{ metric?: string }>) {
 
 function StatusPage(_p: PageProps) {
   const s = useStats();
+  const { t, gb, mb, up, load } = useFmt();
   const hist = useModuleQuery<Array<{ t: string; cpu: number; mem: number }>>("/history", { intervalMs: 15_000 });
   const [, tick] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => tick((x) => x + 1), 5000);
-    return () => clearInterval(t);
+    const iv = setInterval(() => tick((x) => x + 1), 5000);
+    return () => clearInterval(iv);
   }, []);
-  if (!s) return <span className="soft pixel">loading…</span>;
+  if (!s) return <span className="soft pixel">{t("common.loading")}</span>;
   const pts = hist.data ?? [];
   const W = 600, H = 80;
   const path = (key: "cpu" | "mem", color: string) =>
@@ -98,26 +133,26 @@ function StatusPage(_p: PageProps) {
     ) : null;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14, alignItems: "start" }}>
-      <Window title="this hub">
+      <Window title={t("page.status.thisHub")}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             <Chip>{s.hostname}</Chip><Chip>{s.platform} {s.arch}</Chip><Chip>node {s.node}</Chip><Chip>orbis {s.hubVersion}</Chip>
           </div>
-          <Metric label="cpu" value={`${s.cpuPercent}%`} pct={s.cpuPercent} sub={`${s.cores} cores · load ${s.load.map((x) => x.toFixed(2)).join(" / ")}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`} />
-          <Metric label="memory" value={`${s.memPercent}%`} pct={s.memPercent} sub={`${gb(s.memUsed)} of ${gb(s.memTotal)} · hub process ${mb(s.processRss)}`} />
-          {s.diskPercent !== null ? <Metric label="disk (data dir)" value={`${s.diskPercent}%`} pct={s.diskPercent} sub={`${gb(s.diskUsed ?? 0)} of ${gb(s.diskTotal ?? 0)}`} /> : null}
-          <div className="soft" style={{ fontSize: 12 }}>system up {up(s.uptimeSec)} · hub up {up(s.processUptimeSec)} · {s.modules} modules loaded{s.dbBytes ? ` · database ${mb(s.dbBytes)}` : ""}</div>
+          <Metric label={t("metric.cpu")} value={`${s.cpuPercent}%`} pct={s.cpuPercent} sub={`${t("sub.cores", { count: s.cores })}${s.load ? ` · ${t("sub.load", { load: s.load.map(load).join(" / ") })}` : ""}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`} />
+          <Metric label={t("metric.memory")} value={`${s.memPercent}%`} pct={s.memPercent} sub={`${t("sub.of", { used: gb(s.memUsed), total: gb(s.memTotal) })} · ${t("sub.hubProcess", { size: mb(s.processRss) })}`} />
+          {s.diskPercent !== null ? <Metric label={t("metric.diskDataDir")} value={`${s.diskPercent}%`} pct={s.diskPercent} sub={t("sub.of", { used: gb(s.diskUsed ?? 0), total: gb(s.diskTotal ?? 0) })} /> : null}
+          <div className="soft" style={{ fontSize: 12 }}>{t("page.status.systemUp", { system: up(s.uptimeSec), hub: up(s.processUptimeSec) })} · {t("page.status.modulesLoaded", { count: s.modules })}{s.dbBytes ? ` · ${t("page.status.database", { size: mb(s.dbBytes) })}` : ""}</div>
         </div>
       </Window>
-      <Window title="last 30 minutes">
+      <Window title={t("page.status.last30")}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} shapeRendering="crispEdges" style={{ display: "block", border: "1.5px solid var(--line)", background: "var(--paper-2)" }}>
           {path("mem", "var(--accent-2)")}
           {path("cpu", "var(--accent)")}
         </svg>
-        <div className="soft" style={{ fontSize: 11, marginTop: 6, display: "flex", gap: 12 }}>
-          <span><i className="status-dot" style={{ background: "var(--accent)", borderWidth: 0, width: 8, height: 8 }} /> cpu</span>
-          <span><i className="status-dot" style={{ background: "var(--accent-2)", borderWidth: 0, width: 8, height: 8 }} /> memory</span>
-          <span style={{ marginLeft: "auto" }}>sampled every 5 s</span>
+        <div className="soft" style={{ fontSize: "var(--fs-meta)", marginTop: 6, display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <span><i className="status-dot" style={{ background: "var(--accent)", borderWidth: 0, width: 8, height: 8 }} /> {t("metric.cpu")}</span>
+          <span><i className="status-dot" style={{ background: "var(--accent-2)", borderWidth: 0, width: 8, height: 8 }} /> {t("metric.memory")}</span>
+          <span style={{ marginLeft: "auto" }}>{t("page.status.sampled")}</span>
         </div>
       </Window>
     </div>

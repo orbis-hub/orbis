@@ -15,7 +15,8 @@ export type Stats = {
   processUptimeSec: number;
   cpuPercent: number;
   cores: number;
-  load: [number, number, number];
+  /** 1/5/15 min load average; null where the os has none (windows always reports 0 0 0) */
+  load: [number, number, number] | null;
   memTotal: number;
   memUsed: number;
   memPercent: number;
@@ -81,7 +82,7 @@ export default defineModule({
         processUptimeSec: Math.round(process.uptime()),
         cpuPercent,
         cores: cpus.length,
-        load: os.loadavg() as [number, number, number],
+        load: process.platform === "win32" ? null : (os.loadavg() as [number, number, number]),
         memTotal,
         memUsed,
         memPercent: Math.round((memUsed / memTotal) * 100),
@@ -107,14 +108,15 @@ export default defineModule({
 
     einkRender = (req) => {
       const s = last;
-      if (!s) return { type: "text", text: "no data yet", size: 12 };
-      const fmtUp = (sec: number) => (sec > 86400 ? `${Math.floor(sec / 86400)}d ${Math.floor((sec % 86400) / 3600)}h` : `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`);
+      const t = ctx.i18n.t;
+      if (!s) return { type: "text", text: t("eink.noData"), size: 12 };
+      const fmtUp = (sec: number) => (sec > 86400 ? t("time.dh", { d: Math.floor(sec / 86400), h: Math.floor((sec % 86400) / 3600) }) : t("time.hm", { h: Math.floor(sec / 3600), m: Math.floor((sec % 3600) / 60) }));
       const row = (label: string, v: number | null, text: string) => ({ type: "col" as const, gap: 2, children: [{ type: "row" as const, justify: "between" as const, children: [{ type: "text" as const, text: label, size: 12, pixel: false, gray: 0.5 }, { type: "text" as const, text, size: 12, pixel: false }] }, ...(v !== null ? [{ type: "bar" as const, value: v, height: 6 }] : [])] });
       return {
         type: "col",
         grow: 1,
         gap: 6,
-        children: [row("cpu", s.cpuPercent, `${s.cpuPercent}%`), row("memory", s.memPercent, `${s.memPercent}%`), ...(s.diskPercent !== null ? [row("disk", s.diskPercent, `${s.diskPercent}%`)] : []), { type: "text", text: `up ${fmtUp(s.uptimeSec)}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`, size: 11, pixel: false, gray: 0.5 }],
+        children: [row(t("metric.cpu"), s.cpuPercent, `${s.cpuPercent}%`), row(t("metric.memory"), s.memPercent, `${s.memPercent}%`), ...(s.diskPercent !== null ? [row(t("metric.disk"), s.diskPercent, `${s.diskPercent}%`)] : []), { type: "text", text: `${t("sub.up", { uptime: fmtUp(s.uptimeSec) })}${s.tempC !== null ? ` · ${s.tempC}°C` : ""}`, size: 11, pixel: false, gray: 0.5 }],
       };
     };
   },

@@ -3,19 +3,22 @@
 import type { Dashboard, Device, EinkDisplay, HubEvent, InstalledModule, Notification, RegistryEntry, WidgetInstance } from "@orbis/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { hubFetch, subscribeHub } from "./hub";
+import { hubFetch, isUnauthorized, subscribeHub } from "./hub";
 
-export type AuthStatus = { setup: boolean; authenticated: boolean; user: { id: string; name: string; role: string } | null; hubVersion: string };
+export type AuthStatus = { setup: boolean; authenticated: boolean; user: { id: string; name: string; role: string } | null; hubVersion: string; language?: string; locale?: string };
 export type HubSettings = {
   hubName: string;
+  /** ui language, bcp-47 ("en", "de") */
+  language: string;
   locale: string;
   timezone: string;
   theme: "system" | "light" | "dark";
-  registries: string[];
   location: { lat: number; lon: number; name: string } | null;
   units: "metric" | "imperial";
-  mutedModules: string[];
-  notifyChannels: {
+  /* admin-only keys: members get the safe subset from GET /api/settings (`registries: []` placeholder, no channels, no muted list) */
+  registries?: string[];
+  mutedModules?: string[];
+  notifyChannels?: {
     ntfy?: { server?: string; topic: string; token?: string; minLevel?: "info" | "warning" | "urgent" };
     telegram?: { botToken: string; chatId: string; minLevel?: "info" | "warning" | "urgent" };
   };
@@ -86,6 +89,11 @@ export function useHubEventsSync() {
           break;
         case "settings:changed":
           void qc.invalidateQueries({ queryKey: qk.settings });
+          if (ev.key === "language" || ev.key === "locale") {
+            // language lives in the public auth status; module manifests come back translated
+            void qc.invalidateQueries({ queryKey: qk.auth });
+            void qc.invalidateQueries({ queryKey: qk.modules });
+          }
           break;
         case "users:changed":
           void qc.invalidateQueries({ queryKey: qk.users });
@@ -203,7 +211,13 @@ export function useUserMutations() {
 /* ---------- e-ink displays ---------- */
 
 export function useEinkDisplays() {
-  return useQuery({ queryKey: qk.eink, queryFn: () => hubFetch<EinkDisplay[]>("/api/eink/displays"), staleTime: 30_000, refetchInterval: 60_000 });
+  return useQuery({
+    queryKey: qk.eink,
+    queryFn: () => hubFetch<EinkDisplay[]>("/api/eink/displays"),
+    staleTime: 30_000,
+    // stop polling once the session is gone (every further tick would be another 401)
+    refetchInterval: (query) => (isUnauthorized(query.state.error) ? false : 60_000),
+  });
 }
 
 export function useEinkMutations() {

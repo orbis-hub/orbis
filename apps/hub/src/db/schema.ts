@@ -139,10 +139,28 @@ export const notifications = sqliteTable("notifications", {
   level: text("level").notNull().default("info"),
   icon: text("icon"),
   createdAt: text("created_at").notNull(),
+  /** legacy hub-wide read flag; since the per-user migration the read state lives in notification_reads */
   readAt: text("read_at"),
+  /** null = everyone on the hub */
+  userId: text("user_id"),
 });
 
 migrations.push(
   `CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, module TEXT NOT NULL, key TEXT, title TEXT NOT NULL, body TEXT, url TEXT, level TEXT NOT NULL DEFAULT 'info', icon TEXT, created_at TEXT NOT NULL, read_at TEXT)`,
   `CREATE INDEX IF NOT EXISTS notifications_key ON notifications(module, key)`,
+);
+
+/** per-user read state: a shared notification (user_id null) read by mia stays unread for everyone else */
+export const notificationReads = sqliteTable("notification_reads", {
+  notificationId: text("notification_id").notNull(),
+  userId: text("user_id").notNull(),
+  readAt: text("read_at").notNull(),
+});
+
+// v3: notifications per user (#41). rows that were read hub-wide count as read for every existing account.
+migrations.push(
+  `ALTER TABLE notifications ADD COLUMN user_id TEXT`,
+  `CREATE INDEX IF NOT EXISTS notifications_user ON notifications(user_id)`,
+  `CREATE TABLE IF NOT EXISTS notification_reads (notification_id TEXT NOT NULL, user_id TEXT NOT NULL, read_at TEXT NOT NULL, PRIMARY KEY (notification_id, user_id))`,
+  `INSERT OR IGNORE INTO notification_reads (notification_id, user_id, read_at) SELECT n.id, u.id, n.read_at FROM notifications n, users u WHERE n.read_at IS NOT NULL`,
 );

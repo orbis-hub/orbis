@@ -57,13 +57,13 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .nav-item:hover { background: var(--accent-soft); color: var(--ink); text-decoration: none; }
-.nav-item[aria-current="page"] { background: var(--paper-2); border-color: var(--line); color: var(--accent); box-shadow: 2px 2px 0 var(--line); }
+.nav-item[aria-current="page"] { background: var(--paper-2); border-color: var(--line); color: var(--accent-ink); box-shadow: 2px 2px 0 var(--line); }
 .nav-item .ico { flex: none; width: 16px; height: 16px; }
 .collapsed .nav-item { justify-content: center; padding: 8px 0; }
 .collapsed .nav-item span, .collapsed .nav-group, .collapsed .wordmark small { display: none; }
-.nav-group { font-family: var(--font-pixel); font-size: 10px; letter-spacing: 0.08em; text-transform: lowercase; color: var(--ink-soft); padding: 8px 10px 2px; }
+.nav-group { font-family: var(--font-pixel); font-size: var(--fs-meta); letter-spacing: 0.08em; text-transform: lowercase; color: var(--ink-soft); padding: 8px 10px 2px; }
 .wordmark { font-family: var(--font-pixel); font-size: 20px; letter-spacing: 0.06em; display: flex; align-items: baseline; gap: 6px; padding: 0 6px 4px; }
-.wordmark small { font-size: 10px; color: var(--ink-soft); letter-spacing: 0.1em; }
+.wordmark small { font-size: var(--fs-meta); color: var(--ink-soft); letter-spacing: 0.1em; }
 .topbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px 0; min-height: 44px; }
 .main { padding: 12px 16px 24px; min-width: 0; }
 @media (min-width: 901px) { .main { padding: 16px 24px 32px; } .topbar { padding: 16px 24px 0; } }
@@ -75,9 +75,21 @@
 .editing .react-grid-item > .react-resizable-handle { opacity: 1; }
 .react-grid-item.react-draggable-dragging, .react-grid-item.resizing { z-index: 10; }
 .react-grid-item.react-draggable-dragging .win { box-shadow: 6px 6px 0 var(--line); }
-.widget { height: 100%; }
+.widget { height: 100%; min-width: 0; }
 .widget .win { height: 100%; }
-.widget .win-body { overflow: hidden; position: relative; }
+.widget .win-title { min-width: 0; }
+.widget .win-title .title { min-width: 0; overflow: hidden; }
+/* the body never grows the widget: content is clipped at the frame, and widgets can measure it (container queries) */
+.widget .win-body { overflow: hidden; position: relative; min-height: 0; min-width: 0; container: widget / inline-size; }
+/* empty states inside widgets: centred and clipped evenly instead of spilling out of a 2×2 frame */
+.widget .win-body .empty { height: 100%; min-height: 0; padding: 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: safe center; overflow: hidden; overflow-wrap: anywhere; }
+.widget .win-body .empty .pixel { font-size: 13px; margin-bottom: 2px; }
+@container widget (max-width: 180px) {
+  .widget .win-body .empty > svg { display: none; }
+  .widget .win-body .empty .pixel { font-size: var(--fs-meta); }
+}
+/* phones: add/edit are hidden because the stacked list (container < 640px, see Grid) cannot be edited anyway */
+@media (max-width: 671px) { .hide-phone { display: none !important; } }
 .editing .widget .win-title { cursor: grab; }
 .editing .widget .win-title:active { cursor: grabbing; }
 .editing .widget .win { outline: 1.5px dashed transparent; }

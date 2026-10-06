@@ -1,0 +1,58 @@
+{
+  "manifest.name": "Essensplan",
+  "manifest.description": "Wochenraster für Mittag- und Abendessen, eine Rezeptbox mit URL-Import (schema.org JSON-LD, deckt die meisten Food-Blogs ab) und „Zutaten dieser Woche auf die Einkaufsliste“.",
+  "widget.meals.name": "Essen heute",
+  "widget.meals.description": "Was es heute und morgen zum Mittag- und Abendessen gibt.",
+  "page.plan.name": "Essensplan",
+
+  "common.loading": "lädt…",
+  "common.today": "heute",
+  "common.tomorrow": "morgen",
+  "common.cancel": "abbrechen",
+  "common.delete": "löschen",
+
+  "widget.meals.empty": "nichts geplant",
+  "widget.meals.emptyHint": "öffne die essensplan-seite und füll die woche.",
+
+  "picker.searchRecipes": "rezepte suchen…",
+  "picker.noRecipes": "noch keine rezepte, importier eins unter dem raster.",
+  "picker.notePlaceholder": "oder einfach eine notiz: reste, essen gehen…",
+  "picker.set": "setzen",
+  "picker.clearSlot": "slot leeren",
+
+  "recipe.addedToast": { "one": "{count} zutat → {list}", "other": "{count} zutaten → {list}" },
+  "recipe.source": "quelle",
+  "recipe.ingredients": "zutaten",
+  "recipe.steps": "schritte",
+  "recipe.toShopping": "zutaten auf die einkaufsliste",
+  "recipe.ingredientsCount": { "one": "{count} zutat", "other": "{count} zutaten" },
+  "recipe.open": "rezept öffnen",
+
+  "new.importedToast": { "one": "„{title}“ importiert ({count} zutat)", "other": "„{title}“ importiert ({count} zutaten)" },
+  "new.importedNoneToast": "„{title}“ importiert, keine zutaten gefunden",
+  "import.noRecipeTitle": "kein rezept gefunden",
+  "import.noRecipeBody": "die seite hat keine rezeptdaten. „{title}“ trotzdem als leeres rezept speichern? zutaten kannst du später ergänzen.",
+  "import.anyway": "trotzdem speichern",
+  "new.urlPlaceholder": "rezept-url einfügen (die meisten food-blogs klappen)",
+  "new.import": "importieren",
+  "new.byHand": "von hand",
+  "new.titlePlaceholder": "titel",
+  "new.ingredientsPlaceholder": "eine zutat pro zeile\n200 g nudeln\n1 zwiebel",
+  "new.stepsPlaceholder": "schritte, einer pro zeile (optional)\nnudeln kochen\nzwiebel anbraten",
+  "new.servingsPlaceholder": "portionen",
+  "new.tagsPlaceholder": "tags, mit komma: schnell, vegetarisch",
+  "new.save": "rezept speichern",
+
+  "page.plan.nothingToAdd": "nichts hinzuzufügen (keine rezepte mit zutaten geplant)",
+  "page.plan.weekOf": "woche vom {date}",
+  "page.plan.prevWeek": "vorige woche",
+  "page.plan.nextWeek": "nächste woche",
+  "page.plan.thisWeek": "diese woche",
+  "page.plan.weekToShoppingTitle": "alle zutaten dieser woche auf die einkaufsliste setzen",
+  "page.plan.toShopping": "zur einkaufsliste",
+  "page.plan.recipes": "rezepte ({count})",
+  "page.plan.filter": "filtern",
+  "page.plan.noRecipes": "noch keine rezepte.",
+
+  "error.noRecipe": "auf der seite wurde kein rezept gefunden"
+}

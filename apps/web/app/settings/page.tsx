@@ -1,9 +1,11 @@
 "use client";
 
-import { Button, Chip, Field, Icon, Input, Select, useToast, Window } from "@orbis/ui";
-import { useEffect, useState } from "react";
+import { Button, Chip, Field, Icon, Input, Select, Textarea, useStableId, useToast, Window } from "@orbis/ui";
+import { useState } from "react";
+import { useConfirm } from "@/components/Confirm";
 import { Shell, ThemeToggle } from "@/components/Shell";
 import { getHubUrl, setHubUrl } from "@/lib/hub";
+import { LANGUAGES, useT } from "@/lib/i18n";
 import { isAdminRole, useAuthStatus, useModules, useNotificationMutations, usePatchSettings, useSettings, type HubSettings } from "@/lib/queries";
 import { getToken } from "@/lib/hub";
 
@@ -12,137 +14,167 @@ export default function SettingsPage() {
   const status = useAuthStatus();
   const patch = usePatchSettings();
   const toast = useToast();
+  // local edits are a patch on top of the loaded settings; nothing is copied into state when the data arrives
   const [form, setForm] = useState<Partial<HubSettings>>({});
-  const [registries, setRegistries] = useState("");
-  const [hub, setHub] = useState("");
-  useEffect(() => {
-    if (settings.data) {
-      setForm(settings.data);
-      setRegistries(settings.data.registries.join("\n"));
-    }
-  }, [settings.data]);
-  useEffect(() => setHub(getHubUrl() ?? ""), []);
+  const [registriesEdit, setRegistriesEdit] = useState<string | null>(null);
+  const [hub, setHub] = useState(() => (typeof window === "undefined" ? "" : (getHubUrl() ?? "")));
+  const t = useT();
+  const registriesId = useStableId("registries");
+  const tzId = useStableId("tz");
+  const hubId = useStableId("hub-url");
 
+  const admin = isAdminRole(status.data?.user?.role);
   const s = { ...settings.data, ...form } as HubSettings;
+  // members receive `registries: []` (or nothing at all from older hubs); only admins see and edit the list
+  const registries = registriesEdit ?? settings.data?.registries?.join("\n") ?? "";
   const save = () =>
     patch.mutate(
-      { ...form, registries: registries.split(/\s+/).map((x) => x.trim()).filter(Boolean) },
-      { onSuccess: () => toast("saved", "ok"), onError: (e) => toast(e.message, "bad") },
+      { ...form, ...(registriesEdit !== null ? { registries: registriesEdit.split(/\s+/).map((x) => x.trim()).filter(Boolean) } : {}) },
+      {
+        onSuccess: () => {
+          toast(t("settings.saved"), "ok");
+          setForm({});
+          setRegistriesEdit(null);
+        },
+        onError: (e) => toast(e.message, "bad"),
+      },
     );
 
   return (
     <Shell
       title={
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon name="sliders" size={16} style={{ color: "var(--accent)" }} /> settings
+          <Icon name="sliders" size={16} style={{ color: "var(--accent-ink)" }} /> {t("settings.title")}
         </span>
       }
     >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, alignItems: "start" }}>
-        <Window title="hub">
+        {/* PATCH /api/settings is admin-only: members get the values read-only, no save button, one hint line */}
+        <Window title={t("settings.hub.title")}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Field label="hub name">
-              <Input value={s.hubName ?? ""} onChange={(e) => setForm({ ...form, hubName: e.target.value })} />
+            {!admin ? <p className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("settings.readOnly")}</p> : null}
+            <Field label={t("settings.hub.name")}>
+              <Input value={s.hubName ?? ""} onChange={(e) => setForm({ ...form, hubName: e.target.value })} disabled={!admin} />
             </Field>
-            <Field label="locale" hint="date and number formatting, e.g. de-DE or en-GB">
-              <Input value={s.locale ?? ""} onChange={(e) => setForm({ ...form, locale: e.target.value })} />
+            <Field label={t("settings.hub.language")} hint={t("settings.hub.languageHint")}>
+              <Select value={s.language ?? "en"} onChange={(e) => setForm({ ...form, language: e.target.value })} disabled={!admin}>
+                {LANGUAGES.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.flag} {l.name}
+                  </option>
+                ))}
+              </Select>
             </Field>
-            <Field label="timezone">
-              <Input value={s.timezone ?? ""} onChange={(e) => setForm({ ...form, timezone: e.target.value })} list="tz" />
+            <Field label={t("settings.hub.locale")} hint={t("settings.hub.localeHint")}>
+              <Input value={s.locale ?? ""} onChange={(e) => setForm({ ...form, locale: e.target.value })} disabled={!admin} />
+            </Field>
+            <Field label={t("settings.hub.timezone")} htmlFor={tzId}>
+              <Input id={tzId} value={s.timezone ?? ""} onChange={(e) => setForm({ ...form, timezone: e.target.value })} list="tz" disabled={!admin} />
               <datalist id="tz">
                 {["Europe/Berlin", "Europe/London", "Europe/Vienna", "Europe/Zurich", "UTC", "America/New_York", "America/Los_Angeles", "Asia/Tokyo"].map((t) => (
                   <option key={t} value={t} />
                 ))}
               </datalist>
             </Field>
-            <Field label="units">
-              <Select value={s.units ?? "metric"} onChange={(e) => setForm({ ...form, units: e.target.value as HubSettings["units"] })}>
-                <option value="metric">metric (°C, km/h)</option>
-                <option value="imperial">imperial (°F, mph)</option>
+            <Field label={t("settings.hub.units")}>
+              <Select value={s.units ?? "metric"} onChange={(e) => setForm({ ...form, units: e.target.value as HubSettings["units"] })} disabled={!admin}>
+                <option value="metric">{t("settings.hub.units.metric")}</option>
+                <option value="imperial">{t("settings.hub.units.imperial")}</option>
               </Select>
             </Field>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <Button variant="primary" onClick={save} loading={patch.isPending}>
-                save
-              </Button>
-            </div>
+            {admin ? (
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button variant="primary" onClick={save} loading={patch.isPending}>
+                  {t("settings.save")}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </Window>
 
-        <Window title="location" dashed>
+        <Window title={t("settings.location.title")} dashed>
           <p className="soft" style={{ fontSize: 12, marginBottom: 10 }}>
-            default location for weather and other location-aware modules.
+            {t("settings.location.intro")}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Field label="name">
-              <Input value={s.location?.name ?? ""} onChange={(e) => setForm({ ...form, location: { lat: s.location?.lat ?? 0, lon: s.location?.lon ?? 0, name: e.target.value } })} placeholder="Würzburg" />
+            {!admin ? <p className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("settings.readOnly")}</p> : null}
+            <Field label={t("settings.location.name")}>
+              <Input value={s.location?.name ?? ""} onChange={(e) => setForm({ ...form, location: { lat: s.location?.lat ?? 0, lon: s.location?.lon ?? 0, name: e.target.value } })} placeholder="Würzburg" disabled={!admin} />
             </Field>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <Field label="latitude">
-                <Input type="number" step="any" value={s.location?.lat ?? ""} onChange={(e) => setForm({ ...form, location: { lat: Number(e.target.value), lon: s.location?.lon ?? 0, name: s.location?.name ?? "" } })} />
+              <Field label={t("settings.location.lat")}>
+                <Input type="number" step="any" value={s.location?.lat ?? ""} onChange={(e) => setForm({ ...form, location: { lat: Number(e.target.value), lon: s.location?.lon ?? 0, name: s.location?.name ?? "" } })} disabled={!admin} />
               </Field>
-              <Field label="longitude">
-                <Input type="number" step="any" value={s.location?.lon ?? ""} onChange={(e) => setForm({ ...form, location: { lat: s.location?.lat ?? 0, lon: Number(e.target.value), name: s.location?.name ?? "" } })} />
+              <Field label={t("settings.location.lon")}>
+                <Input type="number" step="any" value={s.location?.lon ?? ""} onChange={(e) => setForm({ ...form, location: { lat: s.location?.lat ?? 0, lon: Number(e.target.value), name: s.location?.name ?? "" } })} disabled={!admin} />
               </Field>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-              <Button
-                size="sm"
-                onClick={() =>
-                  navigator.geolocation?.getCurrentPosition(
-                    (p) => setForm({ ...form, location: { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), name: s.location?.name ?? "here" } }),
-                    () => toast("location unavailable", "bad"),
-                  )
-                }
-              >
-                <Icon name="map-pin" size={12} /> use my position
-              </Button>
-              <Button variant="primary" onClick={save} loading={patch.isPending}>
-                save
-              </Button>
-            </div>
+            {admin ? (
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    navigator.geolocation?.getCurrentPosition(
+                      (p) => setForm({ ...form, location: { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), name: s.location?.name ?? t("settings.location.here") } }),
+                      () => toast(t("settings.location.unavailable"), "bad"),
+                    )
+                  }
+                >
+                  <Icon name="map-pin" size={12} /> {t("settings.location.useMine")}
+                </Button>
+                <Button variant="primary" onClick={save} loading={patch.isPending}>
+                  {t("settings.save")}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </Window>
 
-        <Window title="appearance">
+        <Window title={t("settings.appearance.title")}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span style={{ fontSize: 12 }}>theme (this device)</span>
+            <span style={{ fontSize: 12 }}>{t("settings.appearance.theme")}</span>
             <ThemeToggle />
           </div>
         </Window>
 
-        <Window title="module registries">
-          <p className="soft" style={{ fontSize: 12, marginBottom: 10 }}>
-            one url per line. the official registry is always included.
-          </p>
-          <textarea className="input" value={registries} onChange={(e) => setRegistries(e.target.value)} rows={3} placeholder="https://raw.githubusercontent.com/you/orbis-registry/main/index.json" />
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-            <Button variant="primary" onClick={save} loading={patch.isPending}>
-              save
-            </Button>
-          </div>
-        </Window>
+        {admin ? (
+          <Window title={t("settings.registries.title")}>
+            <p className="soft" style={{ fontSize: 12, marginBottom: 10 }}>
+              {t("settings.registries.intro")}
+            </p>
+            <Field label={t("settings.registries.label")} htmlFor={registriesId}>
+              <Textarea id={registriesId} value={registries} onChange={(e) => setRegistriesEdit(e.target.value)} rows={3} placeholder="https://raw.githubusercontent.com/you/orbis-registry/main/index.json" />
+            </Field>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+              <Button variant="primary" onClick={save} loading={patch.isPending}>
+                {t("settings.save")}
+              </Button>
+            </div>
+          </Window>
+        ) : null}
 
-        {isAdminRole(status.data?.user?.role) ? <NotifyWindow /> : null}
-        {isAdminRole(status.data?.user?.role) ? <BackupWindow /> : null}
+        {admin ? <NotifyWindow /> : null}
+        {admin ? <BackupWindow /> : null}
 
-        <Window title="this device">
+        <Window title={t("settings.device.title")}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <Chip>hub v{status.data?.hubVersion ?? "?"}</Chip>
-              <Chip>user {status.data?.user?.name}</Chip>
+              <Chip>{t("settings.device.hub", { version: status.data?.hubVersion ?? "?" })}</Chip>
+              <Chip>{t("settings.device.user", { name: status.data?.user?.name ?? "" })}</Chip>
             </div>
-            <Field label="hub url" hint="change only if your hub moved; you'll need to sign in again">
+            <Field label={t("settings.device.hubUrl")} hint={t("settings.device.hubUrlHint")} htmlFor={hubId}>
               <div style={{ display: "flex", gap: 6 }}>
-                <Input value={hub} onChange={(e) => setHub(e.target.value)} />
+                <Input id={hubId} value={hub} onChange={(e) => setHub(e.target.value)} inputMode="url" />
                 <Button
                   size="sm"
                   onClick={() => {
                     setHubUrl(hub || null);
+                    // full reload on purpose: a different hub means fresh module bundles, caches and websocket
+                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
                     window.location.href = "/login/";
                   }}
                 >
-                  apply
+                  {t("settings.device.apply")}
                 </Button>
               </div>
             </Field>
@@ -155,6 +187,8 @@ export default function SettingsPage() {
 
 function BackupWindow() {
   const toast = useToast();
+  const t = useT();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const hub = getHubUrl() ?? "";
   async function download() {
@@ -170,13 +204,13 @@ function BackupWindow() {
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (err) {
-      toast(`backup failed: ${(err as Error).message}`, "bad");
+      toast(t("settings.backup.failed", { error: (err as Error).message }), "bad");
     } finally {
       setBusy(false);
     }
   }
   async function restore(file: File) {
-    if (!confirm(`restore "${file.name}"? this replaces every user, dashboard, module and setting on this hub with the backup.`)) return;
+    if (!(await confirm({ title: t("settings.backup.restore"), body: t("settings.backup.confirm", { name: file.name }), confirmLabel: t("settings.backup.restore"), danger: true }))) return;
     setBusy(true);
     try {
       const fd = new FormData();
@@ -184,29 +218,29 @@ function BackupWindow() {
       const res = await fetch(`${hub}/api/backup/restore`, { method: "POST", body: fd, headers: getToken() ? { authorization: `Bearer ${getToken()}` } : {}, credentials: "include" });
       const j = (await res.json()) as { ok?: boolean; error?: string; note?: string };
       if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
-      toast(`restored. ${j.note ?? ""}`, "ok");
+      toast(t("settings.backup.restored", { note: j.note ?? "" }), "ok");
       setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
-      toast(`restore failed: ${(err as Error).message}`, "bad");
+      toast(t("settings.backup.restoreFailed", { error: (err as Error).message }), "bad");
     } finally {
       setBusy(false);
     }
   }
   return (
-    <Window title="backup & restore">
+    <Window title={t("settings.backup.title")}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12 }}>
-        <p className="soft">one file with everything: users, dashboards, settings, installed modules and their data. keep it somewhere safe, it contains your calendar passwords and api tokens.</p>
+        <p className="soft">{t("settings.backup.intro")}</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Button variant="primary" loading={busy} onClick={download}>
-            <Icon name="download" size={12} /> download backup
+            <Icon name="download" size={12} /> {t("settings.backup.download")}
           </Button>
           <label className="btn" style={{ cursor: "pointer" }}>
-            <Icon name="upload" size={12} /> restore from file
-            <input type="file" accept=".tgz,.tar.gz,application/gzip" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} disabled={busy} />
+            <Icon name="upload" size={12} /> {t("settings.backup.restore")}
+            <input type="file" accept=".tgz,.tar.gz,application/gzip" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void restore(f); }} disabled={busy} />
           </label>
         </div>
-        <p className="soft" style={{ fontSize: 11 }}>
-          restoring keeps a copy of the current data next to the data folder (<code>data-before-restore</code>). scripted: <code>curl -H "authorization: Bearer …" {hub}/api/backup -o backup.tgz</code>
+        <p className="soft" style={{ fontSize: "var(--fs-meta)" }}>
+          {t("settings.backup.note", { folder: "before-restore-<timestamp>/" })} <code>{`curl -H "authorization: Bearer …" ${hub}/api/backup -o backup.tgz`}</code>
         </p>
       </div>
     </Window>
@@ -219,45 +253,54 @@ function NotifyWindow() {
   const modules = useModules();
   const nm = useNotificationMutations();
   const toast = useToast();
-  const [ch, setCh] = useState<HubSettings["notifyChannels"]>({});
-  const [muted, setMuted] = useState<string[]>([]);
-  useEffect(() => {
-    if (settings.data) {
-      setCh(settings.data.notifyChannels ?? {});
-      setMuted(settings.data.mutedModules ?? []);
-    }
-  }, [settings.data]);
-  const save = () => patch.mutate({ notifyChannels: ch, mutedModules: muted }, { onSuccess: () => toast("saved", "ok"), onError: (e) => toast(e.message, "bad") });
+  const t = useT();
+  // edits start as null = "show what the hub has"; the first keystroke forks a local copy
+  const [chEdit, setCh] = useState<NonNullable<HubSettings["notifyChannels"]> | null>(null);
+  const [mutedEdit, setMuted] = useState<string[] | null>(null);
+  const ch = chEdit ?? settings.data?.notifyChannels ?? {};
+  const muted = mutedEdit ?? settings.data?.mutedModules ?? [];
+  const save = () =>
+    patch.mutate(
+      { notifyChannels: ch, mutedModules: muted },
+      {
+        onSuccess: () => {
+          toast(t("settings.saved"), "ok");
+          setCh(null);
+          setMuted(null);
+        },
+        onError: (e) => toast(e.message, "bad"),
+      },
+    );
   const ntfy = ch.ntfy ?? { topic: "" };
   const tg = ch.telegram ?? { botToken: "", chatId: "" };
   return (
-    <Window title="notifications">
+    <Window title={t("settings.notify.title")}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12 }}>
-        <p className="soft">modules ring the bell in the app. forward them to your phone with one of these:</p>
-        <div className="pixel" style={{ fontSize: 12 }}>ntfy <span className="soft" style={{ fontFamily: "var(--font-mono)" }}>· free, install the ntfy app and subscribe to the same topic</span></div>
+        <p className="soft">{t("settings.notify.intro")}</p>
+        <div className="pixel" style={{ fontSize: 12 }}>ntfy <span className="soft" style={{ fontFamily: "var(--font-mono)" }}>{t("settings.notify.ntfyHint")}</span></div>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-          <Field label="topic"><Input value={ntfy.topic} onChange={(e) => setCh({ ...ch, ntfy: e.target.value ? { ...ntfy, topic: e.target.value } : undefined })} placeholder="orbis-luis-7f3a (pick something unguessable)" /></Field>
-          <Field label="min level">
+          <Field label={t("settings.notify.topic")}><Input value={ntfy.topic} onChange={(e) => setCh({ ...ch, ntfy: e.target.value ? { ...ntfy, topic: e.target.value } : undefined })} placeholder={t("settings.notify.topicPlaceholder")} /></Field>
+          <Field label={t("settings.notify.minLevel")}>
             <Select value={ntfy.minLevel ?? "info"} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, minLevel: e.target.value as "info" } })} disabled={!ntfy.topic}>
-              <option value="info">everything</option><option value="warning">warnings+</option><option value="urgent">urgent only</option>
+              <option value="info">{t("settings.notify.level.info")}</option><option value="warning">{t("settings.notify.level.warning")}</option><option value="urgent">{t("settings.notify.level.urgent")}</option>
             </Select>
           </Field>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-          <Field label="server (optional)"><Input value={ntfy.server ?? ""} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, server: e.target.value || undefined } })} placeholder="https://ntfy.sh" disabled={!ntfy.topic} /></Field>
-          <Field label="token (optional)"><Input type="password" value={ntfy.token ?? ""} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, token: e.target.value || undefined } })} disabled={!ntfy.topic} autoComplete="off" /></Field>
+          <Field label={t("settings.notify.server")}><Input value={ntfy.server ?? ""} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, server: e.target.value || undefined } })} placeholder="https://ntfy.sh" disabled={!ntfy.topic} /></Field>
+          <Field label={t("settings.notify.token")}><Input type="password" value={ntfy.token ?? ""} onChange={(e) => setCh({ ...ch, ntfy: { ...ntfy, token: e.target.value || undefined } })} disabled={!ntfy.topic} autoComplete="off" /></Field>
         </div>
-        <div className="pixel" style={{ fontSize: 12 }}>telegram <span className="soft" style={{ fontFamily: "var(--font-mono)" }}>· create a bot with @BotFather, send it a message, get your chat id from @userinfobot</span></div>
+        <div className="pixel" style={{ fontSize: 12 }}>telegram <span className="soft" style={{ fontFamily: "var(--font-mono)" }}>{t("settings.notify.telegramHint")}</span></div>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
-          <Field label="bot token"><Input type="password" value={tg.botToken} onChange={(e) => setCh({ ...ch, telegram: e.target.value ? { ...tg, botToken: e.target.value } : undefined })} autoComplete="off" /></Field>
-          <Field label="chat id"><Input value={tg.chatId} onChange={(e) => setCh({ ...ch, telegram: { ...tg, chatId: e.target.value } })} disabled={!tg.botToken} /></Field>
-          <Field label="min level">
+          <Field label={t("settings.notify.botToken")}><Input type="password" value={tg.botToken} onChange={(e) => setCh({ ...ch, telegram: e.target.value ? { ...tg, botToken: e.target.value } : undefined })} autoComplete="off" /></Field>
+          <Field label={t("settings.notify.chatId")}><Input value={tg.chatId} onChange={(e) => setCh({ ...ch, telegram: { ...tg, chatId: e.target.value } })} disabled={!tg.botToken} /></Field>
+          <Field label={t("settings.notify.minLevel")}>
             <Select value={tg.minLevel ?? "info"} onChange={(e) => setCh({ ...ch, telegram: { ...tg, minLevel: e.target.value as "info" } })} disabled={!tg.botToken}>
-              <option value="info">everything</option><option value="warning">warnings+</option><option value="urgent">urgent only</option>
+              <option value="info">{t("settings.notify.level.info")}</option><option value="warning">{t("settings.notify.level.warning")}</option><option value="urgent">{t("settings.notify.level.urgent")}</option>
             </Select>
           </Field>
         </div>
-        <Field label="muted modules" hint="their notifications are dropped entirely">
+        <Field label={t("settings.notify.muted")} hint={t("settings.notify.mutedHint")}>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {(modules.data ?? []).map((mod) => (
               <label key={mod.id} className="check" style={{ fontSize: 12 }}>
@@ -269,12 +312,12 @@ function NotifyWindow() {
           </div>
         </Field>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-          <Button size="sm" onClick={() => nm.test.mutate(undefined, { onSuccess: () => toast("test sent", "ok"), onError: (e) => toast(e.message, "bad") })} loading={nm.test.isPending}>
-            <Icon name="bell-ring" size={12} /> send a test
+          <Button size="sm" onClick={() => nm.test.mutate(undefined, { onSuccess: () => toast(t("settings.notify.testSent"), "ok"), onError: (e) => toast(e.message, "bad") })} loading={nm.test.isPending}>
+            <Icon name="bell-ring" size={12} /> {t("settings.notify.test")}
           </Button>
-          <Button variant="primary" onClick={save} loading={patch.isPending}>save</Button>
+          <Button variant="primary" onClick={save} loading={patch.isPending}>{t("settings.save")}</Button>
         </div>
-        <p className="soft" style={{ fontSize: 11 }}>web push (browser notifications) is not wired yet; ntfy on the phone is the closest thing and takes two minutes.</p>
+        <p className="soft" style={{ fontSize: "var(--fs-meta)" }}>{t("settings.notify.webpush")}</p>
       </div>
     </Window>
   );

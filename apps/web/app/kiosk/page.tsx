@@ -1,9 +1,11 @@
 "use client";
 
 import { Icon, cx } from "@orbis/ui";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Grid } from "@/components/dashboard/DashboardView";
+import { useT } from "@/lib/i18n";
 import { useDashboards, useModules } from "@/lib/queries";
 
 /**
@@ -20,6 +22,7 @@ export default function KioskPage() {
 }
 
 function Kiosk() {
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
   const dashboards = useDashboards();
@@ -62,8 +65,8 @@ function Kiosk() {
   // rotate dashboards
   useEffect(() => {
     if (!rotate || list.length < 2) return;
-    const t = setInterval(() => setIdx((i) => i + 1), Math.max(10, rotate) * 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setIdx((i) => i + 1), Math.max(10, rotate) * 1000);
+    return () => clearInterval(timer);
   }, [rotate, list.length]);
 
   // daily reload + hide the little toolbar after a while
@@ -87,23 +90,23 @@ function Kiosk() {
     <div style={{ minHeight: "100dvh", padding: 12 }}>
       <div className={cx("kiosk-bar", !chrome && "hidden")} style={{ position: "fixed", top: 8, right: 8, display: "flex", gap: 6, zIndex: 50, transition: "opacity 0.3s steps(3)", opacity: chrome ? 1 : 0, pointerEvents: chrome ? "auto" : "none" }}>
         {list.length > 1 ? (
-          <select className="input" style={{ width: "auto", padding: "2px 24px 2px 6px", fontSize: 12 }} value={dash?.id ?? ""} onChange={(e) => router.replace(`/kiosk/?d=${e.target.value}`)}>
+          <select className="input" aria-label={t("common.dashboard")} style={{ width: "auto", padding: "2px 24px 2px 6px", fontSize: 12 }} value={dash?.id ?? ""} onChange={(e) => router.replace(`/kiosk/?d=${e.target.value}`)}>
             {list.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
         ) : null}
-        <button type="button" className="btn btn-sm" onClick={() => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.()} aria-label="fullscreen">
+        <button type="button" className="btn btn-sm" onClick={() => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.()} aria-label={t("kiosk.fullscreen")}>
           <Icon name="frame" size={12} />
         </button>
-        <a className="btn btn-sm" href="/" aria-label="leave kiosk">
+        <Link className="btn btn-sm" href="/" aria-label={t("kiosk.leave")} title={t("kiosk.leave")}>
           <Icon name="close" size={12} />
-        </a>
+        </Link>
       </div>
       {dash ? (
         <Grid dash={dash} modMap={modMap} editing={false} onConfigure={() => {}} onRemove={() => {}} onLayout={() => {}} />
       ) : dashboards.isPending ? null : (
-        <div className="empty">no dashboard. add <code>?d=&lt;id&gt;</code> or create one in the app.</div>
+        <div className="empty">{t("kiosk.noDashboard.before")} <code>?d=&lt;id&gt;</code> {t("kiosk.noDashboard.after")}</div>
       )}
     </div>
   );

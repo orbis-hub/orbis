@@ -1,0 +1,7 @@
+{
+  "manifest.name": "Clock",
+  "manifest.description": "Digital clock and date. The simplest Orbis module – use it as a reference.",
+  "widget.digital.name": "Digital clock",
+
+  "error.badTimezone": "bad tz"
+}

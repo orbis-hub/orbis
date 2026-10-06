@@ -1,5 +1,9 @@
 import type { ComponentType, Context } from "react";
 import type { Device, HubEvent, ModuleManifest, WidgetInstance } from "./index";
+import type { Translator } from "./i18n";
+
+export type { Messages, Translator, TranslateVars } from "./i18n";
+export { createTranslator, localizeManifest, languageChain, pickLanguage } from "./i18n";
 
 /** What the host (web app) exposes to module bundles at runtime via `window.__ORBIS__`. */
 export type HostBridge = {
@@ -55,6 +59,14 @@ export type ModuleClientContext = {
   settings: Record<string, unknown>;
   setSettings(patch: Record<string, unknown>): Promise<void>;
   devices: Device[];
+  /** ui language of the hub, e.g. "de" */
+  language: string;
+  /** formatting locale (dates, numbers), e.g. "de-DE" */
+  locale: string;
+  /** hub timezone, e.g. "Europe/Berlin" */
+  timezone: string;
+  /** translate a key from this module's `locales/<lang>.json`; falls back to english, then the key */
+  t: Translator;
 };
 
 export type ClientSdk = {
@@ -64,6 +76,8 @@ export type ClientSdk = {
   useModuleEvents(name: string | null, cb: (payload: unknown) => void): void;
   useModuleSettings<T = Record<string, unknown>>(): [T, (patch: Partial<T>) => Promise<void>];
   useModuleDevices(): Device[];
+  /** `const t = useT(); t("widget.today.empty")` */
+  useT(): Translator;
   /** Polls/fetches module API data and refetches on the given module events. */
   useModuleQuery<T>(path: string, opts?: { refetchOn?: string[]; intervalMs?: number; enabled?: boolean }): {
     data: T | undefined;
@@ -103,6 +117,9 @@ export function useModuleSettings<T = Record<string, unknown>>(): [T, (patch: Pa
 }
 export function useModuleDevices(): Device[] {
   return host().sdk.useModuleDevices();
+}
+export function useT(): Translator {
+  return host().sdk.useT();
 }
 export function useModuleQuery<T>(path: string, opts?: { refetchOn?: string[]; intervalMs?: number; enabled?: boolean }) {
   return host().sdk.useModuleQuery<T>(path, opts);

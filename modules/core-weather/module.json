@@ -6,6 +6,10 @@
   "author": "orbis",
   "icon": "cloud-sun",
   "minHub": "0.1.0",
+  "languages": [
+    "en",
+    "de"
+  ],
   "entry": {
     "server": "dist/server.js",
     "client": "dist/client.js"
@@ -83,7 +87,11 @@
       "locations": {
         "type": "array",
         "title": "Locations",
-        "description": "format: id=Name@lat,lon – e.g. home=Würzburg@49.79,9.95. the first one is the default."
+        "description": "format: id=Name@lat,lon – e.g. home=Würzburg@49.79,9.95. the first one is the default.",
+        "items": {
+          "type": "string",
+          "pattern": "^\\s*[A-Za-z0-9_-]+\\s*=\\s*.+?\\s*@\\s*-?(?:90(?:\\.0+)?|[1-8]?\\d(?:\\.\\d+)?)\\s*,\\s*-?(?:180(?:\\.0+)?|1[0-7]\\d(?:\\.\\d+)?|[1-9]?\\d(?:\\.\\d+)?)\\s*$"
+        }
       },
       "units": {
         "type": "string",

@@ -1,10 +1,12 @@
 "use client";
 
 import { Checkbox, Field, Input, Select, Textarea } from "@orbis/ui";
+import { useT } from "@/lib/i18n";
 
 /**
  * Minimal JSON-schema → form renderer for module/widget settings.
- * Supports: object with properties of type string (enum, format textarea/password/color/url), number/integer, boolean, array of strings (comma separated).
+ * Supports: object with properties of type string (enum, format textarea/password/secret/color/url), number/integer, boolean, array of strings (comma separated).
+ * `format: "secret"` = a credential: rendered masked, and the hub strips it from the settings members receive.
  */
 export type JsonSchema = {
   type?: string | string[];
@@ -31,20 +33,21 @@ export function schemaDefaults(schema: JsonSchema | undefined): Record<string, u
 }
 
 export function SchemaForm({ schema, value, onChange, idPrefix = "sf" }: { schema: JsonSchema; value: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void; idPrefix?: string }) {
+  const t = useT();
   const props = schema.properties ?? {};
   const keys = schema.order ?? Object.keys(props);
   const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
-  if (keys.length === 0) return <div className="empty">nothing to configure</div>;
+  if (keys.length === 0) return <div className="empty">{t("form.nothing")}</div>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {keys.map((k) => {
         const p = props[k];
         if (!p) return null;
         const id = `${idPrefix}-${k}`;
-        const t = Array.isArray(p.type) ? p.type[0] : p.type;
+        const type = Array.isArray(p.type) ? p.type[0] : p.type;
         const v = value[k] ?? p.default;
         const label = p.title ?? k;
-        if (t === "boolean") {
+        if (type === "boolean") {
           return (
             <Field key={k} hint={p.description}>
               <Checkbox id={id} checked={!!v} onChange={(e) => set(k, e.target.checked)} label={label} />
@@ -65,17 +68,17 @@ export function SchemaForm({ schema, value, onChange, idPrefix = "sf" }: { schem
             </Field>
           );
         }
-        if (t === "number" || t === "integer") {
+        if (type === "number" || type === "integer") {
           return (
             <Field key={k} label={label} hint={p.description} htmlFor={id}>
-              <Input id={id} type="number" value={v === undefined || v === null ? "" : String(v)} min={p.minimum} max={p.maximum} step={p.step ?? (t === "integer" ? 1 : "any")} onChange={(e) => set(k, e.target.value === "" ? undefined : Number(e.target.value))} />
+              <Input id={id} type="number" value={v === undefined || v === null ? "" : String(v)} min={p.minimum} max={p.maximum} step={p.step ?? (type === "integer" ? 1 : "any")} onChange={(e) => set(k, e.target.value === "" ? undefined : Number(e.target.value))} />
             </Field>
           );
         }
-        if (t === "array") {
+        if (type === "array") {
           const arr = Array.isArray(v) ? (v as unknown[]) : [];
           return (
-            <Field key={k} label={label} hint={p.description ?? "comma separated"} htmlFor={id}>
+            <Field key={k} label={label} hint={p.description ?? t("form.commaSeparated")} htmlFor={id}>
               <Input id={id} value={arr.join(", ")} onChange={(e) => set(k, e.target.value.split(",").map((s) => s.trim()).filter(Boolean))} placeholder={p.placeholder} />
             </Field>
           );
@@ -87,7 +90,8 @@ export function SchemaForm({ schema, value, onChange, idPrefix = "sf" }: { schem
             </Field>
           );
         }
-        const inputType = p.format === "password" ? "password" : p.format === "color" ? "color" : p.format === "url" || p.format === "uri" ? "url" : p.format === "time" ? "time" : p.format === "date" ? "date" : "text";
+        // "secret" marks credentials the hub never hands to members (#38); shown masked like "password"
+        const inputType = p.format === "password" || p.format === "secret" ? "password" : p.format === "color" ? "color" : p.format === "url" || p.format === "uri" ? "url" : p.format === "time" ? "time" : p.format === "date" ? "date" : "text";
         return (
           <Field key={k} label={label} hint={p.description} htmlFor={id}>
             <Input id={id} type={inputType} value={String(v ?? "")} onChange={(e) => set(k, e.target.value)} placeholder={p.placeholder} autoComplete={inputType === "password" ? "new-password" : undefined} />

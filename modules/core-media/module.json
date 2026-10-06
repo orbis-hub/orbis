@@ -141,6 +141,7 @@
   },
   "permissions": [
     "network:fetch",
+    "network:lan",
     "storage",
     "scheduler"
   ],
@@ -149,5 +150,6 @@
   ],
   "softDeps": [
     "home-assistant"
-  ]
+  ],
+  "languages": ["en", "de"]
 }

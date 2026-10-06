@@ -69,5 +69,6 @@
   "permissions": [
     "network:fetch",
     "storage"
-  ]
+  ],
+  "languages": ["en", "de"]
 }

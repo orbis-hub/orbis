@@ -1,0 +1,38 @@
+{
+  "manifest.name": "Bookmarks",
+  "manifest.description": "A start page: links with icons, in groups. Favicons fetched by the hub, no third-party services.",
+  "widget.links.name": "Links",
+  "widget.links.description": "A grid of link tiles from one group (or all).",
+  "page.bookmarks.name": "Bookmarks",
+
+  "loading": "loading…",
+  "widget.links.empty": "no links yet",
+  "widget.links.emptyHint": "add some on the bookmarks page.",
+
+  "page.addLink": "link",
+  "page.faviconHint": "favicons are fetched by the hub once, your browser never touches a site until you click.",
+  "page.empty": "empty start page",
+  "page.emptyHint": "add the five sites you open every day.",
+  "group.default": "links",
+  "group.none": "(no group)",
+  "group.new": "+ new group…",
+
+  "action.edit": "edit",
+  "action.delete": "delete",
+  "action.cancel": "cancel",
+  "action.save": "save",
+  "error.save": "could not save: {message}",
+
+  "modal.edit": "edit link",
+  "modal.new": "new link",
+  "modal.delete": "delete link",
+  "confirm.delete": "delete \"{title}\"? this cannot be undone.",
+  "field.url": "url",
+  "field.urlHint": "http:// or https://",
+  "field.title": "title",
+  "field.titleHint": "empty = hostname",
+  "field.group": "group",
+  "field.groupPlaceholder": "work, home, dev…",
+  "field.icon": "fallback icon",
+  "field.iconHint": "used when the site has no favicon"
+}

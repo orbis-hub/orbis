@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { defineClient, useModule, useModuleApi, useModuleEvents, useModuleQuery, type PageProps, type SettingsProps, type WidgetProps } from "@orbis/sdk/client";
+import { defineClient, useModule, useModuleApi, useModuleEvents, useModuleQuery, useT, type PageProps, type SettingsProps, type WidgetProps } from "@orbis/sdk/client";
 import { Button, Chip, Empty, Field, Icon, Input, Window, cx, useToast } from "@orbis/ui";
 import type { Device, PlayerState, ProviderInfo, Track } from "./server";
 
@@ -9,12 +9,13 @@ type State = PlayerState & { configured: boolean; premium: boolean; providers?: 
 
 function ProviderSwitch({ state }: { state: State | undefined }) {
   const api = useModuleApi();
+  const t = useT();
   const list = state?.providers ?? [];
   if (list.filter((p) => p.available).length < 2 && state?.provider !== "ha") return null;
   return (
-    <span style={{ display: "inline-flex", gap: 2 }} title="where orbis looks for the player">
+    <span style={{ display: "inline-flex", gap: 2 }} title={t("provider.title")}>
       {list.map((p) => (
-        <button key={p.id} type="button" className="chip" disabled={!p.available} title={p.reason} onClick={() => void api("/provider", { method: "POST", json: { id: p.id } })} style={{ cursor: p.available ? "pointer" : "not-allowed", opacity: p.available ? 1 : 0.5, borderColor: state?.provider === p.id ? "var(--accent)" : undefined, color: state?.provider === p.id ? "var(--accent)" : undefined, fontSize: 10 }}>
+        <button key={p.id} type="button" className="chip" disabled={!p.available} title={p.reason} onClick={() => void api("/provider", { method: "POST", json: { id: p.id } })} style={{ cursor: p.available ? "pointer" : "not-allowed", opacity: p.available ? 1 : 0.5, borderColor: state?.provider === p.id ? "var(--accent)" : undefined, color: state?.provider === p.id ? "var(--accent-ink)" : undefined, fontSize: "var(--fs-min)" }}>
           {p.name}
         </button>
       ))}
@@ -30,7 +31,7 @@ declare global {
 }
 type SpotifyPlayer = { connect(): Promise<boolean>; disconnect(): void; addListener(ev: string, cb: (e: { device_id?: string; message?: string }) => void): void; activateElement?: () => Promise<void> };
 let sdkPromise: Promise<void> | null = null;
-const loadSdk = () => {
+const loadSdk = (loadError: string) => {
   if (window.Spotify) return Promise.resolve();
   if (!sdkPromise) {
     sdkPromise = new Promise<void>((resolve, reject) => {
@@ -38,7 +39,7 @@ const loadSdk = () => {
       const el = document.createElement("script");
       el.src = "https://sdk.scdn.co/spotify-player.js";
       el.async = true;
-      el.onerror = () => reject(new Error("could not load the spotify sdk (ad blocker?)"));
+      el.onerror = () => reject(new Error(loadError));
       document.head.appendChild(el);
     });
   }
@@ -48,6 +49,7 @@ const loadSdk = () => {
 /** turns this tab into a spotify connect device via the web playback sdk (premium only) */
 function BrowserPlayer({ state }: { state: State }) {
   const api = useModuleApi();
+  const t = useT();
   const toast = useToast();
   const [status, setStatus] = useState<"off" | "loading" | "ready" | "error">("off");
   const [err, setErr] = useState<string | null>(null);
@@ -58,19 +60,19 @@ function BrowserPlayer({ state }: { state: State }) {
     setStatus("loading");
     setErr(null);
     try {
-      await loadSdk();
-      const name = `orbis (${/mobile|android|iphone|ipad/i.test(navigator.userAgent) ? "this phone" : "this browser"})`;
+      await loadSdk(t("browser.sdkLoadError"));
+      const name = `orbis (${/mobile|android|iphone|ipad/i.test(navigator.userAgent) ? t("browser.thisPhone") : t("browser.thisBrowser")})`;
       const player = new window.Spotify!.Player({ name, getOAuthToken: (cb) => void api<{ token: string }>("/spotify/token").then((r) => cb(r.token)).catch(() => undefined), volume: 0.6 });
       player.addListener("ready", () => {
         setStatus("ready");
-        toast(`${name} is now a spotify device`);
+        toast(t("browser.nowDevice", { name }));
         setTimeout(() => void api("/refresh", { method: "POST" }), 800);
       });
       player.addListener("not_ready", () => setStatus("off"));
       for (const ev of ["initialization_error", "authentication_error", "account_error", "playback_error"]) player.addListener(ev, (e) => { setErr(e.message ?? ev); if (ev !== "playback_error") setStatus("error"); });
       await player.activateElement?.();
       const ok = await player.connect();
-      if (!ok) throw new Error("spotify refused the connection");
+      if (!ok) throw new Error(t("browser.refused"));
       playerRef.current = player;
     } catch (e) {
       setStatus("error");
@@ -86,11 +88,11 @@ function BrowserPlayer({ state }: { state: State }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       {status === "ready" ? (
-        <Button size="sm" variant="ghost" onClick={stop} title="stop being a spotify device"><Icon name="monitor" size={12} /> this browser is a speaker · stop</Button>
+        <Button size="sm" variant="ghost" onClick={stop} title={t("browser.stopTitle")}><Icon name="monitor" size={12} /> {t("browser.isSpeaker")}</Button>
       ) : (
-        <Button size="sm" variant="ghost" loading={status === "loading"} onClick={() => void start()} title="make this tab a spotify connect device (web playback sdk, premium)"><Icon name="monitor" size={12} /> play in this browser</Button>
+        <Button size="sm" variant="ghost" loading={status === "loading"} onClick={() => void start()} title={t("browser.startTitle")}><Icon name="monitor" size={12} /> {t("browser.playHere")}</Button>
       )}
-      {err ? <span style={{ color: "var(--dnd)", fontSize: 10 }}>{err}{/scope/i.test(err) ? " – disconnect and connect spotify again once (the streaming scope is new)" : ""}</span> : null}
+      {err ? <span style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{err}{/scope/i.test(err) ? t("browser.scopeHint") : ""}</span> : null}
     </span>
   );
 }
@@ -135,18 +137,19 @@ function useSpotifyUrls() {
 
 function ConnectHint({ state }: { state: State | undefined }) {
   const { loginHref } = useSpotifyUrls();
-  if (!state) return <span className="soft pixel" style={{ fontSize: 12 }}>loading…</span>;
+  const t = useT();
+  if (!state) return <span className="soft pixel" style={{ fontSize: 12 }}>{t("common.loading")}</span>;
   if (!state.configured) {
     return (
-      <Empty icon="music" title="spotify not set up">
-        add your spotify client id under modules → media → settings.
+      <Empty icon="music" title={t("connect.notSetup")}>
+        {t("connect.notSetupHint")}
       </Empty>
     );
   }
   return (
-    <Empty icon="music" title="connect spotify">
+    <Empty icon="music" title={t("connect.title")}>
       <a className="btn btn-primary" href={loginHref(window.location.href)}>
-        <Icon name="link" size={12} /> connect
+        <Icon name="link" size={12} /> {t("connect.button")}
       </a>
     </Empty>
   );
@@ -156,18 +159,19 @@ function ConnectHint({ state }: { state: State | undefined }) {
 
 function Controls({ state, size = "md" }: { state: State; size?: "sm" | "md" }) {
   const api = useModuleApi();
+  const t = useT();
   const call = (path: string, json?: unknown) => api(path, { method: "POST", json }).catch(() => undefined);
   const dim = size === "sm" ? 14 : 18;
   const disabled = !state.premium;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }} title={disabled ? "controls need spotify premium" : undefined}>
-      <Button icon size="sm" variant="ghost" aria-pressed={state.shuffle} onClick={() => call("/shuffle", { on: !state.shuffle })} aria-label="shuffle" disabled={disabled}><Icon name="shuffle" size={dim - 4} /></Button>
-      <Button icon size={size === "sm" ? "sm" : "md"} variant="ghost" onClick={() => call("/previous")} aria-label="previous" disabled={disabled}><Icon name="forward" size={dim} style={{ transform: "scaleX(-1)" }} /></Button>
-      <Button icon size={size === "sm" ? "sm" : "md"} variant={state.playing ? "default" : "primary"} onClick={() => call(state.playing ? "/pause" : "/play")} aria-label={state.playing ? "pause" : "play"} disabled={disabled}>
+    <div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }} title={disabled ? t("controls.premiumNeeded") : undefined}>
+      <Button icon size="sm" variant="ghost" aria-pressed={state.shuffle} onClick={() => call("/shuffle", { on: !state.shuffle })} aria-label={t("controls.shuffle")} disabled={disabled}><Icon name="shuffle" size={dim - 4} /></Button>
+      <Button icon size={size === "sm" ? "sm" : "md"} variant="ghost" onClick={() => call("/previous")} aria-label={t("controls.previous")} disabled={disabled}><Icon name="forward" size={dim} style={{ transform: "scaleX(-1)" }} /></Button>
+      <Button icon size={size === "sm" ? "sm" : "md"} variant={state.playing ? "default" : "primary"} onClick={() => call(state.playing ? "/pause" : "/play")} aria-label={state.playing ? t("controls.pause") : t("controls.play")} disabled={disabled}>
         <Icon name={state.playing ? "pause" : "play"} size={dim} />
       </Button>
-      <Button icon size={size === "sm" ? "sm" : "md"} variant="ghost" onClick={() => call("/next")} aria-label="next" disabled={disabled}><Icon name="forward" size={dim} /></Button>
-      <Button icon size="sm" variant="ghost" aria-pressed={state.repeat !== "off"} onClick={() => call("/repeat", { mode: state.repeat === "off" ? "context" : state.repeat === "context" ? "track" : "off" })} aria-label={`repeat: ${state.repeat}`} disabled={disabled}>
+      <Button icon size={size === "sm" ? "sm" : "md"} variant="ghost" onClick={() => call("/next")} aria-label={t("controls.next")} disabled={disabled}><Icon name="forward" size={dim} /></Button>
+      <Button icon size="sm" variant="ghost" aria-pressed={state.repeat !== "off"} onClick={() => call("/repeat", { mode: state.repeat === "off" ? "context" : state.repeat === "context" ? "track" : "off" })} aria-label={t("controls.repeat", { mode: state.repeat })} disabled={disabled}>
         <Icon name={state.repeat === "track" ? "repeat-1" : "repeat"} size={dim - 4} />
       </Button>
     </div>
@@ -178,8 +182,8 @@ function Progress({ state, progress, onSeek }: { state: State; progress: number;
   const dur = state.track?.durationMs ?? 0;
   const pct = dur ? Math.min(100, (progress / dur) * 100) : 0;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }} className="soft">
-      <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(progress)}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--fs-meta)", minWidth: 0 }} className="soft">
+      <span style={{ fontVariantNumeric: "tabular-nums", flex: "none" }}>{fmt(progress)}</span>
       <div
         className="progress"
         style={{ flex: 1, cursor: onSeek && state.premium ? "pointer" : undefined }}
@@ -191,13 +195,14 @@ function Progress({ state, progress, onSeek }: { state: State; progress: number;
       >
         <i style={{ width: `${pct}%`, transition: "none" }} />
       </div>
-      <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(dur)}</span>
+      <span style={{ fontVariantNumeric: "tabular-nums", flex: "none" }}>{fmt(dur)}</span>
     </div>
   );
 }
 
 function DevicePicker({ state, compact }: { state: State; compact?: boolean }) {
   const api = useModuleApi();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -209,14 +214,14 @@ function DevicePicker({ state, compact }: { state: State; compact?: boolean }) {
   const d = state.device;
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-flex" }}>
-      <button type="button" className="chip" onClick={() => setOpen((v) => !v)} title="choose playback device" style={{ cursor: "pointer", gap: 6, maxWidth: compact ? 140 : 220 }}>
-        <Icon name={deviceIcon(d?.type ?? "")} size={11} style={{ color: "var(--accent)" }} />
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{d?.name ?? "no device"}</span>
+      <button type="button" className="chip" onClick={() => setOpen((v) => !v)} title={t("device.choose")} style={{ cursor: "pointer", gap: 6, maxWidth: compact ? 140 : 220 }}>
+        <Icon name={deviceIcon(d?.type ?? "")} size={11} style={{ color: "var(--accent-ink)", flex: "none" }} />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{d?.name ?? t("device.none")}</span>
         <Icon name="chevron-down" size={10} />
       </button>
       {open ? (
         <div className="menu" style={{ position: "absolute", bottom: "calc(100% + 4px)", left: 0, minWidth: 200 }}>
-          {state.devices.length === 0 ? <div className="menu-item soft">open spotify on a device first</div> : null}
+          {state.devices.length === 0 ? <div className="menu-item soft">{t("device.openFirst")}</div> : null}
           {state.devices.map((dev: Device) => (
             <button
               key={dev.id}
@@ -226,11 +231,11 @@ function DevicePicker({ state, compact }: { state: State; compact?: boolean }) {
                 setOpen(false);
                 void api("/transfer", { method: "POST", json: { deviceId: dev.id, play: state.playing } });
               }}
-              style={{ color: dev.active ? "var(--accent)" : undefined }}
+              style={{ color: dev.active ? "var(--accent-ink)" : undefined }}
             >
               <Icon name={deviceIcon(dev.type)} size={13} />
               <span style={{ flex: 1 }}>{dev.name}</span>
-              {dev.volume !== null ? <span className="soft" style={{ fontSize: 10 }}>{dev.volume}%</span> : null}
+              {dev.volume !== null ? <span className="soft" style={{ fontSize: "var(--fs-meta)" }}>{dev.volume}%</span> : null}
             </button>
           ))}
         </div>
@@ -241,12 +246,13 @@ function DevicePicker({ state, compact }: { state: State; compact?: boolean }) {
 
 function Volume({ state }: { state: State }) {
   const api = useModuleApi();
+  const t = useT();
   const [v, setV] = useState(state.volume ?? 0);
   useEffect(() => setV(state.volume ?? 0), [state.volume]);
-  const t = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   if (state.volume === null) return null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4 }} title="volume">
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }} title={t("volume.title")}>
       <Icon name={v === 0 ? "volume-x" : v < 50 ? "volume" : "volume-3"} size={12} className="soft" />
       <input
         type="range"
@@ -257,8 +263,8 @@ function Volume({ state }: { state: State }) {
         onChange={(e) => {
           const n = Number(e.target.value);
           setV(n);
-          clearTimeout(t.current);
-          t.current = setTimeout(() => void api("/volume", { method: "POST", json: { percent: n } }), 250);
+          clearTimeout(timer.current);
+          timer.current = setTimeout(() => void api("/volume", { method: "POST", json: { percent: n } }), 250);
         }}
         style={{ width: 80, accentColor: "var(--accent)" }}
       />
@@ -273,6 +279,7 @@ const searchMemo = new Map<string, SearchResults>();
 
 function SearchBox({ types = ["track", "playlist", "album"], compact, onPlayed }: { types?: string[]; compact?: boolean; onPlayed?: () => void }) {
   const api = useModuleApi();
+  const t = useT();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -324,10 +331,10 @@ function SearchBox({ types = ["track", "playlist", "album"], compact, onPlayed }
   type Item = { key: string; kind: string; name: string; sub: string; cover: string | null; uri: string };
   const items: Item[] = [];
   if (res) {
-    for (const t of res.tracks) items.push({ key: "t" + t.id, kind: "track", name: t.title, sub: t.artists.join(", "), cover: t.cover, uri: t.uri });
+    for (const tr of res.tracks) items.push({ key: "t" + tr.id, kind: "track", name: tr.title, sub: tr.artists.join(", "), cover: tr.cover, uri: tr.uri });
     for (const p of res.playlists) items.push({ key: "p" + p.id, kind: "playlist", name: p.name, sub: p.sub, cover: p.cover, uri: p.uri });
     for (const a of res.albums) items.push({ key: "a" + a.id, kind: "album", name: a.name, sub: a.sub, cover: a.cover, uri: a.uri });
-    for (const a of res.artists) items.push({ key: "r" + a.id, kind: "artist", name: a.name, sub: "artist", cover: a.cover, uri: a.uri });
+    for (const a of res.artists) items.push({ key: "r" + a.id, kind: "artist", name: a.name, sub: t("kind.artist"), cover: a.cover, uri: a.uri });
   }
   const play = async (it: Item) => {
     setOpen(false);
@@ -346,7 +353,7 @@ function SearchBox({ types = ["track", "playlist", "album"], compact, onPlayed }
         <input
           className="input"
           value={q}
-          placeholder={compact ? "search…" : `search ${types.join(", ")}…`}
+          placeholder={compact ? t("search.short") : t("search.in", { types: types.map((k) => t(`kind.${k}`)).join(", ") })}
           style={{ padding: compact ? "3px 6px" : "4px 8px", fontSize: 12 }}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => res && setOpen(true)}
@@ -366,11 +373,11 @@ function SearchBox({ types = ["track", "playlist", "album"], compact, onPlayed }
               <div style={{ width: 24, height: 24, flex: "none", background: "var(--paper-2)", border: "1px solid var(--line)", overflow: "hidden" }}>{it.cover ? <img src={it.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
-                <div className="soft" style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sub}</div>
               </div>
-              <Chip style={{ fontSize: 9 }}>{it.kind}</Chip>
+              <Chip style={{ fontSize: "var(--fs-min)" }}>{t(`kind.${it.kind}`)}</Chip>
               {it.kind === "track" ? (
-                <button type="button" className="btn btn-icon btn-sm btn-ghost" title="add to queue" aria-label="add to queue" onClick={(e) => { e.stopPropagation(); void queue(it); }}>
+                <button type="button" className="btn btn-icon btn-sm btn-ghost" title={t("search.addToQueue")} aria-label={t("search.addToQueue")} onClick={(e) => { e.stopPropagation(); void queue(it); }}>
                   <Icon name="plus" size={11} />
                 </button>
               ) : null}
@@ -399,6 +406,7 @@ type NowPlayingConfig = {
 function NowPlayingWidget({ config, size }: WidgetProps<NowPlayingConfig>) {
   const { state, progress } = usePlayer();
   const api = useModuleApi();
+  const tr = useT();
   if (!state?.connected) return <ConnectHint state={state} />;
   const t = state.track;
   const on = (k: keyof NowPlayingConfig, d = true) => (config[k] === undefined ? d : !!config[k]);
@@ -406,33 +414,34 @@ function NowPlayingWidget({ config, size }: WidgetProps<NowPlayingConfig>) {
   const compact = !vertical && size.height < 150;
   const searchH = on("showSearch") ? 34 : 0;
   const cover = vertical ? Math.max(48, Math.min(size.width - 8, size.height - 130 - searchH)) : Math.max(44, Math.min(size.height - 24 - searchH, size.width * 0.3, 160));
+  const artists = t ? `${t.artists.join(", ")}${!compact && t.album ? ` · ${t.album}` : ""}` : "";
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8, minWidth: 0, overflow: "hidden" }}>
       {on("showSearch") ? <SearchBox types={config.searchTypes?.length ? config.searchTypes : ["track", "playlist", "album"]} compact={compact || size.width < 260} /> : null}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: vertical ? "column" : "row", gap: 12, alignItems: vertical ? "center" : "stretch", textAlign: vertical ? "center" : undefined }}>
+      <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: vertical ? "column" : "row", gap: 12, alignItems: vertical ? "center" : "stretch", textAlign: vertical ? "center" : undefined }}>
         {on("showCover") ? (
           <div style={{ width: cover, height: cover, flex: "none", border: "1.5px solid var(--line)", boxShadow: "3px 3px 0 var(--line)", background: "var(--paper-2)", alignSelf: "center", overflow: "hidden" }}>
             {t?.cover ? <img src={t.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Icon name="music" size={cover * 0.5} className="soft" style={{ margin: cover * 0.25 }} />}
           </div>
         ) : null}
-        <div style={{ flex: 1, minWidth: 0, width: vertical ? "100%" : undefined, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6 }}>
+        <div style={{ flex: 1, minWidth: 0, width: vertical ? "100%" : undefined, display: "flex", flexDirection: "column", justifyContent: "center", gap: compact ? 2 : 6, overflow: "hidden" }}>
           {on("showTitle") ? (
             t ? (
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0 }} title={`${t.title} · ${t.artists.join(", ")}${t.album ? ` · ${t.album}` : ""}`}>
                 <div className="pixel" style={{ fontSize: compact ? 13 : 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</div>
-                <div className="soft" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.artists.join(", ")}{!compact && t.album ? ` · ${t.album}` : ""}</div>
+                <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{artists}</div>
               </div>
             ) : (
-              <div className="soft" style={{ fontSize: 12 }}>nothing playing{state.device ? ` on ${state.device.name}` : ""}</div>
+              <div className="soft" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{state.device ? tr("widget.now-playing.nothingOn", { device: state.device.name }) : tr("widget.now-playing.nothing")}</div>
             )
           ) : null}
           {on("showProgress") && t ? <Progress state={state} progress={progress} onSeek={(ms) => void api("/seek", { method: "POST", json: { positionMs: ms } })} /> : null}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: vertical ? "center" : undefined }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: vertical ? "center" : undefined, minWidth: 0 }}>
             {on("showControls") ? <Controls state={state} size={compact ? "sm" : "md"} /> : null}
             {on("showVolume", false) ? <Volume state={state} /> : null}
             {on("showDevice") && !compact ? <DevicePicker state={state} compact /> : null}
           </div>
-          {state.error ? <div style={{ color: "var(--dnd)", fontSize: 10 }}>{state.error}</div> : null}
+          {state.error ? <div style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={state.error}>{state.error}</div> : null}
         </div>
       </div>
     </div>
@@ -442,16 +451,17 @@ function NowPlayingWidget({ config, size }: WidgetProps<NowPlayingConfig>) {
 function DevicesWidget() {
   const { state } = usePlayer();
   const api = useModuleApi();
+  const t = useT();
   if (!state?.connected) return <ConnectHint state={state} />;
-  if (state.devices.length === 0) return <Empty icon="radio" title="no devices">open spotify somewhere and it shows up here.</Empty>;
+  if (state.devices.length === 0) return <Empty icon="radio" title={t("widget.devices.empty")}>{t("widget.devices.emptyHint")}</Empty>;
   return (
-    <div className="scroll-y" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className="scroll-y" style={{ height: "100%", display: "flex", flexDirection: "column", gap: 4, overflowX: "hidden", minWidth: 0 }}>
       {state.devices.map((d) => (
-        <button key={d.id} type="button" className={cx("menu-item")} style={{ border: `1px ${d.active ? "solid var(--accent)" : "dashed var(--line)"}`, color: d.active ? "var(--accent)" : undefined, padding: "6px 10px" }} onClick={() => void api("/transfer", { method: "POST", json: { deviceId: d.id, play: state.playing } })}>
-          <Icon name={deviceIcon(d.type)} size={14} />
-          <span style={{ flex: 1, textAlign: "left" }}>{d.name}</span>
-          {d.active ? <Chip tone="accent" style={{ fontSize: 9 }}>playing here</Chip> : null}
-          {d.volume !== null ? <span className="soft" style={{ fontSize: 10 }}>{d.volume}%</span> : null}
+        <button key={d.id} type="button" className={cx("menu-item")} title={d.name} style={{ border: `1px ${d.active ? "solid var(--accent)" : "dashed var(--line)"}`, color: d.active ? "var(--accent-ink)" : undefined, padding: "6px 10px", minWidth: 0, flex: "none" }} onClick={() => void api("/transfer", { method: "POST", json: { deviceId: d.id, play: state.playing } })}>
+          <Icon name={deviceIcon(d.type)} size={14} style={{ flex: "none" }} />
+          <span style={{ flex: 1, minWidth: 0, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+          {d.active ? <Chip tone="accent" style={{ fontSize: "var(--fs-min)", flex: "none" }}>{t("widget.devices.playingHere")}</Chip> : null}
+          {d.volume !== null ? <span className="soft" style={{ fontSize: "var(--fs-meta)", flex: "none" }}>{d.volume}%</span> : null}
         </button>
       ))}
     </div>
@@ -463,6 +473,7 @@ function DevicesWidget() {
 function MediaPage(_p: PageProps) {
   const { state, progress } = usePlayer();
   const api = useModuleApi();
+  const tr = useT();
   const { redirectUri, isLoopback } = useSpotifyUrls();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<{ tracks: Track[]; albums: Simple[]; artists: Simple[]; playlists: Simple[] } | null>(null);
@@ -474,24 +485,24 @@ function MediaPage(_p: PageProps) {
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("spotify_error");
-    if (p) alert(`spotify: ${p}`);
-  }, []);
+    if (p) alert(tr("page.media.spotifyAlert", { error: p }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (state && !state.connected && state.provider === "ha") {
     return (
-      <Window title="media" right={<ProviderSwitch state={state} />}>
-        <Empty icon="radio" title="no media players in home assistant">{state.error ?? "the home assistant module has no media_player entities yet."}</Empty>
+      <Window title={tr("page.media.title")} right={<ProviderSwitch state={state} />}>
+        <Empty icon="radio" title={tr("page.media.noHaPlayers")}>{state.error ?? tr("page.media.noHaPlayersHint")}</Empty>
       </Window>
     );
   }
   if (!state?.connected) {
     return (
-      <Window title="media" right={<ProviderSwitch state={state} />}>
+      <Window title={tr("page.media.title")} right={<ProviderSwitch state={state} />}>
         <ConnectHint state={state} />
         {state?.configured ? (
-          <p className="soft" style={{ fontSize: 11, marginTop: 10 }}>
-            spotify only accepts https redirect uris or <code>http://127.0.0.1</code>. redirect uri to register in your spotify app: <code>{redirectUri}</code>
-            {isLoopback ? " (connect from the hub machine; the token is stored on the hub and works from every device afterwards)" : ". if your hub runs on plain http in the lan, open the app on the hub machine via http://127.0.0.1:<port> once to connect."}
+          <p className="soft" style={{ fontSize: "var(--fs-meta)", marginTop: 10 }}>
+            {tr("page.media.redirectInfo1")} <code>http://127.0.0.1</code>{tr("page.media.redirectInfo2")} <code>{redirectUri}</code>
+            {isLoopback ? tr("page.media.loopbackHint") : tr("page.media.lanHint")}
           </p>
         ) : null}
       </Window>
@@ -504,12 +515,12 @@ function MediaPage(_p: PageProps) {
       <style>{`@media (max-width: 860px) { .media-page { grid-template-columns: minmax(0,1fr) !important; } }`}</style>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <Window
-          title="now playing"
+          title={tr("page.media.nowPlaying")}
           right={
             <>
               <ProviderSwitch state={state} />
-              {state.account && state.provider === "spotify" ? <Chip style={{ fontSize: 10 }}>{state.account.name}{state.premium ? "" : " · free"}</Chip> : null}
-              {state.provider === "spotify" ? <Button size="sm" variant="ghost" onClick={() => api("/spotify/logout", { method: "POST" })} aria-label="disconnect"><Icon name="unlink" size={12} /></Button> : null}
+              {state.account && state.provider === "spotify" ? <Chip style={{ fontSize: "var(--fs-min)" }}>{state.account.name}{state.premium ? "" : tr("page.media.free")}</Chip> : null}
+              {state.provider === "spotify" ? <Button size="sm" variant="ghost" onClick={() => api("/spotify/logout", { method: "POST" })} aria-label={tr("page.media.disconnect")}><Icon name="unlink" size={12} /></Button> : null}
             </>
           }
         >
@@ -524,7 +535,7 @@ function MediaPage(_p: PageProps) {
                   <div className="soft" style={{ fontSize: 12 }}>{t.artists.join(", ")} · {t.album}</div>
                 </div>
               ) : (
-                <div className="soft">nothing playing. pick a playlist or search.</div>
+                <div className="soft">{tr("page.media.nothingPick")}</div>
               )}
               {t ? <Progress state={state} progress={progress} onSeek={(ms) => void api("/seek", { method: "POST", json: { positionMs: ms } })} /> : null}
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -533,13 +544,13 @@ function MediaPage(_p: PageProps) {
                 <DevicePicker state={state} />
                 <BrowserPlayer state={state} />
               </div>
-              {!state.premium && state.provider === "spotify" ? <div className="soft" style={{ fontSize: 10 }}>playback control needs spotify premium; the free plan can only show what plays.</div> : null}
-              {state.error ? <div style={{ color: "var(--dnd)", fontSize: 11 }}>{state.error}</div> : null}
+              {!state.premium && state.provider === "spotify" ? <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>{tr("page.media.premiumInfo")}</div> : null}
+              {state.error ? <div style={{ color: "var(--dnd)", fontSize: "var(--fs-meta)" }}>{state.error}</div> : null}
             </div>
           </div>
         </Window>
 
-        <Window title="search">
+        <Window title={tr("page.media.search")}>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -553,37 +564,37 @@ function MediaPage(_p: PageProps) {
             }}
             style={{ display: "flex", gap: 6 }}
           >
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="tracks, albums, artists, playlists…" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("page.media.searchPlaceholder")} />
             <Button type="submit" loading={searching}><Icon name="search" size={12} /></Button>
           </form>
           {results ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
-              <List title="tracks" items={results.tracks.map((x) => ({ key: x.id, cover: x.cover, name: x.title, sub: x.artists.join(", "), onPlay: () => play({ uri: x.uri }), onQueue: () => api("/queue", { method: "POST", json: { uri: x.uri } }) }))} />
-              <List title="albums" items={results.albums.map((x) => ({ key: x.id, cover: x.cover, name: x.name, sub: x.sub, onPlay: () => play({ contextUri: x.uri }) }))} />
-              <List title="artists" items={results.artists.map((x) => ({ key: x.id, cover: x.cover, name: x.name, sub: "", onPlay: () => play({ contextUri: x.uri }) }))} />
-              <List title="playlists" items={results.playlists.map((x) => ({ key: x.id, cover: x.cover, name: x.name, sub: x.sub, onPlay: () => play({ contextUri: x.uri }) }))} />
+              <List title={tr("page.media.tracks")} items={results.tracks.map((x) => ({ key: x.id, cover: x.cover, name: x.title, sub: x.artists.join(", "), onPlay: () => play({ uri: x.uri }), onQueue: () => api("/queue", { method: "POST", json: { uri: x.uri } }) }))} />
+              <List title={tr("page.media.albums")} items={results.albums.map((x) => ({ key: x.id, cover: x.cover, name: x.name, sub: x.sub, onPlay: () => play({ contextUri: x.uri }) }))} />
+              <List title={tr("page.media.artists")} items={results.artists.map((x) => ({ key: x.id, cover: x.cover, name: x.name, sub: "", onPlay: () => play({ contextUri: x.uri }) }))} />
+              <List title={tr("page.media.playlists")} items={results.playlists.map((x) => ({ key: x.id, cover: x.cover, name: x.name, sub: x.sub, onPlay: () => play({ contextUri: x.uri }) }))} />
             </div>
           ) : null}
         </Window>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <Window title="up next" tight>
+        <Window title={tr("page.media.upNext")} tight>
           <div style={{ padding: 8 }}>
-            {(queue.data?.queue ?? []).length === 0 ? <div className="soft" style={{ fontSize: 12, padding: 4 }}>queue is empty</div> : null}
+            {(queue.data?.queue ?? []).length === 0 ? <div className="soft" style={{ fontSize: 12, padding: 4 }}>{tr("page.media.queueEmpty")}</div> : null}
             {(queue.data?.queue ?? []).slice(0, 10).map((x, i) => (
               <Row key={`${x.id}-${i}`} cover={x.cover} name={x.title} sub={x.artists.join(", ")} />
             ))}
           </div>
         </Window>
-        <Window title="your playlists" tight>
+        <Window title={tr("page.media.yourPlaylists")} tight>
           <div className="scroll-y" style={{ padding: 8, maxHeight: 320 }}>
             {(playlists.data ?? []).map((p) => (
-              <Row key={p.id} cover={p.cover} name={p.name} sub={`${p.tracks} tracks`} onPlay={() => play({ contextUri: p.uri })} />
+              <Row key={p.id} cover={p.cover} name={p.name} sub={tr("page.media.trackCount", { count: p.tracks ?? 0 })} onPlay={() => play({ contextUri: p.uri })} />
             ))}
           </div>
         </Window>
-        <Window title="recently played" tight>
+        <Window title={tr("page.media.recentlyPlayed")} tight>
           <div className="scroll-y" style={{ padding: 8, maxHeight: 280 }}>
             {(recent.data ?? []).slice(0, 12).map((x) => (
               <Row key={x.id} cover={x.cover} name={x.title} sub={x.artists.join(", ")} onPlay={() => play(x.context ? { contextUri: x.context.uri, uri: undefined } : { uri: x.uri })} />
@@ -598,15 +609,16 @@ function MediaPage(_p: PageProps) {
 type Simple = { id: string; name: string; uri: string; cover: string | null; sub: string; tracks?: number };
 
 function Row({ cover, name, sub, onPlay, onQueue }: { cover: string | null; name: string; sub: string; onPlay?: () => void; onQueue?: () => void }) {
+  const t = useT();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 2px", borderBottom: "1px dashed var(--line)" }}>
       <div style={{ width: 28, height: 28, flex: "none", background: "var(--paper-2)", border: "1px solid var(--line)", overflow: "hidden" }}>{cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-        {sub ? <div className="soft" style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div> : null}
+        {sub ? <div className="soft" style={{ fontSize: "var(--fs-meta)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div> : null}
       </div>
-      {onQueue ? <Button icon size="sm" variant="ghost" onClick={onQueue} aria-label="add to queue" title="add to queue"><Icon name="plus" size={11} /></Button> : null}
-      {onPlay ? <Button icon size="sm" variant="ghost" onClick={onPlay} aria-label="play"><Icon name="play" size={11} /></Button> : null}
+      {onQueue ? <Button icon size="sm" variant="ghost" onClick={onQueue} aria-label={t("search.addToQueue")} title={t("search.addToQueue")}><Icon name="plus" size={11} /></Button> : null}
+      {onPlay ? <Button icon size="sm" variant="ghost" onClick={onPlay} aria-label={t("controls.play")}><Icon name="play" size={11} /></Button> : null}
     </div>
   );
 }
@@ -615,7 +627,7 @@ function List({ title, items }: { title: string; items: Array<{ key: string; cov
   if (items.length === 0) return null;
   return (
     <div>
-      <div className="pixel soft" style={{ fontSize: 11, marginBottom: 4 }}>{title}</div>
+      <div className="pixel soft" style={{ fontSize: "var(--fs-meta)", marginBottom: 4 }}>{title}</div>
       {items.map((it) => (
         <Row key={it.key} cover={it.cover} name={it.name} sub={it.sub} onPlay={it.onPlay} onQueue={it.onQueue} />
       ))}
@@ -625,17 +637,18 @@ function List({ title, items }: { title: string; items: Array<{ key: string; cov
 
 function MediaSettings({ value, onChange }: SettingsProps) {
   const { redirectUri } = useSpotifyUrls();
+  const t = useT();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Field label="spotify client id" hint="developer.spotify.com → dashboard → create app. no client secret needed (pkce).">
-        <Input value={String(value.spotifyClientId ?? "")} onChange={(e) => onChange({ ...value, spotifyClientId: e.target.value.trim() })} placeholder="32 hex characters" autoComplete="off" />
+      <Field label={t("settings.clientId")} hint={t("settings.clientIdHint")}>
+        <Input value={String(value.spotifyClientId ?? "")} onChange={(e) => onChange({ ...value, spotifyClientId: e.target.value.trim() })} placeholder={t("settings.clientIdPlaceholder")} autoComplete="off" />
       </Field>
-      <div className="win win-dashed win-flat" style={{ padding: "8px 10px", fontSize: 11 }}>
-        <div className="pixel" style={{ marginBottom: 4 }}>redirect uri to register in the spotify app</div>
+      <div className="win win-dashed win-flat" style={{ padding: "8px 10px", fontSize: "var(--fs-meta)" }}>
+        <div className="pixel" style={{ marginBottom: 4 }}>{t("settings.redirectTitle")}</div>
         <code style={{ overflowWrap: "anywhere" }}>{redirectUri}</code>
-        <div className="soft" style={{ marginTop: 6 }}>spotify accepts https or http://127.0.0.1 only (never "localhost"). with a plain-http lan hub, connect once from the hub machine; the token then works from every device.</div>
+        <div className="soft" style={{ marginTop: 6 }}>{t("settings.redirectHint")}</div>
       </div>
-      <Field label="poll playback every (seconds)">
+      <Field label={t("settings.poll")}>
         <Input type="number" min={2} max={60} value={Number(value.pollSeconds ?? 5)} onChange={(e) => onChange({ ...value, pollSeconds: Number(e.target.value) })} />
       </Field>
     </div>

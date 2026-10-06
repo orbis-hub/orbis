@@ -6,6 +6,10 @@
   "author": "orbis",
   "icon": "plug",
   "minHub": "0.1.0",
+  "languages": [
+    "en",
+    "de"
+  ],
   "entry": {
     "server": "dist/server.js",
     "client": "dist/client.js"
@@ -67,6 +71,7 @@
   ],
   "permissions": [
     "network:fetch",
+    "network:lan",
     "storage",
     "scheduler",
     "devices:read",

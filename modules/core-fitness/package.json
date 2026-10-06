@@ -14,6 +14,7 @@
     "@orbis/sdk": "workspace:*",
     "@orbis/ui": "workspace:*",
     "@types/react": "^19.0.0",
+    "hono": "^4.13.12",
     "react": "^19.0.0",
     "typescript": "^5.9.0"
   }

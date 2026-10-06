@@ -1,0 +1,17 @@
+{
+  "manifest.name": "Countdown",
+  "manifest.description": "Große Zahl, die auf ein Datum runterzählt: Urlaub, Geburtstag, Abgabe. Nur Client, ein Widget pro Countdown.",
+  "widget.countdown.name": "Countdown",
+
+  "widget.countdown.empty": "datum setzen",
+  "widget.countdown.emptyHint": "⋯ → einstellen",
+  "widget.countdown.invalid": "ungültiges datum oder uhrzeit",
+  "defaultTitle": "countdown",
+  "today": "heute!",
+  "unit.hours": { "one": "stunde", "other": "stunden" },
+  "unit.days": { "one": "tag", "other": "tage" },
+  "unit.weeksDays": "{weeks}w {days}t",
+  "ago": "her",
+  "toGo": "übrig",
+  "turns": "wird {count}"
+}
