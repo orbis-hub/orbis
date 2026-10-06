@@ -371,7 +371,8 @@ export async function renderDisplay(display: EinkDisplay, opts: { format: "png" 
       const w = { module: b.module, widget: b.widget, config: b.config };
       const { x, y, w: width, h: height } = b;
       const mod = runtime.get(w.module);
-      const def = mod?.manifest.widgets.find((d) => d.id === w.widget);
+      // localized manifest: widget names in the hub language, same as the web app shows them
+      const def = mod ? runtime.localizedManifest(mod).widgets.find((d) => d.id === w.widget) : undefined;
       const cell: Cell = { x, y, w: width, h: height, title: String(w.config.title ?? def?.name ?? w.widget), tree: null };
       if (mod?.loaded && mod.server?.eink && mod.built) {
         try {
