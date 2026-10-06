@@ -7,8 +7,14 @@
   "modules.empty.after": "for development.",
   "modules.enable": "enable {name}",
   "modules.noDescription": "no description",
-  "modules.widgets": { "one": "{count} widget", "other": "{count} widgets" },
-  "modules.pages": { "one": "{count} page", "other": "{count} pages" },
+  "modules.widgets": {
+    "one": "{count} widget",
+    "other": "{count} widgets"
+  },
+  "modules.pages": {
+    "one": "{count} page",
+    "other": "{count} pages"
+  },
   "modules.status.needsSetup": "needs setup",
   "modules.status.warning": "warning",
   "modules.status.running": "running",
@@ -27,7 +33,10 @@
   "modules.installFailed": "install failed: {error}",
   "modules.installError": "{name}: {error}",
   "modules.store.search": "search the registry…",
-  "modules.store.registries": { "one": "{count} registry", "other": "{count} registries" },
+  "modules.store.registries": {
+    "one": "{count} registry",
+    "other": "{count} registries"
+  },
   "modules.store.fetching": "fetching registries",
   "modules.store.empty.title": "nothing in the store",
   "modules.store.empty.noMatch": "nothing matches your search.",
@@ -44,5 +53,6 @@
   "modules.settingsSaved": "settings saved",
   "modules.store.trustCovers": "store modules run in their own worker thread with a memory limit: hub apis (storage, devices, notifications, scheduler, fetch) are limited to the permissions a module declares, and hub secrets are kept out of its environment.",
   "modules.store.trustNotCovered": "that is not a security sandbox: module code can still use node itself (files, network), so a malicious module can do real damage. built-in and dev modules run inside the hub process.",
-  "modules.uninstallTitle": "uninstall {name}"
+  "modules.uninstallTitle": "uninstall {name}",
+  "modules.store.languages": "speaks {langs}"
 }

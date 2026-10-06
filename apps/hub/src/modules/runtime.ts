@@ -70,6 +70,9 @@ function modulesApiFor(selfId: string) {
         headers.set("content-type", "application/json");
         body = JSON.stringify(init.json);
       }
+      // in-process calls carry only the calling module's id; a caller cannot pose as a user or another module
+      headers.delete("x-orbis-user");
+      headers.delete("x-orbis-role");
       headers.set("x-orbis-caller", selfId);
       const res = await t.built.ctx.http.fetch(new Request(`http://modules.local${path.startsWith("/") ? path : `/${path}`}`, { ...init, headers, body }));
       const text = await res.text();

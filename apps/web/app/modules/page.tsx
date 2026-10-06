@@ -282,6 +282,11 @@ function StoreCard({ entry, busy, onInstall }: { entry: RegistryModule; busy: bo
           {(entry.tags ?? []).map((tag) => (
             <Chip key={tag}>{tag}</Chip>
           ))}
+          {entry.languages?.length ? (
+            <Chip title={t("modules.store.languages", { langs: entry.languages.join(", ") })} aria-label={t("modules.store.languages", { langs: entry.languages.join(", ") })}>
+              <Icon name="comment" size={10} /> {entry.languages.join(" · ")}
+            </Chip>
+          ) : null}
         </div>
         {entry.deps?.length || entry.softDeps?.length ? (
           <div className="soft" style={{ fontSize: "var(--fs-meta)" }}>

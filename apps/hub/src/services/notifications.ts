@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 import { isAdminRole, type AuthUser } from "../auth";
 import { getDb, now, schema } from "../db";
 import { childLog } from "../log";
-import { broadcast } from "../ws";
+import { broadcastPerUser, sendToUser } from "../ws";
 import { getAllSettings } from "./settings";
 
 const log = childLog("notify");
@@ -138,7 +138,8 @@ function removeRow(id: string) {
 }
 
 function changed(userId?: string | null) {
-  broadcast({ type: "notifications:changed", unread: unreadCount(userId) } as never);
+  if (userId) sendToUser(userId, { type: "notifications:changed", unread: unreadCount(userId) } as never);
+  else broadcastPerUser((uid) => ({ type: "notifications:changed", unread: unreadCount(uid) }) as never);
 }
 
 export function dismiss(module: string, key: string) {
@@ -209,8 +210,9 @@ export function forgetUser(userId: string) {
 /* ---------- delivery: websocket always, ntfy / telegram when configured ---------- */
 
 function deliver(n: Notification) {
-  // every client gets the event; the web app drops ones addressed to somebody else (notification.userId)
-  broadcast({ type: "notification", notification: n, unread: unreadCount(n.userId) } as never);
+  // personal notifications only go to that account's sockets; shared ones to everyone, each with their own unread count
+  if (n.userId) sendToUser(n.userId, { type: "notification", notification: n, unread: unreadCount(n.userId) } as never);
+  else broadcastPerUser((uid) => ({ type: "notification", notification: n, unread: unreadCount(uid) }) as never);
   const s = getAllSettings();
   const ch = s.notifyChannels ?? {};
   if (ch.ntfy?.topic) void sendNtfy(ch.ntfy, n);

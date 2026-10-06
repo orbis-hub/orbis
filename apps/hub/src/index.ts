@@ -114,7 +114,7 @@ app.get(
           ws.close(4401, "unauthorized");
           return;
         }
-        addClient(ws);
+        addClient(ws, user.id);
         ws.send(JSON.stringify({ type: "hello", hubVersion: config.version }));
       },
       onMessage(ev, ws) {

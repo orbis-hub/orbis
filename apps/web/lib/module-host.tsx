@@ -96,8 +96,11 @@ function fetchLocale(mod: InstalledModule, lang: string): Promise<Messages> {
   const key = `${mod.id}@${mod.version}@${mod.loadedAt ?? ""}:${lang}`;
   let p = localeCache.get(key);
   if (!p) {
-    p = fetch(hubAbs(`/modules/${mod.id}/locales/${lang}.json?v=${encodeURIComponent(mod.version)}`))
-      .then((r) => (r.ok ? (r.json() as Promise<Messages>) : {}))
+    // packaged modules (store, url, dev mirror) only ship dist/locales/; a source checkout also has locales/
+    const get = (path: string) => fetch(hubAbs(`/modules/${mod.id}/${path}/${lang}.json?v=${encodeURIComponent(mod.version)}`)).then((r) => (r.ok ? (r.json() as Promise<Messages>) : null));
+    p = get("dist/locales")
+      .then((m) => m ?? get("locales"))
+      .then((m) => m ?? {})
       .catch(() => ({}));
     localeCache.set(key, p);
   }

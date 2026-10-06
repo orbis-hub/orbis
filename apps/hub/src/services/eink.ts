@@ -371,7 +371,8 @@ export async function renderDisplay(display: EinkDisplay, opts: { format: "png" 
       const w = { module: b.module, widget: b.widget, config: b.config };
       const { x, y, w: width, h: height } = b;
       const mod = runtime.get(w.module);
-      const def = mod?.manifest.widgets.find((d) => d.id === w.widget);
+      // localized manifest: widget names in the hub language, same as the web app shows them
+      const def = mod ? runtime.localizedManifest(mod).widgets.find((d) => d.id === w.widget) : undefined;
       const cell: Cell = { x, y, w: width, h: height, title: String(w.config.title ?? def?.name ?? w.widget), tree: null };
       if (mod?.loaded && mod.server?.eink && mod.built) {
         try {
@@ -406,7 +407,7 @@ export async function renderDisplay(display: EinkDisplay, opts: { format: "png" 
     children.push(
       el("div", { style: { position: "absolute", left: 0, top: 0, width: W, height: H, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "DotGothic16", fontSize: 28 } }, [
         el("div", { key: 1, style: { display: "flex" } }, "◎ orbis"),
-        el("div", { key: 2, style: { display: "flex", fontFamily: "IBM Plex Mono", fontSize: 14, marginTop: 8 } }, `display "${display.name}" has no dashboard yet – pick one under settings → e-ink`),
+        el("div", { key: 2, style: { display: "flex", fontFamily: "IBM Plex Mono", fontSize: 14, marginTop: 8 } }, `display "${display.name}" has no dashboard yet – assign one under e-ink in the sidebar`),
       ]),
     );
   }
