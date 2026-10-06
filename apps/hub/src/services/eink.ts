@@ -407,7 +407,7 @@ export async function renderDisplay(display: EinkDisplay, opts: { format: "png" 
     children.push(
       el("div", { style: { position: "absolute", left: 0, top: 0, width: W, height: H, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "DotGothic16", fontSize: 28 } }, [
         el("div", { key: 1, style: { display: "flex" } }, "◎ orbis"),
-        el("div", { key: 2, style: { display: "flex", fontFamily: "IBM Plex Mono", fontSize: 14, marginTop: 8 } }, `display "${display.name}" has no dashboard yet – pick one under settings → e-ink`),
+        el("div", { key: 2, style: { display: "flex", fontFamily: "IBM Plex Mono", fontSize: 14, marginTop: 8 } }, `display "${display.name}" has no dashboard yet – assign one under e-ink in the sidebar`),
       ]),
     );
   }

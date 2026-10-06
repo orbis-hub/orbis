@@ -118,6 +118,7 @@ export const moduleApiProxy = new Hono().all("/:id/*", async (c) => {
   // the module sees who is calling via x-orbis-user / x-orbis-role; a client cannot forge them (always reset here)
   req.headers.delete("x-orbis-user");
   req.headers.delete("x-orbis-role");
+  req.headers.delete("x-orbis-caller");
   if (!isPublic) {
     // `?token=` is normally ignored (#39). The one exception: a top-level browser navigation (oauth login links such as
     // /strava/login and /spotify/login, which cannot carry headers and which token-only clients like the app open directly).

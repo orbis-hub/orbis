@@ -7,8 +7,14 @@
   "modules.empty.after": "ab.",
   "modules.enable": "{name} aktivieren",
   "modules.noDescription": "keine beschreibung",
-  "modules.widgets": { "one": "{count} widget", "other": "{count} widgets" },
-  "modules.pages": { "one": "{count} seite", "other": "{count} seiten" },
+  "modules.widgets": {
+    "one": "{count} widget",
+    "other": "{count} widgets"
+  },
+  "modules.pages": {
+    "one": "{count} seite",
+    "other": "{count} seiten"
+  },
   "modules.status.needsSetup": "einrichtung nötig",
   "modules.status.warning": "warnung",
   "modules.status.running": "läuft",
@@ -27,7 +33,10 @@
   "modules.installFailed": "installation fehlgeschlagen: {error}",
   "modules.installError": "{name}: {error}",
   "modules.store.search": "registry durchsuchen…",
-  "modules.store.registries": { "one": "{count} registry", "other": "{count} registries" },
+  "modules.store.registries": {
+    "one": "{count} registry",
+    "other": "{count} registries"
+  },
   "modules.store.fetching": "registries werden geladen",
   "modules.store.empty.title": "nichts im store",
   "modules.store.empty.noMatch": "nichts passt zu deiner suche.",
@@ -44,5 +53,6 @@
   "modules.settingsSaved": "einstellungen gespeichert",
   "modules.store.trustCovers": "store-module laufen in einem eigenen worker-thread mit speicherlimit: hub-apis (speicher, geräte, benachrichtigungen, scheduler, fetch) sind auf die berechtigungen beschränkt, die ein modul deklariert, und hub-geheimnisse bleiben aus seiner umgebung draußen.",
   "modules.store.trustNotCovered": "das ist keine sicherheits-sandbox: modulcode kann weiterhin node selbst nutzen (dateien, netzwerk), ein bösartiges modul kann also echten schaden anrichten. eingebaute und dev-module laufen im hub-prozess.",
-  "modules.uninstallTitle": "{name} deinstallieren"
+  "modules.uninstallTitle": "{name} deinstallieren",
+  "modules.store.languages": "spricht {langs}"
 }
